@@ -1,0 +1,6 @@
+@LabSync.Server_HostAddress = http://localhost:5038
+
+GET {{LabSync.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
