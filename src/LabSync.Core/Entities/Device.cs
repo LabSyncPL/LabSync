@@ -20,11 +20,10 @@ namespace LabSync.Core.Entities
         public string Hostname { get; set; } = string.Empty;
 
         /// <summary>
-        /// Physical MAC address. Used as a unique fingerprint for hardware identification.
-        /// Format: XX:XX:XX:XX:XX:XX
+        /// Physical hardware address. Must match the format XX:XX:XX:XX:XX:XX.
         /// </summary>
         [Required]
-        [MaxLength(17)]
+        [RegularExpression(@"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$", ErrorMessage = "Invalid MAC Address format.")]
         public string MacAddress { get; set; } = string.Empty;
 
         /// <summary>
