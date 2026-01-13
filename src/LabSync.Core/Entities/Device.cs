@@ -68,5 +68,10 @@ namespace LabSync.Core.Entities
         /// </summary>
         [MaxLength(256)]
         public string AgentToken { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Jobs that were executed or scheduled for this device.
+        /// </summary>
+        public ICollection<Job> Jobs { get; set; } = new List<Job>();
     }
 }
