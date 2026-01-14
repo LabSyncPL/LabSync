@@ -1,0 +1,141 @@
+---
+id: labsync-harmonogram
+title: Harmonogram i status projektu LabSync
+sidebar_label: Harmonogram i status
+---
+
+import Heading from '@theme/Heading';
+
+<Heading as="h1">Harmonogram, etapy pracy i status projektu LabSync</Heading>
+
+Projekt **LabSync** to platforma klasy RMM (Remote Monitoring and Management) zapewniająca scentralizowane zarządzanie flotą komputerów w środowiskach **Windows** i **Linux**, z jednego panelu administracyjnego (*Single Pane of Glass*).
+
+Poniżej przedstawiono roadmapę, etapy realizacji oraz bieżący status prac nad systemem.
+
+---
+
+## 1. Podsumowanie projektu
+
+- **Nazwa projektu**: LabSync  
+- **Klasa rozwiązania**: RMM – Remote Monitoring & Management  
+- **Główna wartość biznesowa**: Unifikacja zarządzania heterogeniczną infrastrukturą (Windows + Linux) z jednego panelu, automatyzacja wdrożeń i wsparcia IT.  
+- **Architektura**: Micro-Kernel z modułami (`Core` + `Extensions`) ładowanymi dynamicznie przez Agenta (`IAgentModule`).  
+- **Kluczowe wyróżniki**:
+  - **Architektura modułowa (Core + Plugins)** – podstawowe funkcje (skrypty) to „Moduły Rdzeniowe”, a dodatki (VNC, telemetria) to „Moduły Rozszerzone”.  
+  - **Unifikacja zarządzania** – inteligentny dobór strategii wykonania zadania (PowerShell/Winget dla Windows, Nix/Bash dla Linux).  
+  - **Zero‑Touch Deployment** – masowa, zautomatyzowana konfiguracja stacji roboczych.  
+  - **Komunikacja w czasie rzeczywistym** – SignalR (WebSockets) do obsługi komend, statusów online i modułu VNC.  
+  - **Abstrakcja konfiguracji** – jedna definicja pakietu oprogramowania, różne komendy per OS.
+
+### 1.1. Grupy docelowe
+
+- **Sektor edukacyjny** – szybkie przygotowywanie pracowni na zajęcia (różne profile oprogramowania).  
+- **Software house / firmy technologiczne** – standaryzacja środowisk deweloperskich (onboarding).  
+- **Działy IT i helpdesk** – zdalne wsparcie, monitoring, telemetria i automatyczne akcje naprawcze.
+
+---
+
+## 2. Etapy pracy (Fazy projektu)
+
+### 2.1. Faza 1 – Core System (priorytet krytyczny)
+
+**Cel:** Dostarczenie stabilnego **MVP**, które spełnia kryteria demonstracji na żywo – w dwóch filarach: **Zdalny Podgląd (VNC)** oraz **Wykonywanie Skryptów**.
+
+- **Zakres funkcjonalny**:
+  - Obsługa **Windows 10/11** oraz **Linux** po stronie Agenta.
+  - Dwukierunkowa komunikacja w czasie rzeczywistym przez **SignalR** (Online/Offline, komendy, logi, obraz VNC).
+  - Moduł wykonawczy `SoftwareExecutionModule`:
+    - interpretacja zadań,
+    - wybór właściwego silnika (PowerShell / Bash / Nix),
+    - mapowanie definicji pakietów na natywne komendy.
+  - Repozytorium pakietów (baza danych PostgreSQL) z abstrakcją systemu operacyjnego:
+    - jedna definicja (np. „Git”),
+    - osobne komendy dla Windows (`winget install Git.Git`) i Linux (`nix-env -i git`).
+  - `SystemInfoModule` – zbieranie podstawowych informacji o maszynie podczas rejestracji.
+  - Moduł rozszerzony `RemoteViewModule` – przesyłanie obrazu pulpitu do panelu WWW.
+
+**Rezultat Fazy 1:**  
+System pozwala:
+
+1. Uruchomić Agenta na maszynie Windows i maszynie Linux.  
+2. Zobaczyć obie maszyny jako **Online** (zielone) w panelu WWW.  
+3. Nawiązać połączenie VNC i zobaczyć w przeglądarce pulpit obu maszyn.  
+4. Zainicjować instalację „TestApp” na obu maszynach jednocześnie.  
+5. Zweryfikować, że na Windows uruchomił się **PowerShell/Winget**, a na Linux **Bash/Nix**.  
+6. Otrzymać potwierdzenie **„Task Completed”** wraz z logami wykonania.
+
+### 2.2. Faza 2 – Zarządzanie i Automatyzacja (priorytet wysoki)
+
+**Cel:** Umożliwienie skalowalnego zarządzania flotą maszyn w większych organizacjach.
+
+- **Grupy komputerów**:
+  - logiczne grupowanie (np. „Sala 101”, „Deweloperzy Backend”),
+  - operacje masowe (instalacja, aktualizacja, re‑konfiguracja).
+- **Interakcja VNC**:
+  - pełna kontrola pulpitu – przesyłanie zdarzeń myszy i klawiatury do Agenta (nie tylko podgląd).  
+- **Profile maszyn (Desired State)**:
+  - definicja docelowego stanu środowiska dla danej grupy (np. profil „Dev”, „Student”),
+  - automatyczne doprowadzanie maszyn do zadanego profilu.
+- **Kolejkowanie zadań**:
+  - obsługa maszyn offline – zadania są zapamiętywane i wykonywane po ponownym pojawieniu się online.
+
+### 2.3. Faza 3 – Monitoring i Rozszerzenia (priorytet średni)
+
+**Cel:** Rozszerzenie LabSync o funkcje wspierające helpdesk oraz pokazujące siłę architektury modułowej.
+
+- **Remote View (moduł rozszerzony `RemoteViewModule`)**:
+  - podgląd ekranu użytkownika z poziomu przeglądarki,
+  - możliwość wykorzystania w scenariuszach wsparcia zdalnego.
+- **Telemetria systemowa**:
+  - zbieranie i prezentacja metryk (CPU, RAM, dysk, sieć),
+  - alerty przy przekroczeniu progów.
+- **Inwentaryzacja sprzętu**:
+  - automatyczne skanowanie i raportowanie parametrów sprzętowych (CPU, RAM, MAC Address itp.).
+
+---
+
+## 3. Aktualny status prac
+
+> Sekcja statusu jest przeznaczona do regularnej aktualizacji przez zespół projektowy.
+
+### 3.1. Status ogólny
+
+- **Status projektu**: W trakcie realizacji Fazy 1 (Core System / MVP).  
+- **Stabilność**: Rdzeń architektury (Micro-Kernel + `IAgentModule`) – w trakcie doprecyzowania i implementacji.  
+- **Ryzyka kluczowe**:
+  - bezpieczeństwo zdalnego wykonywania zadań (tokenizacja, sanityzacja komend),
+  - wieloplatformowość Agenta (różnice między Windows a Linux),
+  - wydajność i skalowalność komunikacji SignalR przy większej liczbie agentów.
+
+### 3.2. Stan kluczowych komponentów
+
+- **Backend (.NET 8, ASP.NET Core + SignalR)**:  
+  - API główne – w trakcie implementacji.  
+  - Hub SignalR – TODO
+
+- **Baza danych (PostgreSQL)**:  
+  - model danych dla definicji pakietów, logów, użytkowników – w toku projektowania / implementacji.  
+
+- **Agent (Worker Service .NET)**:  
+  - Host usługi, ładowanie modułów (`IAgentModule`) – implementacja w toku.  
+  - Moduły Core: TODO
+
+- **Frontend (SPA – React/Vue, TypeScript)**:  
+  - panel administratora z listą maszyn oraz statusem Online/Offline – TODO
+  - moduł zlecania zadań (instalacja pakietów, podgląd logów) – TODO
+
+---
+
+## 4. Informacje o bezpieczeństwie
+
+Ze względu na charakter systemu (zdalne wykonywanie komend na stacjach roboczych), bezpieczeństwo jest traktowane jako obszar priorytetowy.
+
+- **Tokenizacja (JWT)** – każdy Agent otrzymuje własny token używany do autoryzacji komunikacji SignalR.  
+- **Szyfrowanie (HTTPS/WSS)** – cały ruch między Agentem, serwerem i panelem WWW odbywa się wyłącznie kanałami szyfrowanymi.  
+- **Sanityzacja komend (No-Eval)** – Agent:
+  - nie interpretuje dowolnego tekstu z sieci jako skryptu,
+  - uruchamia jedynie z góry zdefiniowane procesy systemowe z kontrolowanymi parametrami.  
+- **Izolacja modułów**:
+  - Host Agenta działa jako usługa uprzywilejowana (instalacje, konfiguracje),
+  - architektura modułowa umożliwia w przyszłości uruchamianie wybranych modułów z niższymi uprawnieniami (np. telemetrycznych, audytowych).
+
