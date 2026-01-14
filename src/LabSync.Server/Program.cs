@@ -6,6 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<LabSyncDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddScoped<LabSync.Server.Services.TokenService>();
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
