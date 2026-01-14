@@ -74,12 +74,19 @@ Z uwagi na wysokie ryzyko (zdalne wykonywanie kodu), system wdraża następując
 
 ### Zakres Funkcjonalny MVP
 
+MVP skupia się na dwóch równorzędnych filarach: Zdalnym Podglądzie (VNC) oraz Wykonywaniu Skryptów.
+
 ### A. Komunikacja 
 * System obsługuje **dwa typy systemów operacyjnych**: Windows 10/11 oraz Linux.
 *  Agent łączy się z serwerem automatycznie po uruchomieniu komputera.
 *  Administrator widzi w panelu WWW listę komputerów ze statusem **Online/Offline**.
 
-### B. Wykonywanie Zadań
+### B. Zdalny Pulpit (VNC)
+* Administrator może wybrać maszynę z listy i kliknąć "Podgląd".
+* Agent (RemoteViewModule) przechwytuje zawartość ekranu w czasie rzeczywistym.
+* Obraz jest wyświetlany w panelu administratora w przeglądarce.
+
+### C. Wykonywanie Zadań
 -   Administrator może zdefiniować "Pakiet Oprogramowania" w bazie danych, podając:
     -   Nazwę (np. "Git").    
     -   Komendę dla Windows (np. `winget install Git.Git`).  
@@ -87,17 +94,18 @@ Z uwagi na wysokie ryzyko (zdalne wykonywanie kodu), system wdraża następując
 -   Administrator może zlecić instalację pakietu na wybranym komputerze jednym kliknięciem.    
 -   Agent (poprzez `SoftwareExecutionModule`) poprawnie rozpoznaje swój system i wykonuje **tylko pasującą komendę**.
 
-### C. Raportowanie
+### D. Raportowanie
 * System informuje administratora o wyniku zadania: **Sukces** (ExitCode 0) lub **Błąd**.
 *  Administrator ma podgląd tekstowy logów.
 
 ### Kryteria Sukcesu
 Projekt zostanie uznany za działający, jeśli podczas prezentacji na żywo uda się: 
 1. Uruchomić Agenta na maszynie Windows i maszynie Linux. 
-2. Zobaczyć obie maszyny jako "Zielone" w panelu WWW. 
-3. Kliknąć "Instaluj TestApp" na obu maszynach jednocześnie. 
-4. Zobaczyć, że na Windowsie uruchomił się PowerShell, a na Linuxie Bash/Nix. 
-5. Otrzymać potwierdzenie "Task Completed" w przeglądarce.
+2. Zobaczyć obie maszyny jako "Zielone" w panelu WWW.
+3. Nawiązać połączenie VNC i zobaczyć w przeglądarce pulpit obu maszyn
+4. Kliknąć "Instaluj TestApp" na obu maszynach jednocześnie. 
+5. Zobaczyć, że na Windowsie uruchomił się PowerShell, a na Linuxie Bash/Nix. 
+6. Otrzymać potwierdzenie "Task Completed" w przeglądarce.
 
 ## 6. Roadmapa i Priorytetyzacja Funkcji
 
@@ -106,6 +114,7 @@ Rozwój platformy LabSync został podzielony na fazy, aby zapewnić stabilność
 ### Faza 1: Core System (Priorytet: Krytyczny)
 _Te funkcjonalności są niezbędne, aby system spełniał swoje podstawowe zadanie (MVP)._
 -   **Hybrydowe Wykonywanie Skryptów:** Implementacja modułu wykonawczego dla Windows (PowerShell) i Linux (Bash/Nix).
+-   **Moduł VNC:** Implementacja przechwytywania ekranu i podgląd na żywo w panelu WWW
 -   **Live Connectivity:** Stabilne połączenie SignalR i detekcja statusu Online.
 -   **Repozytorium Aplikacji:** Baza definicji pakietów z abstrakcją systemu operacyjnego.
 -   **Feedback:** Przesyłanie logów z procesów do panelu administratora.
@@ -113,11 +122,11 @@ _Te funkcjonalności są niezbędne, aby system spełniał swoje podstawowe zada
 ### Faza 2: Zarządzanie i Automatyzacja (Priorytet: Wysoki)
 _Funkcjonalności pozwalające na skalowanie zarządzania._
 -   **Grupy Komputerów:** Logiczne grupowanie (np. "Sala 101") i akcje masowe.
+-   **Interakcja VNC:** Pełna kontrola (przesyłanie zdarzeń myszy i klawiatury do agenta).
 -   **Profile Maszyn:** Definiowanie "stanu pożądanego" (Desired State) dla grupy maszyn (np. Profil "Dev" wymusza obecność Dockera i Gita).
 -   **Kolejkowanie Zadań:** Obsługa maszyn offline (zadanie wykonuje się automatycznie po włączeniu komputera).   
 
 ### Faza 3: Monitoring i Rozszerzenia (Priorytet: Średni)
 _Funkcje wspierające Helpdesk i dowód na modułowość systemu._
--   **Zdalny Podgląd (Remote View):** Implementacja modułu przesyłającego zrzuty ekranu na żądanie. 
 -   **Telemetria Systemowa:** Alerty o zużyciu zasobów (CPU/RAM/Dysk).   
 -   **Inwentaryzacja Sprzętu:** Automatyczny audyt podzespołów (CPU, RAM, MAC Address).
