@@ -1,4 +1,3 @@
-@@ -0,0 +1,121 @@
 // @ts-check
 // `@type` JSDoc annotations allow editor autocompletion and type checking
 // (when paired with `@ts-check`).
