@@ -1,3 +1,4 @@
+@@ -0,0 +1,121 @@
 // @ts-check
 // `@type` JSDoc annotations allow editor autocompletion and type checking
 // (when paired with `@ts-check`).
@@ -20,15 +21,16 @@ const config = {
   },
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  // For GitHub Pages this is typically 'https://<org>.github.io'
+  url: 'https://labsyncpl.github.io',
   // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  // For GitHub Pages project 'LabSync' it should be '/LabSync/'
+  baseUrl: '/LabSync/',
 
   // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'facebook', // Usually your GitHub org/user name.
-  projectName: 'docusaurus', // Usually your repo name.
+  // Repo: https://github.com/LabSyncPL/LabSync
+  organizationName: 'LabSyncPL', // Your GitHub org/user name.
+  projectName: 'LabSync', // Your repo name.
 
   onBrokenLinks: 'throw',
 
