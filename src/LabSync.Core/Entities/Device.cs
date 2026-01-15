@@ -65,7 +65,7 @@ namespace LabSync.Core.Entities
         /// Security token used by the Agent for API authentication.
         /// TODO: In production, consider hashing this value.
         /// </summary>
-        [MaxLength(256)]
+        [MaxLength(2000)]
         public string AgentToken { get; set; } = string.Empty;
 
         /// <summary>
