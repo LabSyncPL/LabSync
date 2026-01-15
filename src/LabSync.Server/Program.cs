@@ -6,6 +6,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<LabSyncDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+        });
+});
+
 builder.Services.AddScoped<LabSync.Server.Services.TokenService>();
 
 builder.Services.AddControllers();
@@ -17,7 +28,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseRouting();
+/// app.UseHttpsRedirection();
+app.UseCors("AllowReactApp");
 app.UseAuthorization();
 app.MapControllers();
 
