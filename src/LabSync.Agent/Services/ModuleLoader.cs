@@ -6,12 +6,12 @@ namespace LabSync.Agent.Services
     public class ModuleLoader
     {
         private readonly ILogger<ModuleLoader> _logger;
-        private readonly IServiceProvider _serviceProvider; 
-        private readonly List<IAgentModule> _loadedModules = new();
+        private readonly IServiceProvider      _serviceProvider; 
+        private readonly List<IAgentModule>    _loadedModules = new();
 
         public ModuleLoader(ILogger<ModuleLoader> logger, IServiceProvider serviceProvider)
         {
-            _logger = logger;
+            _logger          = logger;
             _serviceProvider = serviceProvider;
         }
 

@@ -16,8 +16,6 @@ namespace LabSync.Agent.Services
 
         public RegisterAgentRequest CollectIdentity()
         {
-            _logger.LogInformation("Collecting system information...");
-
             return new RegisterAgentRequest
             {
                 Hostname   = System.Net.Dns.GetHostName(),

@@ -5,13 +5,13 @@ namespace LabSync.Agent.Services
 {
     public class ServerClient
     {
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient            _httpClient;
         private readonly ILogger<ServerClient> _logger;
 
         public ServerClient(HttpClient httpClient, ILogger<ServerClient> logger)
         {
             _httpClient = httpClient;
-            _logger = logger;
+            _logger     = logger;
         }
 
         public async Task<string?> RegisterAgentAsync(RegisterAgentRequest request)

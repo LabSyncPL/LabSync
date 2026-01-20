@@ -5,17 +5,17 @@ namespace LabSync.Agent
 {
     public class Worker : BackgroundService
     {
-        private readonly ILogger<Worker>   _logger;
+        private readonly ILogger<Worker>      _logger;
         private readonly AgentIdentityService _systemInfo;
-        private readonly ServerClient      _serverClient;
+        private readonly ServerClient         _serverClient;
 
         private readonly ModuleLoader _moduleLoader;
 
         public Worker(
-            ILogger<Worker>   logger,
+            ILogger<Worker>      logger,
             AgentIdentityService systemInfo,
-            ServerClient      serverClient,
-            ModuleLoader      moduleLoader)
+            ServerClient         serverClient,
+            ModuleLoader         moduleLoader)
         {
             _logger       = logger;
             _systemInfo   = systemInfo;
@@ -25,41 +25,34 @@ namespace LabSync.Agent
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Agent Service started.");
-
-            try
-            {
-                _moduleLoader.LoadPlugins();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Critical error loading plugins!");
-            }
-
+            InitializeModules();
             var systemData = _systemInfo.CollectIdentity();
-            _logger.LogInformation("System Info Collected: {Hostname} ({Mac})", systemData.Hostname, systemData.MacAddress);
 
             string? token = null;
             while (token == null && !stoppingToken.IsCancellationRequested)
             {
                 token = await _serverClient.RegisterAgentAsync(systemData);
-
                 if (token == null)
                 {
-                    _logger.LogWarning("Device registered but waiting for Administrator approval.");
+                    _logger.LogWarning("Waiting for Administrator approval.");
                     await Task.Delay(5000, stoppingToken);
                 }
             }
 
             if (token != null)
             {
-                _logger.LogInformation("Agent authorized successfully. Ready for jobs.");
+                _logger.LogInformation("Agent authorized successfully.");
+                await RunMainLoopAsync(token, stoppingToken);
             }
+        }
 
+        private async Task RunMainLoopAsync(string token, CancellationToken stoppingToken)
+        {
             while (!stoppingToken.IsCancellationRequested)
             {
-                /// for now it's temporary, in the future we will wait for a signal to perform
+                /// For now it's temporary, in the future we will wait for a signal to perform
                 /// some operation and then we will find the appropriate module and perform it
+
                 _logger.LogInformation("Heartbeat sent.");
 
                 var monitorModule = _moduleLoader.FindModuleForJob("CollectMetrics");
@@ -68,15 +61,10 @@ namespace LabSync.Agent
                     try
                     {
                         var result = await monitorModule.ExecuteAsync(new Dictionary<string, string>(), stoppingToken);
-
                         if (result.IsSuccess)
-                        {
                             _logger.LogInformation("MODULE OUTPUT: {Data}", result.Data);
-                        }
                         else
-                        {
                             _logger.LogError("Module failed: {Error}", result.ErrorMessage);
-                        }
                     }
                     catch (Exception ex)
                     {
@@ -89,6 +77,18 @@ namespace LabSync.Agent
                 }
 
                 await Task.Delay(10000, stoppingToken);
+            }
+        }
+
+        private void InitializeModules()
+        {
+            try
+            {
+                _moduleLoader.LoadPlugins();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Critical error loading plugins!");
             }
         }
     }

@@ -82,11 +82,11 @@ export const DeviceList = () => {
               <td>{new Date(device.lastSeenAt).toLocaleString()}</td>
               <td>
                 {!device.isApproved ? (
-                   <span style={{ color: '#d35400', fontWeight: 'bold' }}>⏳ Oczekuje</span>
+                   <span style={{ color: '#d35400', fontWeight: 'bold' }}>Oczekuje</span>
                 ) : device.status === 1 ? (
-                   <span style={{ color: 'green', fontWeight: 'bold' }}>🟢 Online</span>
+                   <span style={{ color: 'green', fontWeight: 'bold' }}>Online</span>
                 ) : (
-                   <span style={{ color: 'red' }}>🔴 Offline</span>
+                   <span style={{ color: 'red' }}>Offline</span>
                 )}
               </td>
               

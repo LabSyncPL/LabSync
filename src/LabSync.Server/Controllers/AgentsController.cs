@@ -12,18 +12,18 @@ namespace LabSync.Server.Controllers
     [Route("api/[controller]")]
     public class AgentsController : ControllerBase
     {
-        private readonly LabSyncDbContext _context;
-        private readonly TokenService _tokenService;
+        private readonly LabSyncDbContext          _context;
+        private readonly TokenService              _tokenService;
         private readonly ILogger<AgentsController> _logger;
 
         public AgentsController(
-            LabSyncDbContext context,
-            TokenService tokenService,
+            LabSyncDbContext          context,
+            TokenService              tokenService,
             ILogger<AgentsController> logger)
         {
-            _context = context;
+            _context      = context;
             _tokenService = tokenService;
-            _logger = logger;
+            _logger       = logger;
         }
 
         /// <summary>
@@ -38,9 +38,7 @@ namespace LabSync.Server.Controllers
 
             _logger.LogInformation("Registering agent: {Hostname} ({Mac})", request.Hostname, request.MacAddress);
 
-            var device = await _context.Devices
-                .FirstOrDefaultAsync(d => d.MacAddress == request.MacAddress);
-
+            var device = await _context.Devices.FirstOrDefaultAsync(d => d.MacAddress == request.MacAddress);
             if (device == null)
             {
                 device = new Device

@@ -5,7 +5,7 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddSingleton<AgentIdentityService>();
 builder.Services.AddSingleton<ServerClient>();
-builder.Services.AddSingleton<LabSync.Agent.Services.ModuleLoader>();
+builder.Services.AddSingleton<ModuleLoader>();
 
 builder.Services.AddHttpClient<ServerClient>(client =>
 {
