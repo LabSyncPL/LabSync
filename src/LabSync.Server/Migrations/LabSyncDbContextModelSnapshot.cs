@@ -30,8 +30,8 @@ namespace LabSync.Server.Migrations
 
                     b.Property<string>("AgentToken")
                         .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<string>("Hostname")
                         .IsRequired()
@@ -47,8 +47,7 @@ namespace LabSync.Server.Migrations
 
                     b.Property<string>("MacAddress")
                         .IsRequired()
-                        .HasMaxLength(17)
-                        .HasColumnType("character varying(17)");
+                        .HasColumnType("text");
 
                     b.Property<string>("OsVersion")
                         .IsRequired()
