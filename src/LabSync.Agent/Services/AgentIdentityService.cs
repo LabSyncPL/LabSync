@@ -5,16 +5,16 @@ using System.Runtime.InteropServices;
 
 namespace LabSync.Agent.Services
 {
-    public class SystemInfoService
+    public class AgentIdentityService
     {
-        private readonly ILogger<SystemInfoService> _logger;
+        private readonly ILogger<AgentIdentityService> _logger;
 
-        public SystemInfoService(ILogger<SystemInfoService> logger)
+        public AgentIdentityService(ILogger<AgentIdentityService> logger)
         {
             _logger = logger;
         }
 
-        public RegisterAgentRequest CollectSystemInfo()
+        public RegisterAgentRequest CollectIdentity()
         {
             _logger.LogInformation("Collecting system information...");
 

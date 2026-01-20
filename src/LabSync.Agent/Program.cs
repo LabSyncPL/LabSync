@@ -3,8 +3,9 @@ using LabSync.Agent.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddSingleton<SystemInfoService>();
+builder.Services.AddSingleton<AgentIdentityService>();
 builder.Services.AddSingleton<ServerClient>();
+builder.Services.AddSingleton<LabSync.Agent.Services.ModuleLoader>();
 
 builder.Services.AddHttpClient<ServerClient>(client =>
 {

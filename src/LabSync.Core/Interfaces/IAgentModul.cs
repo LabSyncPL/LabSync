@@ -1,36 +1,56 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LabSync.Core.Interfaces
 {
     /// <summary>
-    /// The contract that all Agent modules (Core and Extensions) must implement.
-    /// allows the Agent to load functionality dynamically.
+    /// Represents a dynamic plugin capable of performing specific agent tasks.
     /// </summary>
     public interface IAgentModule
     {
         /// <summary>
-        /// Unique name of the module (e.g., "ScriptExecutor", "SystemInfo").
+        /// Unique identifier of the module (e.g., "SystemMonitor", "ScriptExecutor").
         /// </summary>
         string Name { get; }
 
         /// <summary>
-        /// Initializes the module resources. Called once during Agent startup.
+        /// Module version for compatibility checks (e.g., "1.0.0").
         /// </summary>
-        Task InitializeAsync();
+        string Version { get; }
 
         /// <summary>
-        /// Determines if this module can handle a specific task type.
+        /// Initializes the module with necessary services
         /// </summary>
-        /// <param name="commandType">The command identifier (e.g., "Shell", "PowerShell").</param>
-        /// <returns>True if the module supports this command.</returns>
-        bool CanHandle(string commandType);
+        /// <param name="serviceProvider">Access to Agent's DI container.</param>
+        Task InitializeAsync(IServiceProvider serviceProvider);
 
         /// <summary>
-        /// Executes the requested logic.
+        /// Checks if the module can handle a specific job type.
         /// </summary>
-        /// <param name="command">The command or script to execute.</param>
-        /// <param name="args">Additional arguments.</param>
-        /// <returns>A tuple containing the ExitCode and Output log.</returns>
-        Task<(int ExitCode, string Output)> ExecuteAsync(string command, string args);
+        /// <param name="jobType">The type of job (e.g., "Get-SysInfo", "Run-PowerShell").</param>
+        bool CanHandle(string jobType);
+
+        /// <summary>
+        /// Executes the task.
+        /// </summary>
+        /// <param name="parameters">Dictionary of arguments specific to the job type.</param>
+        /// <param name="cancellationToken">Token to cancel long-running operations.</param>
+        /// <returns>Generic result object containing success status and data/logs.</returns>
+        Task<ModuleResult> ExecuteAsync(IDictionary<string, string> parameters, CancellationToken cancellationToken);
+    }
+
+    /// <summary>
+    /// Standardized result returned by any module.
+    /// </summary>
+    public class ModuleResult
+    {
+        public bool IsSuccess { get; set; }
+        public object? Data { get; set; } // JSON, Text, or Binary data
+        public string? ErrorMessage { get; set; }
+
+        public static ModuleResult Success(object? data = null) => new() { IsSuccess = true, Data = data };
+        public static ModuleResult Failure(string error) => new() { IsSuccess = false, ErrorMessage = error };
     }
 }
