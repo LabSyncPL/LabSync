@@ -46,7 +46,7 @@ namespace LabSync.Agent
 
                 if (token == null)
                 {
-                    _logger.LogWarning("Server unavailable. Retrying in 5 seconds...");
+                    _logger.LogWarning("Device registered but waiting for Administrator approval.");
                     await Task.Delay(5000, stoppingToken);
                 }
             }

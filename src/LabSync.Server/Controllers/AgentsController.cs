@@ -48,6 +48,7 @@ namespace LabSync.Server.Controllers
                     Id = Guid.NewGuid(),
                     MacAddress   = request.MacAddress,
                     Hostname     = request.Hostname,
+                    IsApproved   = false,
                     Platform     = request.Platform,
                     OsVersion    = request.OsVersion,
                     IpAddress    = request.IpAddress,
@@ -68,15 +69,16 @@ namespace LabSync.Server.Controllers
                 _context.Devices.Update(device);
             }
 
-            var token = _tokenService.GenerateAgentToken(device);
-            device.AgentToken = token;
-
-            await _context.SaveChangesAsync();
-            return Ok(new RegisterAgentResponse
+            if (!device.IsApproved)
             {
-                DeviceId = device.Id,
-                Token = token
-            });
+                return Ok(new RegisterAgentResponse
+                {
+                    Token = null, 
+                    Message = "Device pending approval."
+                });
+            }
+            var token = _tokenService.GenerateAgentToken(device);
+            return Ok(new RegisterAgentResponse { DeviceId = device.Id, Token = token, Message = "Authorized" });
         }
     }
 }

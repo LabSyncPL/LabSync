@@ -20,6 +20,11 @@ namespace LabSync.Core.Entities
         public string Hostname { get; set; } = string.Empty;
 
         /// <summary>
+        /// Is the device trusted?
+        /// </summary>
+        public bool IsApproved { get; set; } = false;
+
+        /// <summary>
         /// Physical hardware address. Must match the format XX:XX:XX:XX:XX:XX.
         /// </summary>
         [Required]
