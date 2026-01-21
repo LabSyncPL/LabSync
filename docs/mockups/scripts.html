@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#1e293b', 900: '#0f172a', 950: '#020617' },
+                        primary: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+                        success: '#10b981',
+                        editor: '#1e1e1e' // VS Code Dark
+                    },
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>body { background-color: #0f172a; color: #e2e8f0; }</style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm">
+
+    <aside class="w-72 bg-slate-950 border-r border-slate-800 flex flex-col flex-shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-primary-600 rounded mr-3 flex items-center justify-center font-bold text-white">LS</div>
+            <span class="font-bold text-lg tracking-wide">LabSync</span>
+        </div>
+
+        <nav class="p-4 border-b border-slate-800 space-y-1">
+            <a href="dashboard.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                Dashboard
+            </a>
+            <a href="vnc.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                Remote View
+            </a>
+            <a href="scripts.html" class="flex items-center px-4 py-3 bg-slate-800 text-white rounded-lg group transition-colors border-l-4 border-primary-500">
+                <svg class="w-5 h-5 mr-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                Task Runner
+            </a>
+            <a href="tasks.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                Tasks & Deployments
+            </a>
+            <a href="repository.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                Repository
+            </a>
+            <a href="audit.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Audit Log
+            </a>
+            <a href="settings.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Settings
+            </a>
+        </nav>
+
+        <div class="p-4 border-b border-slate-800/50">
+            <button class="w-full flex items-center justify-center px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium transition-colors text-white">
+                <svg class="w-4 h-4 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                New Target Group
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-2">
+            <div class="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Infrastructure</div>
+            
+            <nav class="space-y-1 px-2">
+                <a href="#" class="flex items-center px-3 py-2 text-slate-300 hover:bg-slate-800 rounded-md group">
+                    <svg class="w-4 h-4 mr-3 text-slate-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    All Devices
+                    <span class="ml-auto text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">42</span>
+                </a>
+
+                <a href="#" class="flex items-center px-3 py-2 text-slate-300 hover:bg-slate-800 rounded-md group">
+                    <svg class="w-4 h-4 mr-3 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                    Windows Only
+                    <span class="ml-auto text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">28</span>
+                </a>
+
+                <a href="#" class="flex items-center px-3 py-2 text-slate-300 hover:bg-slate-800 rounded-md group">
+                    <svg class="w-4 h-4 mr-3 text-yellow-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z"/></svg>
+                    Linux Only
+                    <span class="ml-auto text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">14</span>
+                </a>
+
+                <div class="pt-4 px-2 pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Custom Groups</div>
+                
+                <a href="#" class="flex items-center px-3 py-2 bg-primary-500/10 text-primary-400 border border-primary-500/20 rounded-md group">
+                    <svg class="w-4 h-4 mr-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    Lab Room 101 (Dev)
+                    <span class="ml-auto text-xs bg-primary-600 text-white px-2 py-0.5 rounded-full">12</span>
+                </a>
+                
+                <a href="#" class="flex items-center px-3 py-2 text-slate-300 hover:bg-slate-800 rounded-md group">
+                    <svg class="w-4 h-4 mr-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    Office Reception
+                    <span class="ml-auto text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">2</span>
+                </a>
+            </nav>
+        </div>
+        
+        <div class="p-4 border-t border-slate-800">
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full bg-slate-700"></div>
+                <div class="ml-3">
+                    <p class="text-xs font-medium text-white">Admin User</p>
+                    <p class="text-xs text-slate-500">System Admin</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+        
+        <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900 z-10">
+            <div>
+                <div class="flex items-center text-xs text-slate-500 mb-1">
+                    <a href="dashboard.html" class="hover:text-slate-300 cursor-pointer">Dashboard</a>
+                    <svg class="w-3 h-3 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    <a href="scripts.html" class="hover:text-slate-300 cursor-pointer">Task Runner</a>
+                    <svg class="w-3 h-3 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    <span class="text-slate-300">New Deployment</span>
+                </div>
+                <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                    Install Dev Tools
+                    <svg class="w-4 h-4 text-slate-500 cursor-pointer hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                </h1>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button class="text-slate-400 hover:text-white px-3 py-2 text-xs font-medium border border-slate-700 rounded-lg bg-slate-800">Save as Template</button>
+                <div class="h-6 w-px bg-slate-700 mx-1"></div>
+                <button class="bg-primary-600 hover:bg-primary-500 text-white px-8 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary-500/20 flex items-center transition-all transform active:scale-95">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Deploy to 12 Hosts
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden">
+            
+            <div class="flex-1 flex flex-col relative">
+                
+                <div class="bg-slate-950 border-b border-slate-800 px-6 py-2 flex items-center gap-2 overflow-x-auto">
+                    <span class="text-xs text-slate-500 font-medium uppercase mr-2 shrink-0">Selected Targets:</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0">
+                        <svg class="w-3 h-3 mr-1.5" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                        8 Windows
+                    </span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 shrink-0">
+                        <svg class="w-3 h-3 mr-1.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z"/></svg>
+                        4 Linux
+                    </span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700 shrink-0 ml-auto cursor-pointer hover:text-white">
+                        Edit Selection
+                    </span>
+                </div>
+
+                <div class="flex bg-slate-900 border-b border-slate-800">
+                    <button class="px-6 py-3 text-sm font-medium text-white border-b-2 border-blue-500 bg-slate-800 flex items-center gap-2 focus:outline-none">
+                        <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                        Windows (PowerShell)
+                    </button>
+                    <button class="px-6 py-3 text-sm font-medium text-slate-500 hover:text-slate-300 flex items-center gap-2 focus:outline-none border-b-2 border-transparent hover:border-slate-700">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z"/></svg>
+                        Linux (Nix)
+                    </button>
+                    <div class="ml-auto flex items-center px-4">
+                         <span class="text-xs text-slate-500 mr-2">Language:</span>
+                         <span class="text-xs text-blue-400 font-mono">PowerShell 7.x</span>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-editor overflow-auto p-0 relative">
+                    <div class="flex min-h-full font-mono text-sm leading-6">
+                        <div class="bg-[#1e1e1e] border-r border-slate-800 text-slate-600 text-right pr-4 pl-2 py-4 select-none min-w-[50px]">
+                            1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10
+                        </div>
+                        <div class="text-slate-300 p-4 w-full">
+                            <span class="text-slate-500"># Install Docker Desktop and standard tools</span><br>
+                            <span class="text-purple-400">Write-Host</span> <span class="text-green-400">"Initializing LabSync deployment on $env:COMPUTERNAME..."</span><br><br>
+                            
+                            <span class="text-slate-500"># Define packages</span><br>
+                            <span class="text-blue-400">$packages</span> = @(<span class="text-green-400">"Docker.DockerDesktop"</span>, <span class="text-green-400">"Microsoft.VisualStudioCode"</span>, <span class="text-green-400">"Git.Git"</span>)<br><br>
+                            
+                            <span class="text-yellow-400">foreach</span> (<span class="text-blue-400">$pkg</span> in <span class="text-blue-400">$packages</span>) {<br>
+                            &nbsp;&nbsp;<span class="text-purple-400">Write-Host</span> <span class="text-green-400">"Installing $pkg..."</span><br>
+                            &nbsp;&nbsp;<span class="text-yellow-400">winget</span> install -e --id <span class="text-blue-400">$pkg</span> --accept-package-agreements --accept-source-agreements<br>
+                            &nbsp;&nbsp;<span class="text-yellow-400">if</span> (<span class="text-blue-400">$LASTEXITCODE</span> -ne 0) {<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-purple-400">Write-Error</span> <span class="text-green-400">"Failed to install $pkg"</span><br>
+                            &nbsp;&nbsp;}<br>
+                            }<br><br>
+                            <span class="text-purple-400">Write-Host</span> <span class="text-green-400">"Deployment Complete."</span>
+                            
+                            <span class="w-2 h-5 bg-blue-500 inline-block align-middle animate-pulse ml-0.5"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="w-64 bg-slate-950 border-l border-slate-800 flex flex-col">
+                <div class="p-4 border-b border-slate-800">
+                    <h3 class="font-semibold text-white text-xs uppercase tracking-wider">Helper</h3>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 space-y-6">
+                    
+                    <div>
+                        <h4 class="text-slate-400 text-xs font-medium mb-3 flex items-center">
+                            <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            Templates
+                        </h4>
+                        <div class="space-y-2">
+                            <button class="w-full text-left px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-xs text-slate-300 transition-colors">
+                                Install Docker (Hybrid)
+                            </button>
+                            <button class="w-full text-left px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-xs text-slate-300 transition-colors">
+                                Update System
+                            </button>
+                            <button class="w-full text-left px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded text-xs text-slate-300 transition-colors">
+                                Reset Network Adapter
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-slate-400 text-xs font-medium mb-3 flex items-center">
+                            <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                            Variables
+                        </h4>
+                        <div class="grid grid-cols-1 gap-2">
+                            <div class="flex items-center justify-between px-3 py-2 bg-slate-900 rounded border border-slate-800 group cursor-pointer hover:border-primary-500/50">
+                                <code class="text-primary-400 text-xs font-mono">%HOSTNAME%</code>
+                                <svg class="w-3 h-3 text-slate-600 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <div class="flex items-center justify-between px-3 py-2 bg-slate-900 rounded border border-slate-800 group cursor-pointer hover:border-primary-500/50">
+                                <code class="text-primary-400 text-xs font-mono">%IP_ADDR%</code>
+                                <svg class="w-3 h-3 text-slate-600 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-slate-400 text-xs font-medium mb-3 flex items-center">
+                            <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                            Options
+                        </h4>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-slate-400">Timeout (min)</span>
+                                <input type="number" value="10" class="w-12 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-xs text-center text-white focus:outline-none focus:border-primary-500">
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="reboot" class="w-3 h-3 rounded bg-slate-900 border-slate-700 text-primary-600 focus:ring-0">
+                                <label for="reboot" class="ml-2 text-xs text-slate-400">Reboot if needed</label>
+                            </div>
+                             <div class="flex items-center">
+                                <input type="checkbox" id="parallel" checked class="w-3 h-3 rounded bg-slate-900 border-slate-700 text-primary-600 focus:ring-0">
+                                <label for="parallel" class="ml-2 text-xs text-slate-400">Parallel Execution</label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </aside>
+
+        </div>
+    </main>
+</body>
+</html>

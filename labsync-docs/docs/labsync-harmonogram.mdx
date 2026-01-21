@@ -1,43 +1,17 @@
 ---
 id: labsync-harmonogram
-title: Harmonogram i status projektu LabSync
-sidebar_label: Harmonogram i status
+title: Harmonogram projektu LabSync
+sidebar_label: Harmonogram
 ---
 
 import Heading from '@theme/Heading';
 
-<Heading as="h1">Harmonogram, etapy pracy i status projektu LabSync</Heading>
+<Heading as="h1">Harmonogram pracy</Heading>
 
-Projekt **LabSync** to platforma klasy RMM (Remote Monitoring and Management) zapewniająca scentralizowane zarządzanie flotą komputerów w środowiskach **Windows** i **Linux**, z jednego panelu administracyjnego (*Single Pane of Glass*).
 
-Poniżej przedstawiono roadmapę, etapy realizacji oraz bieżący status prac nad systemem.
+## 1. Etapy pracy (Fazy projektu)
 
----
-
-## 1. Podsumowanie projektu
-
-- **Nazwa projektu**: LabSync  
-- **Klasa rozwiązania**: RMM – Remote Monitoring & Management  
-- **Główna wartość biznesowa**: Unifikacja zarządzania heterogeniczną infrastrukturą (Windows + Linux) z jednego panelu, automatyzacja wdrożeń i wsparcia IT.  
-- **Architektura**: Micro-Kernel z modułami (`Core` + `Extensions`) ładowanymi dynamicznie przez Agenta (`IAgentModule`).  
-- **Kluczowe wyróżniki**:
-  - **Architektura modułowa (Core + Plugins)** – podstawowe funkcje (skrypty) to „Moduły Rdzeniowe”, a dodatki (VNC, telemetria) to „Moduły Rozszerzone”.  
-  - **Unifikacja zarządzania** – inteligentny dobór strategii wykonania zadania (PowerShell/Winget dla Windows, Nix/Bash dla Linux).  
-  - **Zero‑Touch Deployment** – masowa, zautomatyzowana konfiguracja stacji roboczych.  
-  - **Komunikacja w czasie rzeczywistym** – SignalR (WebSockets) do obsługi komend, statusów online i modułu VNC.  
-  - **Abstrakcja konfiguracji** – jedna definicja pakietu oprogramowania, różne komendy per OS.
-
-### 1.1. Grupy docelowe
-
-- **Sektor edukacyjny** – szybkie przygotowywanie pracowni na zajęcia (różne profile oprogramowania).  
-- **Software house / firmy technologiczne** – standaryzacja środowisk deweloperskich (onboarding).  
-- **Działy IT i helpdesk** – zdalne wsparcie, monitoring, telemetria i automatyczne akcje naprawcze.
-
----
-
-## 2. Etapy pracy (Fazy projektu)
-
-### 2.1. Faza 1 – Core System (priorytet krytyczny)
+### 1.1. Faza 1 – Core System (priorytet krytyczny)
 
 **Cel:** Dostarczenie stabilnego **MVP**, które spełnia kryteria demonstracji na żywo – w dwóch filarach: **Zdalny Podgląd (VNC)** oraz **Wykonywanie Skryptów**.
 
@@ -64,7 +38,7 @@ System pozwala:
 5. Zweryfikować, że na Windows uruchomił się **PowerShell/Winget**, a na Linux **Bash/Nix**.  
 6. Otrzymać potwierdzenie **„Task Completed”** wraz z logami wykonania.
 
-### 2.2. Faza 2 – Zarządzanie i Automatyzacja (priorytet wysoki)
+### 1.2. Faza 2 – Zarządzanie i Automatyzacja (priorytet wysoki)
 
 **Cel:** Umożliwienie skalowalnego zarządzania flotą maszyn w większych organizacjach.
 
@@ -79,7 +53,7 @@ System pozwala:
 - **Kolejkowanie zadań**:
   - obsługa maszyn offline – zadania są zapamiętywane i wykonywane po ponownym pojawieniu się online.
 
-### 2.3. Faza 3 – Monitoring i Rozszerzenia (priorytet średni)
+### 1.3. Faza 3 – Monitoring i Rozszerzenia (priorytet średni)
 
 **Cel:** Rozszerzenie LabSync o funkcje wspierające helpdesk oraz pokazujące siłę architektury modułowej.
 
@@ -94,39 +68,7 @@ System pozwala:
 
 ---
 
-## 3. Aktualny status prac
-
-> Sekcja statusu jest przeznaczona do regularnej aktualizacji przez zespół projektowy.
-
-### 3.1. Status ogólny
-
-- **Status projektu**: W trakcie realizacji Fazy 1 (Core System / MVP).  
-- **Stabilność**: Rdzeń architektury (Micro-Kernel + `IAgentModule`) – w trakcie doprecyzowania i implementacji.  
-- **Ryzyka kluczowe**:
-  - bezpieczeństwo zdalnego wykonywania zadań (tokenizacja, sanityzacja komend),
-  - wieloplatformowość Agenta (różnice między Windows a Linux),
-  - wydajność i skalowalność komunikacji SignalR przy większej liczbie agentów.
-
-### 3.2. Stan kluczowych komponentów
-
-- **Backend (.NET 8, ASP.NET Core + SignalR)**:  
-  - API główne – w trakcie implementacji.  
-  - Hub SignalR – TODO
-
-- **Baza danych (PostgreSQL)**:  
-  - model danych dla definicji pakietów, logów, użytkowników – w toku projektowania / implementacji.  
-
-- **Agent (Worker Service .NET)**:  
-  - Host usługi, ładowanie modułów (`IAgentModule`) – implementacja w toku.  
-  - Moduły Core: TODO
-
-- **Frontend (SPA – React/Vue, TypeScript)**:  
-  - panel administratora z listą maszyn oraz statusem Online/Offline – TODO
-  - moduł zlecania zadań (instalacja pakietów, podgląd logów) – TODO
-
----
-
-## 4. Informacje o bezpieczeństwie
+## 2. Informacje o bezpieczeństwie
 
 Ze względu na charakter systemu (zdalne wykonywanie komend na stacjach roboczych), bezpieczeństwo jest traktowane jako obszar priorytetowy.
 

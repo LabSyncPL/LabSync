@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#1e293b', 900: '#0f172a', 950: '#020617' },
+                        primary: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b',
+                    },
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>body { background-color: #0f172a; color: #e2e8f0; }</style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm">
+
+    <aside class="w-64 bg-slate-950 border-r border-slate-800 flex flex-col flex-shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-primary-600 rounded mr-3 flex items-center justify-center font-bold text-white">LS</div>
+            <span class="font-bold text-lg tracking-wide">LabSync</span>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-1">
+            <a href="dashboard.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                Dashboard
+            </a>
+            <a href="vnc.html" class="flex items-center px-4 py-3 bg-slate-800 text-white rounded-lg group transition-colors border-l-4 border-primary-500">
+                <svg class="w-5 h-5 mr-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                Remote View
+            </a>
+            <a href="scripts.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                Task Runner
+            </a>
+            <a href="tasks.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                Tasks & Deployments
+            </a>
+            <a href="repository.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                Repository
+            </a>
+            <a href="audit.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Audit Log
+            </a>
+            <a href="settings.html" class="flex items-center px-4 py-3 text-slate-400 hover:bg-slate-900 hover:text-white rounded-lg group transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Settings
+            </a>
+        </nav>
+        
+        <div class="p-4 border-t border-slate-800">
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full bg-slate-700"></div>
+                <div class="ml-3">
+                    <p class="text-xs font-medium text-white">Admin User</p>
+                    <p class="text-xs text-slate-500">System Admin</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900 shrink-0">
+            <div>
+                <h1 class="text-xl font-semibold text-white">Remote View Monitoring</h1>
+                <p class="text-slate-500 text-xs">Monitor multiple devices simultaneously</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">
+                    <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"></path></svg>
+                    <span class="text-xs text-slate-300 font-medium">12 Active</span>
+                </div>
+                <select class="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-primary-500">
+                    <option>All Groups</option>
+                    <option>Lab Room 101</option>
+                    <option>Office Reception</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="flex-1 p-6 overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                
+                <!-- Screen 1 -->
+                <a href="vnc-detail.html" class="group relative bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/10 cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-blue-900/50 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-blue-500/20" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
+                            <span class="text-slate-400 font-mono">1920x1080</span>
+                            <span class="text-success font-medium">24ms</span>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">LAB-WIN-04</h3>
+                                <p class="text-xs text-slate-400">Windows 11 Pro</p>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-500 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Screen 2 -->
+                <a href="vnc-detail.html" class="group relative bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/10 cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-yellow-900/50 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-yellow-500/20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z"/></svg>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
+                            <span class="text-slate-400 font-mono">1920x1080</span>
+                            <span class="text-success font-medium">18ms</span>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">DEV-LINUX-01</h3>
+                                <p class="text-xs text-slate-400">Ubuntu 22.04</p>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-500 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Screen 3 -->
+                <a href="vnc-detail.html" class="group relative bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/10 cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-blue-900/50 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-blue-500/20" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
+                            <span class="text-slate-400 font-mono">1920x1080</span>
+                            <span class="text-success font-medium">31ms</span>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">LAB-WIN-07</h3>
+                                <p class="text-xs text-slate-400">Windows 10 Pro</p>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-500 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Screen 4 -->
+                <a href="vnc-detail.html" class="group relative bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/10 cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-purple-900/50 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-purple-500/20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z"/></svg>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
+                            <span class="text-slate-400 font-mono">1366x768</span>
+                            <span class="text-success font-medium">42ms</span>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">LAB-LINUX-03</h3>
+                                <p class="text-xs text-slate-400">Ubuntu 20.04</p>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-500 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Screen 5 -->
+                <a href="vnc-detail.html" class="group relative bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/10 cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-blue-900/50 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-blue-500/20" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <span class="w-2 h-2 rounded-full bg-warning animate-pulse"></span>
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
+                            <span class="text-slate-400 font-mono">1920x1080</span>
+                            <span class="text-warning font-medium">156ms</span>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">LAB-WIN-12</h3>
+                                <p class="text-xs text-slate-400">Windows 11 Pro</p>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-500 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Screen 6 -->
+                <a href="vnc-detail.html" class="group relative bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/10 cursor-pointer opacity-60">
+                    <div class="aspect-video bg-gradient-to-br from-slate-900 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                                <svg class="w-12 h-12 text-slate-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path></svg>
+                                <p class="text-xs text-slate-500">Disconnected</p>
+                            </div>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-slate-400">LAB-WIN-15</h3>
+                                <p class="text-xs text-slate-500">Windows 10 Pro</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Screen 7 -->
+                <a href="vnc-detail.html" class="group relative bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/10 cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-green-900/50 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-green-500/20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z"/></svg>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
+                            <span class="text-slate-400 font-mono">1920x1080</span>
+                            <span class="text-success font-medium">19ms</span>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">DEV-LINUX-05</h3>
+                                <p class="text-xs text-slate-400">Debian 12</p>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-500 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Screen 8 -->
+                <a href="vnc-detail.html" class="group relative bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/10 cursor-pointer">
+                    <div class="aspect-video bg-gradient-to-br from-blue-900/50 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-blue-500/20" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px]">
+                            <span class="text-slate-400 font-mono">1920x1080</span>
+                            <span class="text-success font-medium">27ms</span>
+                        </div>
+                    </div>
+                    <div class="p-3 border-t border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">LAB-WIN-09</h3>
+                                <p class="text-xs text-slate-400">Windows 11 Enterprise</p>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-500 group-hover:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </div>
+                    </div>
+                </a>
+
+            </div>
+        </div>
+    </main>
+</body>
+</html>

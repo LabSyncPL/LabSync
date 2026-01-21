@@ -24,7 +24,12 @@ const sidebars = {
     {
       type: 'doc',
       id: 'labsync-harmonogram',
-      label: 'Harmonogram i status',
+      label: 'Harmonogram',
+    },
+    {
+      type: 'doc',
+      id: 'labsync-status',
+      label: 'Status',
     },
   ],
 };

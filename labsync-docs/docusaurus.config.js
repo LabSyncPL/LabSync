@@ -90,6 +90,16 @@ const config = {
             label: 'Harmonogram',
             position: 'left',
           },
+          {
+            to: '/docs/labsync-status',
+            label: 'Status',
+            position: 'left',
+          },
+          {
+            to: 'makieta',
+            label: 'Makieta',
+            position: 'left',
+          },
         ],
       },
       footer: {

@@ -1,0 +1,42 @@
+---
+id: labsync-status
+title: Status projektu LabSync
+sidebar_label: Status
+---
+
+import Heading from '@theme/Heading';
+
+<Heading as="h1">Aktualny status prac nad projektem LabSync</Heading>
+
+> Sekcja statusu jest przeznaczona do regularnej aktualizacji przez zespół projektowy.
+
+## 1. Status ogólny
+
+- Status projektu: W trakcie realizacji Fazy 1 (Core System / MVP).
+- Stabilność: Rdzeń architektury (Micro-Kernel + `IAgentModule`) – w trakcie doprecyzowania i implementacji.
+- Ryzyka kluczowe:
+  - bezpieczeństwo zdalnego wykonywania zadań (tokenizacja, sanityzacja komend),
+  - wieloplatformowość Agenta (różnice między Windows a Linux),
+  - wydajność i skalowalność komunikacji SignalR przy większej liczbie agentów.
+
+## 2. Stan kluczowych komponentów
+
+- Backend (.NET 8, ASP.NET Core + SignalR):
+  - API główne – w trakcie implementacji.
+  - Hub SignalR – TODO
+
+- Baza danych (PostgreSQL):
+  - model danych dla definicji pakietów, logów, użytkowników – w toku projektowania / implementacji.
+
+- Agent (Worker Service .NET):
+  - Host usługi, ładowanie modułów (`IAgentModule`) – implementacja w toku.
+  - Moduły Core: TODO
+
+- Frontend (SPA – React/Vue, TypeScript):
+  - panel administratora z listą maszyn oraz statusem Online/Offline – TODO
+  - moduł zlecania zadań (instalacja pakietów, podgląd logów) – TODO
+
+## 3. Powiązane dokumenty
+
+- Zobacz także: Harmonogram i roadmapę projektu w sekcji
+  [Harmonogram](/docs/labsync-harmonogram).
