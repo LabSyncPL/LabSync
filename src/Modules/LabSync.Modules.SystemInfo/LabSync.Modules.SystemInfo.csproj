@@ -10,9 +10,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy /Y /F &quot;$(TargetDir)$(TargetName).dll&quot; &quot;$(SolutionDir)LabSync.Agent\bin\Debug\net9.0\Modules\&quot;" />
-  </Target>
+	<Target Name="PostBuild" AfterTargets="Build">
+		<MakeDir Directories="$(SolutionDir)LabSync.Agent\bin\$(Configuration)\$(TargetFramework)\Modules" />
+
+		<Copy
+		  SourceFiles="$(TargetPath)"
+		  DestinationFolder="$(SolutionDir)LabSync.Agent\bin\$(Configuration)\$(TargetFramework)\Modules" />
+	</Target>
 
 </Project>
  
