@@ -6,78 +6,103 @@ sidebar_label: Harmonogram
 
 import Heading from '@theme/Heading';
 
-<Heading as="h1">Harmonogram pracy</Heading>
+# Harmonogram realizacji projektu LabSync
 
-
-## 1. Etapy pracy (Fazy projektu)
-
-### 1.1. Faza 1 – Core System (priorytet krytyczny)
-
-**Cel:** Dostarczenie stabilnego **MVP**, które spełnia kryteria demonstracji na żywo – w dwóch filarach: **Zdalny Podgląd (VNC)** oraz **Wykonywanie Skryptów**.
-
-- **Zakres funkcjonalny**:
-  - Obsługa **Windows 10/11** oraz **Linux** po stronie Agenta.
-  - Dwukierunkowa komunikacja w czasie rzeczywistym przez **SignalR** (Online/Offline, komendy, logi, obraz VNC).
-  - Moduł wykonawczy `SoftwareExecutionModule`:
-    - interpretacja zadań,
-    - wybór właściwego silnika (PowerShell / Bash / Nix),
-    - mapowanie definicji pakietów na natywne komendy.
-  - Repozytorium pakietów (baza danych PostgreSQL) z abstrakcją systemu operacyjnego:
-    - jedna definicja (np. „Git”),
-    - osobne komendy dla Windows (`winget install Git.Git`) i Linux (`nix-env -i git`).
-  - `SystemInfoModule` – zbieranie podstawowych informacji o maszynie podczas rejestracji.
-  - Moduł rozszerzony `RemoteViewModule` – przesyłanie obrazu pulpitu do panelu WWW.
-
-**Rezultat Fazy 1:**  
-System pozwala:
-
-1. Uruchomić Agenta na maszynie Windows i maszynie Linux.  
-2. Zobaczyć obie maszyny jako **Online** (zielone) w panelu WWW.  
-3. Nawiązać połączenie VNC i zobaczyć w przeglądarce pulpit obu maszyn.  
-4. Zainicjować instalację „TestApp” na obu maszynach jednocześnie.  
-5. Zweryfikować, że na Windows uruchomił się **PowerShell/Winget**, a na Linux **Bash/Nix**.  
-6. Otrzymać potwierdzenie **„Task Completed”** wraz z logami wykonania.
-
-### 1.2. Faza 2 – Zarządzanie i Automatyzacja (priorytet wysoki)
-
-**Cel:** Umożliwienie skalowalnego zarządzania flotą maszyn w większych organizacjach.
-
-- **Grupy komputerów**:
-  - logiczne grupowanie (np. „Sala 101”, „Deweloperzy Backend”),
-  - operacje masowe (instalacja, aktualizacja, re‑konfiguracja).
-- **Interakcja VNC**:
-  - pełna kontrola pulpitu – przesyłanie zdarzeń myszy i klawiatury do Agenta (nie tylko podgląd).  
-- **Profile maszyn (Desired State)**:
-  - definicja docelowego stanu środowiska dla danej grupy (np. profil „Dev”, „Student”),
-  - automatyczne doprowadzanie maszyn do zadanego profilu.
-- **Kolejkowanie zadań**:
-  - obsługa maszyn offline – zadania są zapamiętywane i wykonywane po ponownym pojawieniu się online.
-
-### 1.3. Faza 3 – Monitoring i Rozszerzenia (priorytet średni)
-
-**Cel:** Rozszerzenie LabSync o funkcje wspierające helpdesk oraz pokazujące siłę architektury modułowej.
-
-- **Remote View (moduł rozszerzony `RemoteViewModule`)**:
-  - podgląd ekranu użytkownika z poziomu przeglądarki,
-  - możliwość wykorzystania w scenariuszach wsparcia zdalnego.
-- **Telemetria systemowa**:
-  - zbieranie i prezentacja metryk (CPU, RAM, dysk, sieć),
-  - alerty przy przekroczeniu progów.
-- **Inwentaryzacja sprzętu**:
-  - automatyczne skanowanie i raportowanie parametrów sprzętowych (CPU, RAM, MAC Address itp.).
+**Okres realizacji:** Styczeń 2026 – Maj 2026  
+**Cel główny:** Opracowanie systemu klasy RMM (Remote Monitoring & Management) o architekturze modularnej, umożliwiającego zarządzanie heterogenicznym środowiskiem (Windows/Linux).
 
 ---
 
-## 2. Informacje o bezpieczeństwie
+## 1. Harmonogram miesięczny
 
-Ze względu na charakter systemu (zdalne wykonywanie komend na stacjach roboczych), bezpieczeństwo jest traktowane jako obszar priorytetowy.
+Poniżej przedstawiono szczegółowy plan prac rozpisany na poszczególne miesiące realizacji projektu.
 
-- **Tokenizacja (JWT)** – każdy Agent otrzymuje własny token używany do autoryzacji komunikacji SignalR.  
-- **Szyfrowanie (HTTPS/WSS)** – cały ruch między Agentem, serwerem i panelem WWW odbywa się wyłącznie kanałami szyfrowanymi.  
-- **Sanityzacja komend (No-Eval)** – Agent:
-  - nie interpretuje dowolnego tekstu z sieci jako skryptu,
-  - uruchamia jedynie z góry zdefiniowane procesy systemowe z kontrolowanymi parametrami.  
-- **Izolacja modułów**:
-  - Host Agenta działa jako usługa uprzywilejowana (instalacje, konfiguracje),
-  - architektura modułowa umożliwia w przyszłości uruchamianie wybranych modułów z niższymi uprawnieniami (np. telemetrycznych, audytowych).
+### Styczeń: Fundamenty architektury i bezpieczeństwo
+Celem pierwszego etapu jest stworzenie stabilnego szkieletu systemu oraz zapewnienie bezpiecznej komunikacji między komponentami.
 
+* **Finalizacja architektury agenta:** Implementacja wzorca Microkernel oraz mechanizmu dynamicznego ładowania modułów (wtyczek) z zewnętrznych bibliotek.
+* **Workflow rejestracji:** Wdrożenie mechanizmu autoryzacji urządzeń wymagającego zatwierdzenia przez administratora (blokada dostępu dla niezweryfikowanych agentów).
+* **Komunikacja sieciowa:** Ustabilizowanie warstwy transportowej między klientem a serwerem, konfiguracja środowiska konteneryzowanego (Docker) oraz bazy danych PostgreSQL.
+* **Refaktoryzacja kodu:** Uporządkowanie struktury projektu, separacja logiki biznesowej od warstwy infrastruktury.
+
+### Luty: Moduł zdalnego dostępu (VNC)
+Miesiąc poświęcony na najbardziej złożony element systemu – implementację zdalnego pulpitu.
+
+* **Przechwytywanie obrazu:** Opracowanie wydajnego mechanizmu wykonywania zrzutów ekranu na poziomie systemowym po stronie agenta.
+* **Transmisja danych:** Implementacja protokołu komunikacji w czasie rzeczywistym (WebSockets/SignalR) do strumieniowania obrazu z minimalnym opóźnieniem.
+* **Interakcja zwrotna:** Oprogramowanie mechanizmów przesyłania zdarzeń urządzeń wejściowych (mysz, klawiatura) z interfejsu webowego do zdalnego systemu.
+* **Optymalizacja:** Wdrożenie kompresji przesyłanych danych w celu zmniejszenia obciążenia łącza sieciowego.
+
+### Marzec: System zadań i automatyzacja
+Etap koncentrujący się na możliwości zdalnego zarządzania systemem operacyjnym.
+
+* **Kolejkowanie zadań:** Stworzenie backendowego systemu dystrybucji poleceń (Jobs Queue) oraz logiki pobierania zadań przez agenta (obsługa offline).
+* **Wykonywanie skryptów:** Implementacja modułu `SoftwareExecutionModule` odpowiedzialnego za uruchamianie poleceń powłoki systemowej oraz skryptów automatyzujących.
+* **Obsługa wyników:** Mechanizm przechwytywania standardowego wyjścia (stdout/stderr) i przesyłania logów wykonania z powrotem do panelu administratora.
+* **Konsola webowa:** Stworzenie interfejsu użytkownika umożliwiającego interakcję z powłoką zdalnego systemu.
+
+### Kwiecień: Telemetria i zarządzanie grupowe
+Rozbudowa systemu o funkcje analityczne oraz narzędzia do zarządzania wieloma stacjami roboczymi jednocześnie.
+
+* **Gromadzenie metryk:** Rozbudowa agenta o moduły monitorujące zużycie zasobów sprzętowych (CPU, RAM, dysk, sieć) – `SystemInfoModule`.
+* **Składowanie danych:** Optymalizacja bazy danych pod kątem przechowywania dużej ilości danych telemetrycznych (szeregi czasowe).
+* **Wizualizacja danych:** Implementacja wykresów i raportów w panelu administratora prezentujących kondycję sprzętu w czasie.
+* **Operacje masowe:** Wdrożenie logiki grupowania urządzeń (np. sale laboratoryjne) i umożliwienie wykonywania akcji na wielu obiektach jednocześnie.
+
+### Maj: Stabilizacja, testy i finalizacja
+Ostatni etap poświęcony zapewnieniu jakości oprogramowania i przygotowaniu do wdrożenia produkcyjnego.
+
+* **Testy obciążeniowe:** Weryfikacja wydajności systemu przy jednoczesnym połączeniu większej liczby agentów oraz podczas transmisji wideo.
+* **Audyt bezpieczeństwa:** Przegląd mechanizmów uwierzytelniania i autoryzacji, zabezpieczenie wrażliwych danych konfiguracyjnych.
+* **Dokumentacja:** Sporządzenie dokumentacji technicznej API, instrukcji wdrożeniowej oraz dokumentacji użytkownika końcowego.
+* **Finalizacja UI/UX:** Dopracowanie interfejsu użytkownika, poprawki błędów i przygotowanie wersji demonstracyjnej do obrony projektu.
+
+---
+
+## 2. Definicja Faz Projektu
+
+Poniższe fazy definiują priorytety funkcjonalne i kryteria sukcesu dla poszczególnych etapów harmonogramu.
+
+### 2.1. Faza 1 – Core System (MVP)
+**Priorytet:** Krytyczny
+
+**Cel:** Dostarczenie stabilnego MVP, które spełnia kryteria demonstracji na żywo w dwóch filarach: Zdalny Podgląd (VNC) oraz Wykonywanie Skryptów.
+
+* **Zakres funkcjonalny**:
+    * Obsługa **Windows 10/11** oraz **Linux** po stronie Agenta.
+    * Dwukierunkowa komunikacja w czasie rzeczywistym przez **SignalR** (Online/Offline, komendy, logi, obraz VNC).
+    * Moduł wykonawczy `SoftwareExecutionModule`: interpretacja zadań, wybór silnika (PowerShell / Bash / Nix).
+    * Repozytorium pakietów z abstrakcją systemu operacyjnego (np. `winget install` dla Windows vs `nix-env` dla Linux pod jedną definicją).
+
+**Rezultat Fazy 1:**
+System pozwala uruchomić Agenta na Windows i Linux, zobaczyć je jako Online, nawiązać połączenie VNC oraz zainstalować aplikację testową na obu maszynach jednocześnie, otrzymując logi zwrotne.
+
+### 2.2. Faza 2 – Zarządzanie i Automatyzacja
+**Priorytet:** Wysoki
+
+**Cel:** Umożliwienie skalowalnego zarządzania flotą maszyn.
+
+* **Grupy komputerów**: Logiczne grupowanie (np. „Sala 101”) i operacje masowe.
+* **Interakcja VNC**: Pełna kontrola pulpitu (mysz/klawiatura).
+* **Profile maszyn (Desired State)**: Definicja docelowego stanu środowiska i automatyczne doprowadzanie do niego maszyn.
+* **Kolejkowanie zadań**: Obsługa zadań dla maszyn będących offline (wykonanie po powrocie do sieci).
+
+### 2.3. Faza 3 – Monitoring i Rozszerzenia
+**Priorytet:** Średni
+
+**Cel:** Wsparcie helpdesk i analityka.
+
+* **Telemetria systemowa**: Zbieranie metryk (CPU, RAM, dysk) i alertowanie.
+* **Inwentaryzacja sprzętu**: Automatyczne raportowanie parametrów sprzętowych.
+* **Rozszerzone wsparcie**: Finalizacja narzędzi dla operatora systemu.
+
+---
+
+## 3. Bezpieczeństwo
+
+Ze względu na charakter systemu (zdalne wykonywanie komend na stacjach roboczych), bezpieczeństwo jest traktowane priorytetowo na każdym etapie harmonogramu.
+
+* **Tokenizacja (JWT):** Każdy Agent otrzymuje unikalny token do autoryzacji komunikacji SignalR.
+* **Szyfrowanie (HTTPS/WSS):** Cały ruch (komendy, obraz wideo) jest szyfrowany.
+* **Sanityzacja komend (No-Eval):** Agent nie interpretuje dowolnego tekstu jako skryptu, lecz uruchamia zdefiniowane procesy z kontrolowanymi parametrami.
+* **Izolacja:** Host Agenta działa jako usługa uprzywilejowana, ale architektura modułowa pozwala na separację uprawnień dla poszczególnych wtyczek w przyszłości.
