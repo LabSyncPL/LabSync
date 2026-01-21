@@ -113,9 +113,13 @@ const config = {
                 to: '/docs/intro',
               },
               {
-                label: 'Harmonogram i status',
+                label: 'Harmonogram',
                 to: '/docs/labsync-harmonogram',
               },
+              {
+                label: 'Status',
+                to: '/docs/labsync-status',
+              }
             ],
           },
         ],
