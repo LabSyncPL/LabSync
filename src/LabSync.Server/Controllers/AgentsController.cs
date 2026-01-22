@@ -5,11 +5,13 @@ using LabSync.Server.Data;
 using LabSync.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Cors;        // i to
 
 namespace LabSync.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableCors("AllowReactApp")]       // potem sprawdzic czy to jest potrzebne tutaj
     public class AgentsController : ControllerBase
     {
         private readonly LabSyncDbContext          _context;
