@@ -1,124 +1,128 @@
-import { useEffect, useState } from 'react';
-import apiClient from '../api/axiosClient';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchDevices,
+  approveDevice,
+  devicesQueryKey,
+} from '../api/devices';
+import type { DeviceDto } from '../types/device';
+import { DEVICE_PLATFORM_LABELS, DEVICE_STATUS_LABELS } from '../types/device';
+import styles from './DeviceList.module.css';
 
-interface Device {
-  id: string;
-  hostname: string;
-  isApproved: boolean;
-  macAddress: string;
-  ipAddress: string | null;
-  platform: number;
-  osVersion: string;
-  status: number;
-  isOnline: boolean;
-  registeredAt: string;
-  lastSeenAt: string | null;
-  groupId?: string | null;
-  groupName?: string | null;
+function formatLastSeen(value: string | null): string {
+  if (value == null) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 }
 
-export const DeviceList = () => {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+export function DeviceList() {
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchDevices();
-  }, []);
+  const {
+    data: devices = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: devicesQueryKey,
+    queryFn: fetchDevices,
+  });
 
-  const fetchDevices = () => {
-    apiClient.get<Device[]>('/api/devices')
-      .then(response => {
-        setDevices(response.data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setError('Nie udało się połączyć z serwerem.');
-        setLoading(false);
-      });
+  const approveMutation = useMutation({
+    mutationFn: approveDevice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: devicesQueryKey });
+    },
+  });
+
+  const handleApprove = (device: DeviceDto) => {
+    if (device.isApproved) return;
+    approveMutation.mutate(device.id, {
+      onError: () => {
+        alert('Failed to approve device.');
+      },
+    });
   };
 
-  const handleApprove = async (deviceId: string) => {
-    try {
-      await apiClient.post(`/api/devices/${deviceId}/approve`);
-      setDevices(currentDevices => 
-        currentDevices.map(device => 
-          device.id === deviceId 
-            ? { ...device, isApproved: true, status: 1 }
-            : device
-        )
-      );
-    } catch (err) {
-      console.error("Błąd zatwierdzania:", err);
-      alert("Nie udało się zatwierdzić urządzenia.");
-    }
-  };
-
-  if (loading) return <p>Ładowanie danych...</p>;
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  if (isLoading) return <p className={styles.loading}>Loading devices…</p>;
+  if (isError) {
+    return (
+      <div className={styles.error}>
+        Failed to load devices. {error instanceof Error ? error.message : 'Unknown error.'}
+      </div>
+    );
+  }
 
   return (
-    <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Lista Urządzeń (LabSync)</h2>
-        <button onClick={fetchDevices}>Odśwież</button>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h2 className={styles.title}>Devices (LabSync)</h2>
+        <button type="button" className={styles.refreshBtn} onClick={() => refetch()}>
+          Refresh
+        </button>
       </div>
 
-      <table border={1} cellPadding={10} style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
-        <thead>
-          <tr style={{ background: '#333', color: '#fff' }}>
-            <th>Hostname</th>
-            <th>Adres MAC</th>
-            <th>IP</th>
-            <th>System</th>
-            <th>Ostatnio widziany</th>
-            <th>Status</th>
-            <th>Akcje</th> 
-          </tr>
-        </thead>
-        <tbody>
-          {devices.map(device => (
-            <tr key={device.id} style={{ background: device.isApproved ? 'white' : '#fff8e1' }}>
-              <td><strong>{device.hostname}</strong></td>
-              <td style={{ fontFamily: 'monospace' }}>{device.macAddress}</td>
-              <td>{device.ipAddress || '-'}</td>
-              <td>{device.osVersion}</td>
-              <td>{new Date(device.lastSeenAt).toLocaleString()}</td>
-              <td>
-                {!device.isApproved ? (
-                   <span style={{ color: '#d35400', fontWeight: 'bold' }}>Oczekuje</span>
-                ) : device.status === 1 ? (
-                   <span style={{ color: 'green', fontWeight: 'bold' }}>Online</span>
-                ) : (
-                   <span style={{ color: 'red' }}>Offline</span>
-                )}
-              </td>
-              
-              <td style={{ textAlign: 'center' }}>
-                {!device.isApproved ? (
-                  <button 
-                    onClick={() => handleApprove(device.id)}
-                    style={{
-                      backgroundColor: '#2ecc71',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 12px',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    Zatwierdź
-                  </button>
-                ) : (
-                  <span style={{ color: '#95a5a6', fontSize: '0.9em' }}>Zatwierdzono</span>
-                )}
-              </td>
+      {devices.length === 0 ? (
+        <p className={styles.noData}>No devices registered.</p>
+      ) : (
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Hostname</th>
+              <th>MAC Address</th>
+              <th>IP</th>
+              <th>Platform</th>
+              <th>OS Version</th>
+              <th>Last seen</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {devices.map((device) => (
+              <tr
+                key={device.id}
+                className={device.isApproved ? styles.approved : styles.pendingApproval}
+              >
+                <td><strong>{device.hostname}</strong></td>
+                <td className={styles.macAddress}>{device.macAddress}</td>
+                <td>{device.ipAddress ?? '—'}</td>
+                <td>{DEVICE_PLATFORM_LABELS[device.platform]}</td>
+                <td>{device.osVersion}</td>
+                <td className={styles.lastSeen}>{formatLastSeen(device.lastSeenAt)}</td>
+                <td>
+                  <div className={styles.statusCell}>
+                    <span
+                      className={`${styles.lifecycleStatus} ${styles[DEVICE_STATUS_LABELS[device.status].toLowerCase()]}`}
+                    >
+                      {DEVICE_STATUS_LABELS[device.status]}
+                    </span>
+                    <span
+                      className={`${styles.connectionStatus} ${device.isOnline ? styles.online : styles.offline}`}
+                    >
+                      {device.isOnline ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  {!device.isApproved ? (
+                    <button
+                      type="button"
+                      className={styles.approveBtn}
+                      onClick={() => handleApprove(device)}
+                      disabled={approveMutation.isPending}
+                    >
+                      Approve
+                    </button>
+                  ) : (
+                    <span className={styles.approvedLabel}>Approved</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
-};
+}

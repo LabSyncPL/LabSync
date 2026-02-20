@@ -1,0 +1,133 @@
+.container {
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.refreshBtn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.refreshBtn:hover {
+  background: #f5f5f5;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  border: 1px solid #ddd;
+}
+
+.table thead tr {
+  background: #333;
+  color: #fff;
+}
+
+.table tbody tr.pendingApproval {
+  background: #fff8e1;
+}
+
+.table tbody tr.approved {
+  background: #fff;
+}
+
+.macAddress {
+  font-family: ui-monospace, monospace;
+}
+
+.statusCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lifecycleStatus {
+  font-weight: 500;
+}
+
+.lifecycleStatus.pending { color: #d35400; }
+.lifecycleStatus.active { color: #27ae60; }
+.lifecycleStatus.maintenance { color: #f39c12; }
+.lifecycleStatus.blocked { color: #c0392b; }
+
+.connectionStatus {
+  font-size: 0.85em;
+  color: #666;
+}
+
+.connectionStatus.online { color: #27ae60; }
+.connectionStatus.offline { color: #95a5a6; }
+
+.approveBtn {
+  background: #2ecc71;
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.approveBtn:hover {
+  background: #27ae60;
+}
+
+.approveBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.approvedLabel {
+  color: #95a5a6;
+  font-size: 0.9em;
+}
+
+.loading {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.error {
+  padding: 1rem;
+  color: #c0392b;
+  background: #fdeaea;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+.noData {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.lastSeen {
+  white-space: nowrap;
+}

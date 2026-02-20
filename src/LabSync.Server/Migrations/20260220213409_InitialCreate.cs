@@ -41,7 +41,8 @@ namespace LabSync.Server.Migrations
                     RegisteredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     GroupId = table.Column<Guid>(type: "uuid", nullable: true),
-                    HardwareInfo = table.Column<JsonDocument>(type: "jsonb", nullable: true)
+                    HardwareInfo = table.Column<JsonDocument>(type: "jsonb", nullable: true),
+                    DeviceKeyHash = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false)
                 },
                 constraints: table =>
                 {

@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Dto;
+using LabSync.Core.Dto;
 using LabSync.Core.Entities;
 using LabSync.Core.ValueObjects;
 using LabSync.Server.Data;
@@ -31,27 +31,28 @@ namespace LabSync.Server.Controllers
             _logger.LogInformation("User '{User}' is fetching all devices.", User.Identity?.Name);
             try
             {
-                var devices = await _context.Devices
+                var entities = await _context.Devices
                     .Include(d => d.Group)
                     .OrderByDescending(d => d.RegisteredAt)
-                    .Select(d => new DeviceDto
-                    {
-                        Id = d.Id,
-                        Hostname     = d.Hostname,
-                        IsApproved   = d.IsApproved,
-                        MacAddress   = d.MacAddress,
-                        IpAddress    = d.IpAddress,
-                        Platform     = d.Platform,
-                        OsVersion    = d.OsVersion,
-                        Status       = d.Status,
-                        RegisteredAt = d.RegisteredAt,
-                        LastSeenAt   = d.LastSeenAt,
-                        IsOnline     = d.IsOnline,
-                        GroupId      = d.GroupId,
-                        GroupName    = d.Group != null ? d.Group.Name : null,
-                        HardwareInfo = d.HardwareInfo != null ? d.HardwareInfo.RootElement.ToString() : null
-                    })
                     .ToListAsync();
+
+                var devices = entities.Select(d => new DeviceDto
+                {
+                    Id = d.Id,
+                    Hostname = d.Hostname,
+                    IsApproved = d.IsApproved,
+                    MacAddress = d.MacAddress,
+                    IpAddress = d.IpAddress,
+                    Platform = d.Platform,
+                    OsVersion = d.OsVersion,
+                    Status = d.Status,
+                    RegisteredAt = d.RegisteredAt,
+                    LastSeenAt = d.LastSeenAt,
+                    IsOnline = d.IsOnline,
+                    GroupId = d.GroupId,
+                    GroupName = d.Group?.Name,
+                    HardwareInfo = d.HardwareInfo?.RootElement.ToString()
+                }).ToList();
 
                 _logger.LogInformation("Successfully fetched {DeviceCount} devices.", devices.Count);
                 return Ok(devices);
