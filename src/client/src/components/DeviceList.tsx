@@ -4,12 +4,17 @@ import apiClient from '../api/axiosClient';
 interface Device {
   id: string;
   hostname: string;
+  isApproved: boolean;
   macAddress: string;
-  ipAddress: string;
+  ipAddress: string | null;
+  platform: number;
   osVersion: string;
-  status: number; 
-  lastSeenAt: string;
-  isApproved: boolean; 
+  status: number;
+  isOnline: boolean;
+  registeredAt: string;
+  lastSeenAt: string | null;
+  groupId?: string | null;
+  groupName?: string | null;
 }
 
 export const DeviceList = () => {

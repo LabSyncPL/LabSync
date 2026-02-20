@@ -1,6 +1,6 @@
-using LabSync.Core.ValueObjects;
+using LabSync.Server.Authentication;
 using LabSync.Server.Data;
-using LabSync.Server.Hubs;
+using LabSync.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -8,103 +8,80 @@ using System.Security.Claims;
 
 namespace LabSync.Server.Hubs;
 
-/// <summary>
-/// Strongly-typed SignalR Hub for real-time communication with authenticated LabSync Agents.
-/// This hub serves as the core of the 'Control Plane' for agent management.
-/// </summary>
-[Authorize]
-public class AgentHub : Hub<IAgentClient>
+[Authorize(AuthenticationSchemes = DeviceKeyAuthenticationHandler.SchemeName, Roles = "Agent")]
+public class AgentHub(
+    LabSyncDbContext dbContext,
+    ConnectionTracker connectionTracker,
+    ILogger<AgentHub> logger)
+    : Hub<IAgentClient>
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<AgentHub> _logger;
-
-    public AgentHub(IServiceScopeFactory scopeFactory, ILogger<AgentHub> logger)
-    {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
-
-    /// <summary>
-    /// Called when a new agent connects. It updates the device's status to 'Online'.
-    /// </summary>
     public override async Task OnConnectedAsync()
     {
         var deviceId = GetDeviceIdFromContext();
-        if (deviceId == null)
+        if (deviceId == Guid.Empty)
         {
-            _logger.LogWarning("Connection attempt rejected. Could not resolve device identifier from token.");
+            // This should not happen if authentication is working correctly
             Context.Abort();
             return;
         }
 
-        _logger.LogInformation("Agent connected: {DeviceId}", deviceId);
-        await UpdateConnectionState(deviceId, isOnline: true);
+        var connectionId = Context.ConnectionId;
+        connectionTracker.Add(deviceId, connectionId);
+
+        try
+        {
+            var device = await dbContext.Devices.FindAsync(deviceId);
+            if (device != null)
+            {
+                device.IsOnline = true;
+                device.LastSeenAt = DateTime.UtcNow;
+                await dbContext.SaveChangesAsync();
+                logger.LogInformation("Device {DeviceId} connected with ConnectionId {ConnectionId}", deviceId, connectionId);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating device status on connect for DeviceId {DeviceId}", deviceId);
+        }
+
         await base.OnConnectedAsync();
     }
 
-    /// <summary>
-    /// Called when an agent disconnects. It updates the device's status to 'Offline'.
-    /// </summary>
-    /// <param name="exception">The exception that caused the disconnection, if any.</param>
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (exception != null)
+        var deviceId = GetDeviceIdFromContext();
+        if (deviceId != Guid.Empty)
         {
-            _logger.LogError(exception, "Agent disconnected due to an error. DeviceId: {DeviceId}", GetDeviceIdFromContext());
-        }
-        else
-        {
-            _logger.LogInformation("Agent disconnected: {DeviceId}", GetDeviceIdFromContext());
+            connectionTracker.Remove(deviceId);
+
+            try
+            {
+                var device = await dbContext.Devices.FindAsync(deviceId);
+                if (device != null)
+                {
+                    device.IsOnline = false;
+                    // LastSeenAt is not updated on disconnect to preserve the last known online time
+                    await dbContext.SaveChangesAsync();
+                    logger.LogInformation("Device {DeviceId} disconnected", deviceId);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error updating device status on disconnect for DeviceId {DeviceId}", deviceId);
+            }
         }
 
-        var deviceId = GetDeviceIdFromContext();
-        if (deviceId != null)
+        if (exception != null)
         {
-            await UpdateConnectionState(deviceId, isOnline: false);
+            logger.LogWarning(exception, "Device {DeviceId} disconnected with error", deviceId);
         }
 
         await base.OnDisconnectedAsync(exception);
     }
 
-    /// <summary>
-    /// Retrieves the device identifier from the authenticated user's claims.
-    /// The 'NameIdentifier' claim is populated with the Device's MAC address during token generation.
-    /// </summary>
-    /// <returns>The device identifier (MAC address) or null if not found.</returns>
-    private string? GetDeviceIdFromContext()
+    private Guid GetDeviceIdFromContext()
     {
-        return Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-    }
-
-    /// <summary>
-    /// Zmieniona nazwa i parametry: modyfikuje tylko IsOnline oraz LastSeenAt.
-    /// Nie dotyka biznesowego pola 'Status'.
-    /// </summary>
-    private async Task UpdateConnectionState(string deviceId, bool isOnline)
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
-
-        if (Guid.TryParse(deviceId, out var parsedId))
-        {
-            var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.Id == parsedId);
-
-            if (device != null)
-            {
-                device.IsOnline = isOnline;
-                device.LastSeenAt = DateTime.UtcNow;
-
-                await dbContext.SaveChangesAsync();
-                _logger.LogInformation("Successfully updated connection state for device {DeviceId}. IsOnline: {IsOnline}", deviceId, isOnline);
-            }
-            else
-            {
-                _logger.LogWarning("Could not find device with ID {DeviceId} to update its connection state.", deviceId);
-            }
-        }
-        else
-        {
-            _logger.LogError("Error parsing DeviceId. Expected GUID, received: {DeviceId}", deviceId);
-        }
+        var deviceIdClaim = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(deviceIdClaim, out var deviceId) ? deviceId : Guid.Empty;
     }
 }

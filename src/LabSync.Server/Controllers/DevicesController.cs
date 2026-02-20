@@ -28,28 +28,39 @@ namespace LabSync.Server.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DeviceDto>>> GetAll()
         {
-            var devices = await _context.Devices
-                .OrderByDescending(d => d.RegisteredAt)
-                .Select(d => new DeviceDto
-                {
-                    Id = d.Id,
-                    Hostname     = d.Hostname,
-                    IsApproved   = d.IsApproved,
-                    MacAddress   = d.MacAddress,
-                    IpAddress    = d.IpAddress,
-                    Platform     = d.Platform,
-                    OsVersion    = d.OsVersion,
-                    Status       = d.Status,
-                    RegisteredAt = d.RegisteredAt,
-                    LastSeenAt   = d.LastSeenAt,
-                    IsOnline     = d.IsOnline,
-                    GroupId      = d.GroupId,
-                    GroupName    = d.Group != null ? d.Group.Name : null,
-                    HardwareInfo = d.HardwareInfo != null ? d.HardwareInfo.RootElement : null
-                })
-                .ToListAsync();
+            _logger.LogInformation("User '{User}' is fetching all devices.", User.Identity?.Name);
+            try
+            {
+                var devices = await _context.Devices
+                    .Include(d => d.Group)
+                    .OrderByDescending(d => d.RegisteredAt)
+                    .Select(d => new DeviceDto
+                    {
+                        Id = d.Id,
+                        Hostname     = d.Hostname,
+                        IsApproved   = d.IsApproved,
+                        MacAddress   = d.MacAddress,
+                        IpAddress    = d.IpAddress,
+                        Platform     = d.Platform,
+                        OsVersion    = d.OsVersion,
+                        Status       = d.Status,
+                        RegisteredAt = d.RegisteredAt,
+                        LastSeenAt   = d.LastSeenAt,
+                        IsOnline     = d.IsOnline,
+                        GroupId      = d.GroupId,
+                        GroupName    = d.Group != null ? d.Group.Name : null,
+                        HardwareInfo = d.HardwareInfo != null ? d.HardwareInfo.RootElement.ToString() : null
+                    })
+                    .ToListAsync();
 
-            return Ok(devices);
+                _logger.LogInformation("Successfully fetched {DeviceCount} devices.", devices.Count);
+                return Ok(devices);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unhandled exception occurred while fetching devices.");
+                return StatusCode(500, new { Message = "An internal server error occurred." });
+            }
         }
 
         /// <summary>

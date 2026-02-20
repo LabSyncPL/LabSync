@@ -22,6 +22,6 @@ namespace LabSync.Core.Dto
         public DateTime? LastSeenAt { get; set; }
         public Guid? GroupId { get; set; }
         public string? GroupName { get; set; }
-        public JsonElement? HardwareInfo { get; set; }
+        public string? HardwareInfo { get; set; }
     }
 }

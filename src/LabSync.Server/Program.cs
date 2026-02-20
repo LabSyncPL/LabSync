@@ -1,7 +1,10 @@
 ﻿using DotNetEnv;
+using LabSync.Core.Interfaces;
+using LabSync.Server.Authentication;
 using LabSync.Server.Data;
 using LabSync.Server.Hubs;
 using LabSync.Server.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -39,14 +42,26 @@ builder.Services.AddCors(options =>
         else
             policy.WithOrigins(corsOrigins.Split(';', StringSplitOptions.RemoveEmptyEntries));
 
-        policy.AllowAnyHeader().AllowAnyMethod();
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Important for SignalR
     });
 });
 
+// Register application services
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<ICryptoService, CryptoService>();
+builder.Services.AddSingleton<ConnectionTracker>();
+
 
 // Add Authentication and Authorization
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+    {
+        // Default to JWT for standard API controllers
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddScheme<AuthenticationSchemeOptions, DeviceKeyAuthenticationHandler>(DeviceKeyAuthenticationHandler.SchemeName, null)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -57,15 +72,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] 
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]
                 ?? throw new InvalidOperationException("JWT Key not configured.")))
         };
     });
 
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("RequireAgentRole", policy => policy.RequireRole("Agent"));
+    // The "Agent" role is implicitly handled by the [Authorize] attribute on the hub
 });
 
 builder.Services.AddSignalR();
@@ -105,5 +121,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<AgentHub>("/agenthub");
+app.MapHub<AgentHub>("/agentHub");
 app.Run();

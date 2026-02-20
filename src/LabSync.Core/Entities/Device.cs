@@ -88,6 +88,13 @@ namespace LabSync.Core.Entities
         public JsonDocument? HardwareInfo { get; set; }
 
         /// <summary>
+        /// Hash of the secret key used for agent authentication.
+        /// </summary>
+        [Required]
+        [MaxLength(256)]
+        public string DeviceKeyHash { get; set; } = string.Empty;
+
+        /// <summary>
         /// Jobs that were executed or scheduled for this device.
         /// </summary>
         public ICollection<Job> Jobs { get; set; } = new List<Job>();
