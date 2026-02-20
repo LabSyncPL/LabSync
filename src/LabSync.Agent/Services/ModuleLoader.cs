@@ -15,7 +15,7 @@ namespace LabSync.Agent.Services
             _serviceProvider = serviceProvider;
         }
 
-        public void LoadPlugins()
+        public async Task LoadPluginsAsync()
         {
             string pluginsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Modules");
 
@@ -33,7 +33,7 @@ namespace LabSync.Agent.Services
             {
                 try
                 {
-                    LoadPluginFromDll(dll);
+                    await LoadPluginFromDllAsync(dll);
                 }
                 catch (Exception ex)
                 {
@@ -42,7 +42,7 @@ namespace LabSync.Agent.Services
             }
         }
 
-        private void LoadPluginFromDll(string path)
+        private async Task LoadPluginFromDllAsync(string path)
         {
             var assembly = Assembly.LoadFrom(path);
             var moduleTypes = assembly.GetTypes()
@@ -51,7 +51,7 @@ namespace LabSync.Agent.Services
             foreach (var type in moduleTypes)
             {
                 var module = (IAgentModule)Activator.CreateInstance(type)!;
-                module.InitializeAsync(_serviceProvider).Wait();
+                await module.InitializeAsync(_serviceProvider);
 
                 _loadedModules.Add(module);
                 _logger.LogInformation("Plugin Loaded: {Name} v{Version}", module.Name, module.Version);

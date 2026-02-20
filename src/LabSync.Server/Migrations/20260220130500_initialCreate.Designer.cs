@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LabSync.Server.Migrations
 {
     [DbContext(typeof(LabSyncDbContext))]
-    [Migration("20260120134827_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260220130500_initialCreate")]
+    partial class initialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -31,11 +31,6 @@ namespace LabSync.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AgentToken")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
                     b.Property<string>("Hostname")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -44,6 +39,9 @@ namespace LabSync.Server.Migrations
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
                         .HasColumnType("character varying(45)");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
@@ -67,8 +65,6 @@ namespace LabSync.Server.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AgentToken");
 
                     b.HasIndex("MacAddress")
                         .IsUnique();

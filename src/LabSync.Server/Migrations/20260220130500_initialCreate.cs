@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LabSync.Server.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class initialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -17,14 +17,14 @@ namespace LabSync.Server.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Hostname = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    IsApproved = table.Column<bool>(type: "boolean", nullable: false),
                     MacAddress = table.Column<string>(type: "text", nullable: false),
                     IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: true),
                     Platform = table.Column<int>(type: "integer", nullable: false),
                     OsVersion = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     RegisteredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    AgentToken = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false)
+                    LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -55,11 +55,6 @@ namespace LabSync.Server.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Devices_AgentToken",
-                table: "Devices",
-                column: "AgentToken");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Devices_MacAddress",

@@ -67,13 +67,6 @@ namespace LabSync.Core.Entities
         public DateTime? LastSeenAt { get; set; }
 
         /// <summary>
-        /// Security token used by the Agent for API authentication.
-        /// TODO: In production, consider hashing this value.
-        /// </summary>
-        [MaxLength(2000)]
-        public string AgentToken { get; set; } = string.Empty;
-
-        /// <summary>
         /// Jobs that were executed or scheduled for this device.
         /// </summary>
         public ICollection<Job> Jobs { get; set; } = new List<Job>();

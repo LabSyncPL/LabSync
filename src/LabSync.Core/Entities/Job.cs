@@ -23,7 +23,7 @@ namespace LabSync.Core.Entities
         /// Navigation Property: Reference to the parent Device object.
         /// </summary>
         [ForeignKey(nameof(DeviceId))]
-        public virtual Device? Device { get; set; }
+        public Device? Device { get; set; }
 
         /// <summary>
         /// The executable or script command (e.g., "winget", "apt-get", "powershell").

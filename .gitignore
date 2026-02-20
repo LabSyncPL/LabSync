@@ -20,6 +20,8 @@ yarn-error.log*
 .docusaurus/
 labsync-docs/build
 
+.obsidian
+
 # --- OS Specific ---
 .DS_Store
 Thumbs.db

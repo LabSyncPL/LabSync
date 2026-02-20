@@ -6,7 +6,7 @@ namespace LabSync.Core.Dto
     /// <summary>
     /// Payload sent by the Agent to report the execution result of a specific job.
     /// </summary>
-    public class JobResultRequest
+    public class JobResultDto
     {
         /// <summary>
         /// The unique identifier of the Job being reported.

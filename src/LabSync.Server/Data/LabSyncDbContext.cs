@@ -9,6 +9,9 @@ namespace LabSync.Server.Data
     {
         public LabSyncDbContext(DbContextOptions<LabSyncDbContext> options) : base(options)
         {
+            // Disable Lazy Loading for all entities in this context.
+            // This forces explicit loading (e.g., via .Include()) and prevents N+1 problems.
+            ChangeTracker.LazyLoadingEnabled = false;
         }
 
         public DbSet<Device> Devices { get; set; }
@@ -21,7 +24,6 @@ namespace LabSync.Server.Data
             modelBuilder.Entity<Device>(entity =>
             {
                 entity.HasIndex(e => e.MacAddress).IsUnique();
-                entity.HasIndex(e => e.AgentToken);
             });
 
             modelBuilder.Entity<Job>(entity =>

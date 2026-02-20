@@ -28,11 +28,6 @@ namespace LabSync.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AgentToken")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
                     b.Property<string>("Hostname")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -67,8 +62,6 @@ namespace LabSync.Server.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AgentToken");
 
                     b.HasIndex("MacAddress")
                         .IsUnique();
