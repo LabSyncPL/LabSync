@@ -1,11 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 import { getToken, clearToken } from './auth/authStore'
+import { getSystemStatus } from './api/system'
 import { DeviceList } from './components/DeviceList'
 import { Login } from './components/Login'
+import { SetupWizard } from './components/SetupWizard'
 
 function App() {
   const [token, setTokenState] = useState<string | null>(() => getToken())
+  const [statusLoading, setStatusLoading] = useState(true)
+  const [setupComplete, setSetupComplete] = useState<boolean | null>(null)
+
+  const loadSystemStatus = useCallback(async () => {
+    try {
+      const status = await getSystemStatus()
+      setSetupComplete(status.setupComplete)
+    } catch {
+      setSetupComplete(true)
+    } finally {
+      setStatusLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSystemStatus()
+  }, [loadSystemStatus])
 
   useEffect(() => {
     const handleAuthChange = () => setTokenState(getToken())
@@ -14,6 +33,25 @@ function App() {
   }, [])
 
   const handleLogout = () => clearToken()
+
+  if (statusLoading) {
+    return (
+      <div className="App">
+        <p style={{ padding: '2rem', textAlign: 'center' }}>Loading…</p>
+      </div>
+    )
+  }
+
+  if (setupComplete === false) {
+    return (
+      <div className="App">
+        <header style={{ marginBottom: '1rem' }}>
+          <h1 style={{ margin: 0 }}>LabSync</h1>
+        </header>
+        <SetupWizard onSetupComplete={loadSystemStatus} />
+      </div>
+    )
+  }
 
   return (
     <div className="App">
@@ -25,7 +63,7 @@ function App() {
           </button>
         )}
       </header>
-      {token ? <DeviceList /> : <Login />}
+      {token ? <DeviceList /> : <Login onSetupRequired={loadSystemStatus} />}
     </div>
   )
 }

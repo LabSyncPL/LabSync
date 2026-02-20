@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Entities;
+using LabSync.Core.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Reflection.Emit;
@@ -16,10 +16,16 @@ namespace LabSync.Server.Data
 
         public DbSet<Device> Devices { get; set; }
         public DbSet<Job> Jobs { get; set; }
+        public DbSet<AdminUser> AdminUsers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<AdminUser>(entity =>
+            {
+                entity.HasIndex(e => e.Username).IsUnique();
+            });
 
             modelBuilder.Entity<Device>(entity =>
             {

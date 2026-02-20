@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# LabSync Agent - Linux install script (example)
+# Prompts for the server API address and writes it to the agent's configuration
+# or to an environment file for systemd.
+#
+# Usage:
+#   ./install-linux.sh.example /opt/labsync-agent
+#   Or set SERVER_URL before running to skip the prompt.
+
+set -e
+INSTALL_DIR="${1:-/opt/labsync-agent}"
+
+if [ -z "${SERVER_URL:-}" ]; then
+  read -rp "Enter LabSync server API address (e.g. https://labsync.example.com or http://192.168.1.10:5038): " SERVER_URL
+fi
+SERVER_URL="${SERVER_URL%/}"
+
+if [ -z "$SERVER_URL" ]; then
+  echo "Error: Server URL is required." >&2
+  exit 1
+fi
+
+mkdir -p "$INSTALL_DIR"
+
+# Option A: appsettings.json
+CONFIG_FILE="$INSTALL_DIR/appsettings.json"
+if [ -f "$CONFIG_FILE" ]; then
+  # Minimal merge: use jq if available, else overwrite ServerUrl in a simple way
+  if command -v jq &>/dev/null; then
+    jq --arg url "$SERVER_URL" '.ServerUrl = $url' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+  else
+    echo "{\"Logging\":{\"LogLevel\":{\"Default\":\"Information\"}},\"ServerUrl\":\"$SERVER_URL\"}" > "$CONFIG_FILE"
+  fi
+else
+  echo "{\"Logging\":{\"LogLevel\":{\"Default\":\"Information\"}},\"ServerUrl\":\"$SERVER_URL\"}" > "$CONFIG_FILE"
+fi
+echo "Configuration written to $CONFIG_FILE with ServerUrl = $SERVER_URL"
+
+# Option B: environment file for systemd (e.g. /etc/labsync-agent/env)
+# ENV_FILE="$INSTALL_DIR/env"
+# echo "ServerUrl=$SERVER_URL" > "$ENV_FILE"
+# echo "Environment file written to $ENV_FILE"

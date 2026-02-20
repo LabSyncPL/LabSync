@@ -1,0 +1,60 @@
+# LabSync Agent - Windows install script (example)
+# Use this as a template for an installer that prompts for the server API address
+# and writes it to the agent's configuration.
+#
+# Usage (run as Administrator or with write access to install dir):
+#   .\install-windows.ps1.example -InstallPath "C:\Program Files\LabSync.Agent" -ServerUrl "https://labsync.example.com"
+#
+# Interactive: script prompts for ServerUrl if not provided.
+
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$InstallPath = "C:\Program Files\LabSync.Agent",
+    [Parameter(Mandatory = $false)]
+    [string]$ServerUrl = ""
+)
+
+if ([string]::IsNullOrWhiteSpace($ServerUrl)) {
+    $ServerUrl = Read-Host "Enter LabSync server API address (e.g. https://labsync.example.com or http://192.168.1.10:5038)"
+}
+
+if ([string]::IsNullOrWhiteSpace($ServerUrl)) {
+    Write-Error "Server URL is required."
+    exit 1
+}
+
+$ServerUrl = $ServerUrl.TrimEnd('/')
+
+$configPath = Join-Path $InstallPath "appsettings.json"
+$configDir = Split-Path $configPath -Parent
+
+if (-not (Test-Path $configDir)) {
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+}
+
+# Read existing config if present, then set/overwrite ServerUrl
+$config = @{}
+if (Test-Path $configPath) {
+    $config = Get-Content $configPath -Raw | ConvertFrom-Json
+    if ($config.PSObject.Properties.Name -notcontains "ServerUrl") {
+        $config | Add-Member -NotePropertyName "ServerUrl" -NotePropertyValue $ServerUrl
+    } else {
+        $config.ServerUrl = $ServerUrl
+    }
+} else {
+    $config = @{
+        Logging = @{
+            LogLevel = @{
+                Default = "Information"
+                "Microsoft.Hosting.Lifetime" = "Information"
+            }
+        }
+        ServerUrl = $ServerUrl
+    }
+}
+
+$config | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding UTF8
+Write-Host "Configuration written to $configPath with ServerUrl = $ServerUrl"
+
+# Optional: set environment variable (persists for the current user)
+# [Environment]::SetEnvironmentVariable("ServerUrl", $ServerUrl, "User")
