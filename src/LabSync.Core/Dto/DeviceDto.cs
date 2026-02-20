@@ -17,6 +17,7 @@ namespace LabSync.Core.Dto
         public DevicePlatform Platform { get; set; }
         public string OsVersion { get; set; } = string.Empty;
         public DeviceStatus Status { get; set; }
+        public bool IsOnline { get; set; }
         public DateTime RegisteredAt { get; set; }
         public DateTime? LastSeenAt { get; set; }
     }

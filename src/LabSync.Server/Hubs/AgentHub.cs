@@ -38,7 +38,7 @@ public class AgentHub : Hub<IAgentClient>
         }
 
         _logger.LogInformation("Agent connected: {DeviceId}", deviceId);
-        await UpdateDeviceStatus(deviceId, DeviceStatus.Online);
+        await UpdateConnectionState(deviceId, isOnline: true);
         await base.OnConnectedAsync();
     }
 
@@ -60,7 +60,7 @@ public class AgentHub : Hub<IAgentClient>
         var deviceId = GetDeviceIdFromContext();
         if (deviceId != null)
         {
-            await UpdateDeviceStatus(deviceId, DeviceStatus.Offline);
+            await UpdateConnectionState(deviceId, isOnline: false);
         }
 
         await base.OnDisconnectedAsync(exception);
@@ -77,36 +77,34 @@ public class AgentHub : Hub<IAgentClient>
     }
 
     /// <summary>
-    /// Updates the device status and last seen timestamp in the database.
-    /// This method creates a new DI scope to safely resolve the scoped DbContext
-    /// within the singleton lifecycle of the Hub.
+    /// Zmieniona nazwa i parametry: modyfikuje tylko IsOnline oraz LastSeenAt.
+    /// Nie dotyka biznesowego pola 'Status'.
     /// </summary>
-    /// <param name="deviceId">The unique identifier of the device.</param>
-    /// <param name="status">The new status to set.</param>
-    private async Task UpdateDeviceStatus(string deviceId, DeviceStatus status)
-{
-    using var scope = _scopeFactory.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
-
-    if (Guid.TryParse(deviceId, out var parsedId))
+    private async Task UpdateConnectionState(string deviceId, bool isOnline)
     {
-        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.Id == parsedId);
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
 
-        if (device != null)
+        if (Guid.TryParse(deviceId, out var parsedId))
         {
-            device.Status = status;
-            device.LastSeenAt = DateTime.UtcNow;
-            await dbContext.SaveChangesAsync();
-            _logger.LogInformation("Successfully updated status for device {DeviceId} to {Status}", deviceId, status);
+            var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.Id == parsedId);
+
+            if (device != null)
+            {
+                device.IsOnline = isOnline;
+                device.LastSeenAt = DateTime.UtcNow;
+
+                await dbContext.SaveChangesAsync();
+                _logger.LogInformation("Successfully updated connection state for device {DeviceId}. IsOnline: {IsOnline}", deviceId, isOnline);
+            }
+            else
+            {
+                _logger.LogWarning("Could not find device with ID {DeviceId} to update its connection state.", deviceId);
+            }
         }
         else
         {
-            _logger.LogWarning("Could not find device with ID {DeviceId} to update its status.", deviceId);
+            _logger.LogError("Error parsing DeviceId. Expected GUID, received: {DeviceId}", deviceId);
         }
     }
-    else
-    {
-         _logger.LogError("Error parsing DeviceId. Expected GUID, received: {DeviceId}", deviceId);
-    }
-}
 }

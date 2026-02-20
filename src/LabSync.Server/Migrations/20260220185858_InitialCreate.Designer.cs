@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LabSync.Server.Migrations
 {
     [DbContext(typeof(LabSyncDbContext))]
-    [Migration("20260220130500_initialCreate")]
-    partial class initialCreate
+    [Migration("20260220185858_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -41,6 +41,9 @@ namespace LabSync.Server.Migrations
                         .HasColumnType("character varying(45)");
 
                     b.Property<bool>("IsApproved")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsOnline")
                         .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastSeenAt")

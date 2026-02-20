@@ -50,10 +50,14 @@ namespace LabSync.Core.Entities
         public string OsVersion { get; set; } = string.Empty;
 
         /// <summary>
-        /// Lifecycle status of the device (Pending/Active/Blocked).
-        /// Determines if the device is allowed to receive tasks.
+        /// Lifecycle status of the device (Pending/Active/Maintenance/Blocked).
         /// </summary>
         public DeviceStatus Status { get; set; } = DeviceStatus.Pending;
+
+        /// <summary>
+        /// Technical state managed by SignalR (True if connected).
+        /// </summary>
+        public bool IsOnline { get; set; } = false;
 
         /// <summary>
         /// Timestamp when the agent first registered.

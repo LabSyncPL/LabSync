@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LabSync.Server.Migrations
 {
     /// <inheritdoc />
-    public partial class initialCreate : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -23,6 +23,7 @@ namespace LabSync.Server.Migrations
                     Platform = table.Column<int>(type: "integer", nullable: false),
                     OsVersion = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
+                    IsOnline = table.Column<bool>(type: "boolean", nullable: false),
                     RegisteredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },

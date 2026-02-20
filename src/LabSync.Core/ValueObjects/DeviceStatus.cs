@@ -5,10 +5,9 @@
     /// </summary>
     public enum DeviceStatus
     {
-        Pending = 0,
-        Offline = 1,      
-        Online = 2,  
-        Maintenance = 3,
-        Blocked = 4
+        Pending     = 0,
+        Active      = 1,       
+        Maintenance = 2,  
+        Blocked     = 3
     }
 }

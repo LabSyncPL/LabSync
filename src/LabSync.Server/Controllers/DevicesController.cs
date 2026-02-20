@@ -71,7 +71,6 @@ namespace LabSync.Server.Controllers
             }
 
             device.IsApproved = true;
-            device.Status = DeviceStatus.Online;
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Device {DeviceId} has been successfully approved.", id);
