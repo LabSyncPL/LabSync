@@ -54,14 +54,18 @@ namespace LabSync.Agent
 
             try
             {
-                // 5. Establish the persistent SignalR connection.
                 await _serverClient.ConnectAsync(token!, stoppingToken);
 
-                // 6. Keep the worker alive. The actual work is now done in the OnReceiveJob handler.
+                var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                var heartbeatTask = RunHeartbeatLoopAsync(heartbeatCts.Token);
+
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     await Task.Delay(Timeout.Infinite, stoppingToken);
                 }
+
+                await heartbeatCts.CancelAsync();
+                try { await heartbeatTask; } catch (OperationCanceledException) { }
             }
             catch (OperationCanceledException)
             {
@@ -74,6 +78,23 @@ namespace LabSync.Agent
             finally
             {
                 _serverClient.OnReceiveJob -= HandleJobAsync;
+            }
+        }
+
+        private async Task RunHeartbeatLoopAsync(CancellationToken stoppingToken)
+        {
+            const int intervalSeconds = 30;
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                await _serverClient.SendHeartbeatAsync(stoppingToken);
             }
         }
 

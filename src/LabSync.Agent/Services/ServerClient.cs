@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using LabSync.Core.Dto;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
@@ -85,6 +85,11 @@ namespace LabSync.Agent.Services
                 OnReceiveJob?.Invoke(jobId, command, arguments);
             });
 
+            _hubConnection.On("Ping", () =>
+            {
+                _logger.LogDebug("Received Ping from server.");
+            });
+
             _hubConnection.Reconnecting += error =>
             {
                 _logger.LogWarning(error, "Hub connection lost. Attempting to reconnect...");
@@ -94,6 +99,12 @@ namespace LabSync.Agent.Services
             _hubConnection.Reconnected += connectionId =>
             {
                 _logger.LogInformation("Hub connection re-established. Connection ID: {ConnectionId}", connectionId);
+                return Task.CompletedTask;
+            };
+
+            _hubConnection.Closed += error =>
+            {
+                _logger.LogWarning(error, "Hub connection closed.");
                 return Task.CompletedTask;
             };
 
@@ -109,6 +120,24 @@ namespace LabSync.Agent.Services
                 return;
             }
             await _hubConnection.InvokeAsync("UploadJobResult", result);
+        }
+
+        /// <summary>
+        /// Sends a heartbeat to the server to update LastSeenAt. Call periodically (e.g. every 30s).
+        /// </summary>
+        public async Task SendHeartbeatAsync(CancellationToken cancellationToken = default)
+        {
+            if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+                return;
+            try
+            {
+                await _hubConnection.InvokeAsync("Heartbeat", cancellationToken);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Heartbeat failed.");
+            }
         }
 
         public async ValueTask DisposeAsync()

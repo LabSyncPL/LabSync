@@ -2,6 +2,7 @@ using LabSync.Core.Dto;
 using LabSync.Core.Entities;
 using LabSync.Core.ValueObjects;
 using LabSync.Server.Data;
+using LabSync.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,11 +15,13 @@ namespace LabSync.Server.Controllers
     public class DevicesController : ControllerBase
     {
         private readonly LabSyncDbContext _context;
+        private readonly JobDispatchService _jobDispatch;
         private readonly ILogger<DevicesController> _logger;
 
-        public DevicesController(LabSyncDbContext context, ILogger<DevicesController> logger)
+        public DevicesController(LabSyncDbContext context, JobDispatchService jobDispatch, ILogger<DevicesController> logger)
         {
             _context = context;
+            _jobDispatch = jobDispatch;
             _logger = logger;
         }
 
@@ -90,6 +93,59 @@ namespace LabSync.Server.Controllers
 
             _logger.LogInformation("Device {DeviceId} has been successfully approved.", id);
             return Ok(new ApiResponse("Device approved successfully."));
+        }
+
+        /// <summary>
+        /// Creates a job for the device and dispatches it via SignalR if the device is online.
+        /// </summary>
+        [HttpPost("{id}/jobs")]
+        public async Task<ActionResult<JobDto>> CreateJob(Guid id, [FromBody] CreateJobRequest request, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var job = await _jobDispatch.DispatchAsync(id, request.Command, request.Arguments, request.ScriptPayload, cancellationToken);
+            if (job == null)
+                return NotFound(new ApiResponse("Device not found or not approved."));
+
+            return AcceptedAtAction(nameof(GetJob), new { deviceId = id, jobId = job.Id }, new JobDto
+            {
+                Id = job.Id,
+                DeviceId = job.DeviceId,
+                Command = job.Command,
+                Arguments = job.Arguments,
+                Status = job.Status,
+                ExitCode = job.ExitCode,
+                Output = job.Output,
+                CreatedAt = job.CreatedAt,
+                FinishedAt = job.FinishedAt
+            });
+        }
+
+        /// <summary>
+        /// Gets a specific job for a device.
+        /// </summary>
+        [HttpGet("{deviceId}/jobs/{jobId}")]
+        public async Task<ActionResult<JobDto>> GetJob(Guid deviceId, Guid jobId)
+        {
+            var job = await _context.Jobs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(j => j.Id == jobId && j.DeviceId == deviceId);
+            if (job == null)
+                return NotFound(new ApiResponse("Job not found."));
+
+            return Ok(new JobDto
+            {
+                Id = job.Id,
+                DeviceId = job.DeviceId,
+                Command = job.Command,
+                Arguments = job.Arguments,
+                Status = job.Status,
+                ExitCode = job.ExitCode,
+                Output = job.Output,
+                CreatedAt = job.CreatedAt,
+                FinishedAt = job.FinishedAt
+            });
         }
     }
 }

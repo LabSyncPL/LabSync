@@ -35,8 +35,9 @@ namespace LabSync.Server.Services
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, device.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, device.Id.ToString()),
                 new Claim("mac_address", device.MacAddress),
-                new Claim("role", "Agent") // A custom claim for authorization
+                new Claim(ClaimTypes.Role, "Agent")
             };
 
             var token = new JwtSecurityToken(

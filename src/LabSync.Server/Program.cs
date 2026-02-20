@@ -52,6 +52,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<JobDispatchService>();
 builder.Services.AddSingleton<ConnectionTracker>();
 
 
@@ -97,7 +98,10 @@ builder.Services.AddAuthorization(options =>
     // The "Agent" role is implicitly handled by the [Authorize] attribute on the hub
 });
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+}).AddMessagePackProtocol();
 builder.Services.AddControllers();
 
 var app = builder.Build();
