@@ -2,22 +2,18 @@ using DotNetEnv;
 using LabSync.Agent;
 using LabSync.Agent.Services;
 
-if (File.Exists(".env"))
-{
-    Env.Load();
-}
-else
-{
-    Console.WriteLine("Agent: Plik .env nie znaleziony, u¿ywam konfiguracji z appsettings.json");
-}
-
 var builder = Host.CreateApplicationBuilder(args);
+if (builder.Environment.IsDevelopment())
+{
+    var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env");
+    if (File.Exists(envPath))
+        Env.Load(envPath);
+}
 
+builder.Configuration.AddEnvironmentVariables();
 
-var serverUrl = Environment.GetEnvironmentVariable("AGENT_SERVER_URL")
-    ?? builder.Configuration["ServerUrl"]
-    ?? "http://localhost:5000";
-
+var serverUrl = builder.Configuration["ServerUrl"]
+    ?? throw new InvalidOperationException("ServerUrl is not configured. Please set it in appsettings.json or an environment variable.");
 
 builder.Services.AddSingleton<AgentIdentityService>();
 builder.Services.AddSingleton<ServerClient>();
@@ -29,8 +25,6 @@ builder.Services.AddHttpClient<ServerClient>(client =>
 });
 
 builder.Services.AddHostedService<Worker>();
-///////////
-builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 
 var host = builder.Build();
 host.Run();

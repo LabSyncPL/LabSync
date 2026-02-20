@@ -3,88 +3,54 @@ using LabSync.Server.Data;
 using LabSync.Server.Services;
 using Microsoft.EntityFrameworkCore;
 
-if (File.Exists(".env"))
-{
-    Env.Load();
-}
-else
-{
-    Console.WriteLine("Warning: BRAKUJE PLIKU .env");
-}
-
-
-// Pobierz wartości z .env lub użyj domyślnych      moze potem sie to usunie?
-var dbHost = Environment.GetEnvironmentVariable("DB_HOST") ?? "localhost";
-var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "5432";
-var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "LabSyncDb";
-var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "postgres";
-var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "";
-
-var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPassword}";
-
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsDevelopment())
+{
+    var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env");
+    if (File.Exists(envPath))
+        Env.Load(envPath);
+}
 
-builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
+builder.Configuration.AddEnvironmentVariables();
 
-var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? builder.Configuration["Jwt:Key"];
-var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? builder.Configuration["Jwt:Issuer"];
-var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? builder.Configuration["Jwt:Audience"];
-
-builder.Configuration["Jwt:Key"] = jwtKey;
-builder.Configuration["Jwt:Issuer"] = jwtIssuer;
-builder.Configuration["Jwt:Audience"] = jwtAudience;
-
+var dbHost = builder.Configuration["DB_HOST"];
+var dbPort = builder.Configuration["DB_PORT"];
+var dbName = builder.Configuration["DB_NAME"];
+var dbUser = builder.Configuration["DB_USER"];
+var dbPass = builder.Configuration["DB_PASSWORD"];
+var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPass}";
 
 builder.Services.AddDbContext<LabSyncDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-var corsOrigins = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") 
-    ?? "http://localhost:3000,http://localhost:4173";
-
-//Console.WriteLine("=== CORS DEBUG ===");
-//Console.WriteLine($"CORS_ALLOWED_ORIGINS: {corsOrigins}");
-//Console.WriteLine("==================");
-
+// Configure CORS
+var corsOrigins = builder.Configuration.GetValue<string>("CORS_ALLOWED_ORIGINS");
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
-        policy =>
-        {
-            //policy.AllowAnyOrigin()
-            //.AllowAnyHeader()
-            //.AllowAnyMethod();            
-            if (corsOrigins == "*")
-            {
-                policy.AllowAnyOrigin();
-            }
-            else
-            {
-                policy.WithOrigins(corsOrigins.Split(';'));
-            }
-            policy.AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        if (string.IsNullOrEmpty(corsOrigins) || corsOrigins == "*")
+            policy.AllowAnyOrigin();
+        else
+            policy.WithOrigins(corsOrigins.Split(';', StringSplitOptions.RemoveEmptyEntries));
+
+        policy.AllowAnyHeader().AllowAnyMethod();
+    });
 });
 
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// Apply database migrations on startup
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
-    db.Database.Migrate();
-}
-
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
+    var dbContext = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
+    dbContext.Database.Migrate();
 }
 
 app.UseRouting();
-/// app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 app.UseAuthorization();
 app.MapControllers();

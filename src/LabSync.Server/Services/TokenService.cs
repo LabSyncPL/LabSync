@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Text;
 using LabSync.Core.Entities;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace LabSync.Server.Services
@@ -14,33 +15,36 @@ namespace LabSync.Server.Services
 
         public TokenService(IConfiguration configuration)
         {
-            // Pobierz wartości z konfiguracji (które już zostały nadpisane z .env)
+            // All JWT settings are expected to be present in the configuration.
+            // This ensures the application fails fast if not configured properly.
             _jwtKey = configuration["Jwt:Key"]
-                ?? throw new ArgumentNullException("Jwt:Key is not configured");
+                ?? throw new ArgumentNullException(nameof(configuration), "JWT configuration 'Jwt:Key' is missing.");
 
-            _jwtIssuer = configuration["Jwt:Issuer"] ?? "LabSyncServer";
-            _jwtAudience = configuration["Jwt:Audience"] ?? "LabSyncAgent";
+            _jwtIssuer = configuration["Jwt:Issuer"]
+                ?? throw new ArgumentNullException(nameof(configuration), "JWT configuration 'Jwt:Issuer' is missing.");
+                
+            _jwtAudience = configuration["Jwt:Audience"]
+                ?? throw new ArgumentNullException(nameof(configuration), "JWT configuration 'Jwt:Audience' is missing.");
         }
 
         public string GenerateAgentToken(Device device)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtKey));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, device.Id.ToString()),
                 new Claim("mac_address", device.MacAddress),
-                new Claim("role", "Agent")
+                new Claim("role", "Agent") // A custom claim for authorization
             };
 
             var token = new JwtSecurityToken(
                 issuer: _jwtIssuer,
                 audience: _jwtAudience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddYears(1),
-                signingCredentials: creds
-            );
+                expires: DateTime.UtcNow.AddYears(1), // Agent tokens are long-lived
+                signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }

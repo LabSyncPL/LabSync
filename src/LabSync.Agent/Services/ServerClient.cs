@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Json;
 using LabSync.Core.Dto;
-using Microsoft.Extensions.Configuration;  // Dodaj using jeśli nie ma
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace LabSync.Agent.Services
 {
@@ -8,46 +9,51 @@ namespace LabSync.Agent.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<ServerClient> _logger;
-        private readonly string _serverUrl;  // Dodaj pole
 
-        public ServerClient(HttpClient httpClient, ILogger<ServerClient> logger, IConfiguration configuration)
+        public ServerClient(HttpClient httpClient, ILogger<ServerClient> logger)
         {
             _httpClient = httpClient;
             _logger = logger;
-            
-            // Możesz też pobrać URL z konfiguracji dla logowania
-            _serverUrl = Environment.GetEnvironmentVariable("AGENT_SERVER_URL") 
-                ?? configuration["ServerUrl"] 
-                ?? httpClient.BaseAddress?.ToString() 
-                ?? "Nieznany URL";
-            
-            _logger.LogInformation("ServerClient zainicjalizowany dla {ServerUrl}", _serverUrl);
+
+            _logger.LogInformation("ServerClient initialized for {ServerUrl}", _httpClient.BaseAddress);
         }
 
         public async Task<string?> RegisterAgentAsync(RegisterAgentRequest request)
         {
             try
             {
-                _logger.LogInformation("Wysyłam żądanie rejestracji do {BaseAddress}...", _httpClient.BaseAddress);
+                _logger.LogInformation("Sending registration request to {BaseAddress}...", _httpClient.BaseAddress);
 
                 var response = await _httpClient.PostAsJsonAsync("api/agents/register", request);
+                
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<RegisterAgentResponse>();
-                    _logger.LogInformation("Rejestracja udana! DeviceID: {DeviceId}", result?.DeviceId);
-                    return result?.Token;
+                    if (string.IsNullOrEmpty(result?.Token))
+                    {
+                        _logger.LogWarning("Registration successful, but server returned no token. Device may be pending approval. Message: '{Message}'", result?.Message);
+                        return null;
+                    }
+                    
+                    _logger.LogInformation("Registration successful! Token received.");
+                    return result.Token;
                 }
                 else
                 {
                     var error = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("Rejestracja nieudana. Status: {StatusCode}. Błąd: {Error}", 
+                    _logger.LogError("Registration failed. Status: {StatusCode}. Error: {Error}",
                         response.StatusCode, error);
                     return null;
                 }
             }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Could not connect to the server at {BaseAddress}. Please check the URL and network connection.", _httpClient.BaseAddress);
+                return null;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Nie można połączyć się z serwerem.");
+                _logger.LogError(ex, "An unexpected error occurred during agent registration.");
                 return null;
             }
         }
