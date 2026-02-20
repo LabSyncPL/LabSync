@@ -2,13 +2,14 @@ using LabSync.Server.Authentication;
 using LabSync.Server.Data;
 using LabSync.Server.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace LabSync.Server.Hubs;
 
-[Authorize(AuthenticationSchemes = DeviceKeyAuthenticationHandler.SchemeName, Roles = "Agent")]
+[Authorize(AuthenticationSchemes = $"{JwtBearerDefaults.AuthenticationScheme},{DeviceKeyAuthenticationHandler.SchemeName}", Roles = "Agent")]
 public class AgentHub(
     LabSyncDbContext dbContext,
     ConnectionTracker connectionTracker,

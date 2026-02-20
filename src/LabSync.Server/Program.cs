@@ -1,4 +1,4 @@
-﻿using DotNetEnv;
+using DotNetEnv;
 using LabSync.Core.Interfaces;
 using LabSync.Server.Authentication;
 using LabSync.Server.Data;
@@ -74,6 +74,18 @@ builder.Services.AddAuthentication(options =>
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]
                 ?? throw new InvalidOperationException("JWT Key not configured.")))
+        };
+        // SignalR sends the token via query string (access_token), not Authorization header
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/agentHub"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            }
         };
     });
 
