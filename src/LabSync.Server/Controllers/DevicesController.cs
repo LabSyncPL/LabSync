@@ -123,6 +123,33 @@ namespace LabSync.Server.Controllers
         }
 
         /// <summary>
+        /// Gets all jobs for a device, ordered by creation date (newest first).
+        /// </summary>
+        [HttpGet("{deviceId}/jobs")]
+        public async Task<ActionResult<IEnumerable<JobDto>>> GetDeviceJobs(Guid deviceId)
+        {
+            var jobs = await _context.Jobs
+                .AsNoTracking()
+                .Where(j => j.DeviceId == deviceId)
+                .OrderByDescending(j => j.CreatedAt)
+                .Select(j => new JobDto
+                {
+                    Id = j.Id,
+                    DeviceId = j.DeviceId,
+                    Command = j.Command,
+                    Arguments = j.Arguments,
+                    Status = j.Status,
+                    ExitCode = j.ExitCode,
+                    Output = j.Output,
+                    CreatedAt = j.CreatedAt,
+                    FinishedAt = j.FinishedAt
+                })
+                .ToListAsync();
+
+            return Ok(jobs);
+        }
+
+        /// <summary>
         /// Gets a specific job for a device.
         /// </summary>
         [HttpGet("{deviceId}/jobs/{jobId}")]
