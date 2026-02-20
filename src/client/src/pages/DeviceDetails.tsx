@@ -4,8 +4,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchDevices, devicesQueryKey } from '../api/devices';
 import { getDeviceJobs, deviceJobsQueryKey } from '../api/jobs';
 import { DEVICE_PLATFORM_LABELS } from '../types/device';
-import { JOB_STATUS_LABELS } from '../types/job';
+import { JOB_STATUS_LABELS, type JobDto } from '../types/job';
 import { CreateJobModal } from '../components/CreateJobModal';
+import { SystemMetricsCard } from '../components/SystemMetricsCard';
 
 function formatLastSeen(value: string | null): string {
   if (value == null) return '—';
@@ -55,7 +56,13 @@ export function DeviceDetails() {
     queryKey: deviceJobsQueryKey(id!),
     queryFn: () => getDeviceJobs(id!),
     enabled: !!id,
-    refetchInterval: 5000,
+    refetchInterval: (query) => {
+      const data = query.state.data as JobDto[] | undefined;
+      const hasRunningCollectMetrics = data?.some(
+        (j) => j.command === 'CollectMetrics' && j.status === 1
+      );
+      return hasRunningCollectMetrics ? 2000 : 5000;
+    },
   });
 
   const device = devices.find((d) => d.id === id);
@@ -172,6 +179,12 @@ export function DeviceDetails() {
           </div>
 
           <div className="col-span-12 lg:col-span-8 space-y-6">
+            <SystemMetricsCard
+              deviceId={device.id}
+              jobs={jobs}
+              isOnline={device.isOnline}
+            />
+
             <div className="bg-slate-800 rounded-xl border border-slate-700">
               <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
                 <h3 className="font-semibold text-white">Recent Jobs</h3>
