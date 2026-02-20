@@ -1,5 +1,5 @@
 using LabSync.Core.ValueObjects;
-using System;
+using System.Text.Json;
 
 namespace LabSync.Core.Dto
 {
@@ -20,5 +20,8 @@ namespace LabSync.Core.Dto
         public bool IsOnline { get; set; }
         public DateTime RegisteredAt { get; set; }
         public DateTime? LastSeenAt { get; set; }
+        public Guid? GroupId { get; set; }
+        public string? GroupName { get; set; }
+        public JsonElement? HardwareInfo { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using LabSync.Core.ValueObjects;
-using System.ComponentModel.DataAnnotations;
 using System;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace LabSync.Core.Entities
 {
@@ -69,6 +70,22 @@ namespace LabSync.Core.Entities
         /// Used to calculate runtime "Online/Offline" availability.
         /// </summary>
         public DateTime? LastSeenAt { get; set; }
+
+        /// <summary>
+        /// Optional ID of the group (e.g., specific lab or department) this device belongs to.
+        /// </summary>
+        public Guid? GroupId { get; set; }
+
+        /// <summary>
+        /// Navigation property for the assigned DeviceGroup.
+        /// </summary>
+        public DeviceGroup? Group { get; set; }
+
+        /// <summary>
+        /// Flexible metadata for hardware specifications (e.g., CPU, total RAM, Disk size).
+        /// Mapped to a JSONB column in PostgreSQL.
+        /// </summary>
+        public JsonDocument? HardwareInfo { get; set; }
 
         /// <summary>
         /// Jobs that were executed or scheduled for this device.

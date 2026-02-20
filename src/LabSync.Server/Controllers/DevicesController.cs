@@ -23,26 +23,29 @@ namespace LabSync.Server.Controllers
         }
 
         /// <summary>
-        /// Gets a list of all registered devices.
+        /// Gets a list of all registered devices with their current status and group info.
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DeviceDto>>> GetAll()
         {
-            _logger.LogInformation("Fetching all devices for admin.");
             var devices = await _context.Devices
                 .OrderByDescending(d => d.RegisteredAt)
                 .Select(d => new DeviceDto
                 {
                     Id = d.Id,
-                    Hostname = d.Hostname,
-                    IsApproved = d.IsApproved,
-                    MacAddress = d.MacAddress,
-                    IpAddress = d.IpAddress,
-                    Platform = d.Platform,
-                    OsVersion = d.OsVersion,
-                    Status = d.Status,
+                    Hostname     = d.Hostname,
+                    IsApproved   = d.IsApproved,
+                    MacAddress   = d.MacAddress,
+                    IpAddress    = d.IpAddress,
+                    Platform     = d.Platform,
+                    OsVersion    = d.OsVersion,
+                    Status       = d.Status,
                     RegisteredAt = d.RegisteredAt,
-                    LastSeenAt = d.LastSeenAt
+                    LastSeenAt   = d.LastSeenAt,
+                    IsOnline     = d.IsOnline,
+                    GroupId      = d.GroupId,
+                    GroupName    = d.Group != null ? d.Group.Name : null,
+                    HardwareInfo = d.HardwareInfo != null ? d.HardwareInfo.RootElement : null
                 })
                 .ToListAsync();
 

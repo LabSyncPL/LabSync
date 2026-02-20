@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,6 +12,19 @@ namespace LabSync.Server.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "DeviceGroup",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DeviceGroup", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Devices",
                 columns: table => new
@@ -25,11 +39,18 @@ namespace LabSync.Server.Migrations
                     Status = table.Column<int>(type: "integer", nullable: false),
                     IsOnline = table.Column<bool>(type: "boolean", nullable: false),
                     RegisteredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    GroupId = table.Column<Guid>(type: "uuid", nullable: true),
+                    HardwareInfo = table.Column<JsonDocument>(type: "jsonb", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Devices", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Devices_DeviceGroup_GroupId",
+                        column: x => x.GroupId,
+                        principalTable: "DeviceGroup",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -40,6 +61,7 @@ namespace LabSync.Server.Migrations
                     DeviceId = table.Column<Guid>(type: "uuid", nullable: false),
                     Command = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Arguments = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    ScriptPayload = table.Column<string>(type: "text", nullable: true),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     ExitCode = table.Column<int>(type: "integer", nullable: true),
                     Output = table.Column<string>(type: "text", nullable: true),
@@ -56,6 +78,11 @@ namespace LabSync.Server.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Devices_GroupId",
+                table: "Devices",
+                column: "GroupId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Devices_MacAddress",
@@ -77,6 +104,9 @@ namespace LabSync.Server.Migrations
 
             migrationBuilder.DropTable(
                 name: "Devices");
+
+            migrationBuilder.DropTable(
+                name: "DeviceGroup");
         }
     }
 }

@@ -39,6 +39,12 @@ namespace LabSync.Core.Entities
         public string Arguments { get; set; } = string.Empty;
 
         /// <summary>
+        /// Full script payload (e.g., PowerShell or Bash script content) to be executed.
+        /// Mapped to TEXT / NVARCHAR(MAX) in the database without length limits.
+        /// </summary>
+        public string? ScriptPayload { get; set; }
+
+        /// <summary>
         /// Current state of the execution pipeline.
         /// </summary>
         public JobStatus Status { get; set; } = JobStatus.Pending;
