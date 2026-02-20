@@ -2,26 +2,62 @@
 sidebar_position: 1
 ---
 
-# Wprowadzenie do projektu LabSync
+# Introduction to LabSync
 
-**LabSync** to nowoczesna platforma klasy RMM (Remote Monitoring and Management) służąca do scentralizowanego zarządzania flotą komputerów w środowiskach heterogenicznych.
+**LabSync** is a modern, cross-platform RMM (Remote Monitoring and Management) solution designed for centralized fleet management in heterogeneous IT environments. It provides a "Single Pane of Glass" for administrators to manage Windows and Linux workstations, automate deployments, and provide real-time remote support.
 
-LabSync rozwiązuje kluczowy problem działów IT w edukacji oraz biznesie: **fragmentację środowiska**. Administratorzy muszą zarządzać stacjami roboczymi opartymi o różne systemy operacyjne (**Windows, Linux**) w ramach jednej infrastruktury sieciowej.  
+The project's core philosophy is to unify device management through a powerful and extensible agent, eliminating the need for separate tools for different operating systems.
 
-Zamiast stosować oddzielne narzędzia dla każdego systemu, LabSync oferuje **"Single Pane of Glass"** – jeden panel do zarządzania całą infrastrukturą, automatyzacją wdrożeń i zdalnym wsparciem technicznym.
+## Core Features
 
-Projekt wyróżnia się nowoczesną architekturą typu **Micro-Kernel**. Agent systemu posiada lekkie jądro, które zarządza cyklem życia niezależnych modułów. Dzięki temu nawet kluczowe funkcje, jak wykonywanie skryptów czy zdalny podgląd pulpitu, są realizowane przez wtyczki, co pozwala na dowolne rozszerzanie systemu (np. o VNC, telemetrię) bez ingerencji w jego stabilny rdzeń.
+- **Unified Management:** Instead of separate tools, LabSync offers a single dashboard to manage both Windows and Linux machines, significantly reducing administrative overhead.
+- **Zero-Touch Deployment:** Automate the setup for new employees or computer labs. Define a desired state, and LabSync ensures the correct software and configuration are applied without manual intervention.
+- **Real-time Communication:** Using SignalR, the central server maintains a persistent connection with agents, allowing for instant status updates and immediate task execution.
+- **Configuration Abstraction:** Define an application or task once (e.g., "Install Git"), and LabSync's agent intelligently translates it into the appropriate native command for each target OS (`winget` for Windows, `nix` for Linux).
 
-### Kluczowe wyróżniki
+## Architecture Overview
 
-- **Architektura modułowa (Core + Plugins)** – podstawowe funkcje (skrypty) to „Moduły Rdzeniowe”, a dodatki (VNC, telemetria) to „Moduły Rozszerzone”.  
-- **Unifikacja zarządzania** – inteligentne dobieranie strategii wykonania zadania (PowerShell/Winget dla Windows, Nix/Bash dla Linux).  
-- **Zero‑Touch Deployment** – masowa konfiguracja komputerów w kilka minut, bez fizycznej obecności administratora.  
-- **Komunikacja w czasie rzeczywistym** – SignalR (WebSockets) zapewnia natychmiastowy wgląd w stan maszyn i „wypychanie” zadań.  
-- **Abstrakcja konfiguracji** – definicja aplikacji raz (np. „Git”), z automatycznym tłumaczeniem na natywne polecenia obu systemów.
+LabSync is built on a modern, decoupled architecture that emphasizes security, scalability, and extensibility. It consists of a central server, a web-based UI, and a lightweight agent installed on target machines.
 
-## Dla kogo jest LabSync?
+### Hybrid Communication Model (Control & Data Plane)
 
-- **Uczelnie i szkoły** – przełączanie profili oprogramowania całych pracowni jednym kliknięciem.
-- **Software house i firmy technologiczne** – standaryzacja środowisk deweloperskich (onboarding).
-- **Działy IT / Helpdesk** – zdalna diagnostyka, wykonywanie skryptów naprawczych i zdalny podgląd.
+A key innovation in LabSync is its dual-channel communication strategy, which separates management commands from high-bandwidth data streams. This ensures that the system remains responsive and efficient, even under heavy load.
+
+:::info Control Plane vs. Data Plane
+- **Control Plane (SignalR):** Used for all lightweight and critical communication, such as agent state management (online/offline), sending commands, and receiving telemetry. This channel is optimized for low-latency messages and reliable delivery, using the efficient **MessagePack** protocol.
+
+- **Data Plane (Raw WebSockets):** A dedicated, high-speed channel used exclusively for streaming raw binary data, like the frame buffer for the VNC module. By using a separate channel, we ensure that high-volume data from a VNC session doesn't block or delay critical control messages.
+:::
+
+### Micro-Kernel Agent Design
+
+The LabSync Agent is not a monolithic application. Instead, it operates as a lightweight **host process** with a micro-kernel architecture. All core functionalities are implemented as independent **plugins (DLLs)** that are loaded at runtime.
+
+- **Lightweight Host:** The agent's primary role is to manage the lifecycle of modules, handle communication with the server, and route incoming commands to the appropriate plugin.
+- **Extensible Modules:** Each feature, such as script execution or VNC, is a self-contained class library that implements a common `IAgentModule` interface.
+
+:::tip Extensibility as a Feature
+This design makes the system incredibly extensible. New features can be added simply by developing a new Class Library and dropping the resulting DLL into the agent's module directory, without requiring any changes to the agent's core, stable code.
+:::
+
+### Security by Design
+
+Security is a foundational principle of LabSync, especially given its high level of system access.
+
+:::warning Zero-Trust Model
+- **No-Eval Policy:** The agent will never execute an arbitrary string of code sent from the server. It only executes specific, predefined system processes with sanitized parameters. This prevents a major class of remote code execution vulnerabilities.
+- **Authentication:** Every agent and API call must be authenticated via a JWT token. All communication is encrypted over HTTPS/WSS.
+:::
+
+## Tech Stack
+
+| Layer             | Technology                                    | Purpose                                                     |
+| :---------------- | :-------------------------------------------- | :---------------------------------------------------------- |
+| **Backend**       | .NET 9, ASP.NET Core Web API                  | Central server, API endpoints, and business logic.          |
+| **Real-time**     | SignalR Core & Raw WebSockets                 | Dual-channel communication (Control Plane & Data Plane).    |
+| **Database**      | PostgreSQL / Entity Framework Core 9          | Storing agent/device info, jobs, logs, and user data.       |
+| **Frontend**      | React 19, TypeScript, Vite                    | Modern, responsive Single Page Application (SPA) dashboard. |
+| **Agent Host**    | .NET 9 Worker Service                         | Runs as a background service on Windows and Linux.          |
+| **Agent Modules** | .NET 9 Class Libraries                        | Encapsulates all agent features (scripting, VNC, etc.).     |
+| **Automation**    | PowerShell/Winget (Windows), Bash/Nix (Linux) | Native package managers and shells for task execution.      |
+| **Auth**          | JWT (JSON Web Tokens)                         | Secure, token-based authentication for agents and users.    |

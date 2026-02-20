@@ -19,12 +19,12 @@ const sidebars = {
     {
       type: 'doc',
       id: 'intro',
-      label: 'Wprowadzenie',
+      label: 'Introduction',
     },
     {
       type: 'doc',
       id: 'labsync-harmonogram',
-      label: 'Harmonogram',
+      label: 'Roadmap',
     },
     {
       type: 'doc',

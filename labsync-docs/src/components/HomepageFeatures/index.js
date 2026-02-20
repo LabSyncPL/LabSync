@@ -4,32 +4,35 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Single Pane of Glass',
+    title: 'Unified Cross-Platform Management',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        LabSync zapewnia jeden panel do zarządzania heterogeniczną infrastrukturą
-        (Windows i Linux), eliminując konieczność używania wielu narzędzi.
+        Manage both Windows and Linux fleets from a single dashboard. LabSync
+        abstracts away OS-specific details, allowing you to define tasks once
+        and deploy everywhere.
       </>
     ),
   },
   {
-    title: 'Zero‑Touch Deployment',
+    title: 'Real-time Control & Monitoring',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Automatyzuj przygotowanie stanowisk pracy dla studentów i pracowników:
-        profile oprogramowania, onboarding deweloperów i akcje masowe z jednego miejsca.
+        Leverage a persistent SignalR connection for instant command execution
+        and live monitoring. High-bandwidth tasks seamlessly shift to a
+        dedicated WebSocket <b>Data Plane</b> for max performance.
       </>
     ),
   },
   {
-    title: 'Architektura Micro‑Kernel',
+    title: 'Secure, Extensible Architecture',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Lekki Agent z modułami <code>Core</code> i <code>Extensions</code> pozwala rozwijać
-        funkcje (np. VNC, telemetria) bez ingerencji w stabilny rdzeń systemu.
+        Built on a secure <b>Micro-Kernel</b> architecture where every feature
+        is a sandboxed plugin. This allows for safe, rapid development of new
+        capabilities without compromising core system stability.
       </>
     ),
   },

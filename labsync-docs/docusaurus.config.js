@@ -11,7 +11,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'LabSync',
-  tagline: 'Remote Monitoring & Management dla heterogenicznych środowisk IT',
+  tagline: 'Unified Remote Management for Heterogeneous Environments',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -83,11 +83,11 @@ const config = {
             type: 'docSidebar',
             sidebarId: 'tutorialSidebar',
             position: 'left',
-            label: 'Dokumentacja',
+            label: 'Documentation',
           },
           {
             to: '/docs/labsync-harmonogram',
-            label: 'Harmonogram',
+            label: 'Roadmap',
             position: 'left',
           },
           {
@@ -97,7 +97,7 @@ const config = {
           },
           {
             to: 'makieta',
-            label: 'Makieta',
+            label: 'Mockups',
             position: 'left',
           },
         ],
@@ -106,14 +106,14 @@ const config = {
         style: 'dark',
         links: [
           {
-            title: 'Dokumentacja',
+            title: 'Docs',
             items: [
               {
-                label: 'Wprowadzenie',
+                label: 'Introduction',
                 to: '/docs/intro',
               },
               {
-                label: 'Harmonogram',
+                label: 'Roadmap',
                 to: '/docs/labsync-harmonogram',
               },
               {

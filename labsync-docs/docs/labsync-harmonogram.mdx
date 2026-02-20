@@ -1,108 +1,123 @@
 ---
 id: labsync-harmonogram
-title: Harmonogram projektu LabSync
-sidebar_label: Harmonogram
+title: Project Roadmap
+sidebar_label: Roadmap
 ---
 
-import Heading from '@theme/Heading';
+import Heading from "@theme/Heading";
 
-# Harmonogram realizacji projektu LabSync
+# LabSync Project Roadmap
 
-**Okres realizacji:** Styczeń 2026 – Maj 2026  
-**Cel główny:** Opracowanie systemu klasy RMM (Remote Monitoring & Management) o architekturze modularnej, umożliwiającego zarządzanie heterogenicznym środowiskiem (Windows/Linux).
-
----
-
-## 1. Harmonogram miesięczny
-
-Poniżej przedstawiono szczegółowy plan prac rozpisany na poszczególne miesiące realizacji projektu.
-
-### Styczeń: Fundamenty architektury i bezpieczeństwo
-Celem pierwszego etapu jest stworzenie stabilnego szkieletu systemu oraz zapewnienie bezpiecznej komunikacji między komponentami.
-
-* **Finalizacja architektury agenta:** Implementacja wzorca Microkernel oraz mechanizmu dynamicznego ładowania modułów (wtyczek) z zewnętrznych bibliotek.
-* **Workflow rejestracji:** Wdrożenie mechanizmu autoryzacji urządzeń wymagającego zatwierdzenia przez administratora (blokada dostępu dla niezweryfikowanych agentów).
-* **Komunikacja sieciowa:** Ustabilizowanie warstwy transportowej między klientem a serwerem, konfiguracja środowiska konteneryzowanego (Docker) oraz bazy danych PostgreSQL.
-* **Refaktoryzacja kodu:** Uporządkowanie struktury projektu, separacja logiki biznesowej od warstwy infrastruktury.
-
-### Luty: Moduł zdalnego dostępu (VNC)
-Miesiąc poświęcony na najbardziej złożony element systemu – implementację zdalnego pulpitu.
-
-* **Przechwytywanie obrazu:** Opracowanie wydajnego mechanizmu wykonywania zrzutów ekranu na poziomie systemowym po stronie agenta.
-* **Transmisja danych:** Implementacja protokołu komunikacji w czasie rzeczywistym (WebSockets/SignalR) do strumieniowania obrazu z minimalnym opóźnieniem.
-* **Interakcja zwrotna:** Oprogramowanie mechanizmów przesyłania zdarzeń urządzeń wejściowych (mysz, klawiatura) z interfejsu webowego do zdalnego systemu.
-* **Optymalizacja:** Wdrożenie kompresji przesyłanych danych w celu zmniejszenia obciążenia łącza sieciowego.
-
-### Marzec: System zadań i automatyzacja
-Etap koncentrujący się na możliwości zdalnego zarządzania systemem operacyjnym.
-
-* **Kolejkowanie zadań:** Stworzenie backendowego systemu dystrybucji poleceń (Jobs Queue) oraz logiki pobierania zadań przez agenta (obsługa offline).
-* **Wykonywanie skryptów:** Implementacja modułu `SoftwareExecutionModule` odpowiedzialnego za uruchamianie poleceń powłoki systemowej oraz skryptów automatyzujących.
-* **Obsługa wyników:** Mechanizm przechwytywania standardowego wyjścia (stdout/stderr) i przesyłania logów wykonania z powrotem do panelu administratora.
-* **Konsola webowa:** Stworzenie interfejsu użytkownika umożliwiającego interakcję z powłoką zdalnego systemu.
-
-### Kwiecień: Telemetria i zarządzanie grupowe
-Rozbudowa systemu o funkcje analityczne oraz narzędzia do zarządzania wieloma stacjami roboczymi jednocześnie.
-
-* **Gromadzenie metryk:** Rozbudowa agenta o moduły monitorujące zużycie zasobów sprzętowych (CPU, RAM, dysk, sieć) – `SystemInfoModule`.
-* **Składowanie danych:** Optymalizacja bazy danych pod kątem przechowywania dużej ilości danych telemetrycznych (szeregi czasowe).
-* **Wizualizacja danych:** Implementacja wykresów i raportów w panelu administratora prezentujących kondycję sprzętu w czasie.
-* **Operacje masowe:** Wdrożenie logiki grupowania urządzeń (np. sale laboratoryjne) i umożliwienie wykonywania akcji na wielu obiektach jednocześnie.
-
-### Maj: Stabilizacja, testy i finalizacja
-Ostatni etap poświęcony zapewnieniu jakości oprogramowania i przygotowaniu do wdrożenia produkcyjnego.
-
-* **Testy obciążeniowe:** Weryfikacja wydajności systemu przy jednoczesnym połączeniu większej liczby agentów oraz podczas transmisji wideo.
-* **Audyt bezpieczeństwa:** Przegląd mechanizmów uwierzytelniania i autoryzacji, zabezpieczenie wrażliwych danych konfiguracyjnych.
-* **Dokumentacja:** Sporządzenie dokumentacji technicznej API, instrukcji wdrożeniowej oraz dokumentacji użytkownika końcowego.
-* **Finalizacja UI/UX:** Dopracowanie interfejsu użytkownika, poprawki błędów i przygotowanie wersji demonstracyjnej do obrony projektu.
+**Execution Period:** January 2026 – May 2026
+**Primary Goal:** To develop a modular RMM (Remote Monitoring and Management) system capable of managing a heterogeneous IT environment (Windows/Linux).
 
 ---
 
-## 2. Definicja Faz Projektu
+## 1. Monthly Execution Plan
 
-Poniższe fazy definiują priorytety funkcjonalne i kryteria sukcesu dla poszczególnych etapów harmonogramu.
+This plan details the work scheduled for each month of the project.
 
-### 2.1. Faza 1 – Core System (MVP)
-**Priorytet:** Krytyczny
+### January: Architectural Foundation & Security
 
-**Cel:** Dostarczenie stabilnego MVP, które spełnia kryteria demonstracji na żywo w dwóch filarach: Zdalny Podgląd (VNC) oraz Wykonywanie Skryptów.
+The goal of the first stage is to create a stable system skeleton and ensure secure communication between all components.
 
-* **Zakres funkcjonalny**:
-    * Obsługa **Windows 10/11** oraz **Linux** po stronie Agenta.
-    * Dwukierunkowa komunikacja w czasie rzeczywistym przez **SignalR** (Online/Offline, komendy, logi, obraz VNC).
-    * Moduł wykonawczy `SoftwareExecutionModule`: interpretacja zadań, wybór silnika (PowerShell / Bash / Nix).
-    * Repozytorium pakietów z abstrakcją systemu operacyjnego (np. `winget install` dla Windows vs `nix-env` dla Linux pod jedną definicją).
+- **Finalize Agent Architecture:** Implement the **Micro-Kernel** pattern and the mechanism for dynamically loading modules (plugins) from external libraries.
+- **Agent Registration Workflow:** Implement a device authorization flow that requires administrator approval, blocking access for unverified agents.
+- **Network Communication:** Stabilize the transport layer between the agent and server, and configure the containerized environment (Docker) and PostgreSQL database.
+- **Code Refactoring:** Organize the project structure, separating business logic from the infrastructure layer.
 
-**Rezultat Fazy 1:**
-System pozwala uruchomić Agenta na Windows i Linux, zobaczyć je jako Online, nawiązać połączenie VNC oraz zainstalować aplikację testową na obu maszynach jednocześnie, otrzymując logi zwrotne.
+### February: Remote Access Module (VNC)
 
-### 2.2. Faza 2 – Zarządzanie i Automatyzacja
-**Priorytet:** Wysoki
+This month is dedicated to the most complex system component: the remote desktop implementation.
 
-**Cel:** Umożliwienie skalowalnego zarządzania flotą maszyn.
+- **Screen Capture:** Develop an efficient, system-level screen capture mechanism within the agent.
+- **Data Transmission:** Implement the dedicated **Data Plane** using raw **WebSockets** for high-performance, low-latency desktop streaming. The **Control Plane** (SignalR) will be used to initiate and manage the connection state.
+- **Input Forwarding:** Develop mechanisms to send input device events (mouse, keyboard) from the web interface to the remote system.
+- **Optimization:** Implement data compression to reduce network bandwidth consumption.
 
-* **Grupy komputerów**: Logiczne grupowanie (np. „Sala 101”) i operacje masowe.
-* **Interakcja VNC**: Pełna kontrola pulpitu (mysz/klawiatura).
-* **Profile maszyn (Desired State)**: Definicja docelowego stanu środowiska i automatyczne doprowadzanie do niego maszyn.
-* **Kolejkowanie zadań**: Obsługa zadań dla maszyn będących offline (wykonanie po powrocie do sieci).
+### March: Task & Automation System
 
-### 2.3. Faza 3 – Monitoring i Rozszerzenia
-**Priorytet:** Średni
+This stage focuses on enabling remote management of the operating system.
 
-**Cel:** Wsparcie helpdesk i analityka.
+- **Job Queuing:** Create a backend system for command distribution (Job Queue) and logic for agents to fetch tasks, including offline support.
+- **Script Execution:** Implement the `SoftwareExecutionModule` responsible for running shell commands and automation scripts.
+- **Result Handling:** Implement a mechanism for capturing standard output (`stdout`/`stderr`) and sending execution logs back to the administrator's dashboard.
+- **Web Console:** Create a UI for interacting with the remote system's shell.
 
-* **Telemetria systemowa**: Zbieranie metryk (CPU, RAM, dysk) i alertowanie.
-* **Inwentaryzacja sprzętu**: Automatyczne raportowanie parametrów sprzętowych.
-* **Rozszerzone wsparcie**: Finalizacja narzędzi dla operatora systemu.
+### April: Telemetry & Group Management
+
+Expand the system with analytics and tools for managing multiple workstations simultaneously.
+
+- **Metrics Collection:** Extend the agent with modules (`SystemInfoModule`) to monitor hardware resource usage (CPU, RAM, Disk, Network).
+- **Data Storage:** Optimize the database for storing large volumes of time-series telemetry data.
+- **Data Visualization:** Implement charts and reports in the admin dashboard to display hardware health over time.
+- **Bulk Operations:** Implement logic for grouping devices (e.g., "Computer Lab 101") and executing actions on multiple targets at once.
+
+### May: Stabilization, Testing, and Finalization
+
+The final stage is dedicated to quality assurance and preparing for a production-ready deployment.
+
+- **Load Testing:** Verify system performance with a large number of concurrent agent connections and during video streaming.
+- **Security Audit:** Review authentication and authorization mechanisms and secure sensitive configuration data.
+- **Documentation:** Prepare technical API documentation, deployment instructions, and end-user guides.
+- **UI/UX Finalization:** Polish the user interface, fix bugs, and prepare a final demo version for project defense.
 
 ---
 
-## 3. Bezpieczeństwo
+## 2. Project Phases
 
-Ze względu na charakter systemu (zdalne wykonywanie komend na stacjach roboczych), bezpieczeństwo jest traktowane priorytetowo na każdym etapie harmonogramu.
+The following phases define the functional priorities and success criteria for the project's development.
 
-* **Tokenizacja (JWT):** Każdy Agent otrzymuje unikalny token do autoryzacji komunikacji SignalR.
-* **Szyfrowanie (HTTPS/WSS):** Cały ruch (komendy, obraz wideo) jest szyfrowany.
-* **Sanityzacja komend (No-Eval):** Agent nie interpretuje dowolnego tekstu jako skryptu, lecz uruchamia zdefiniowane procesy z kontrolowanymi parametrami.
-* **Izolacja:** Host Agenta działa jako usługa uprzywilejowana, ale architektura modułowa pozwala na separację uprawnień dla poszczególnych wtyczek w przyszłości.
+### Phase 1: Core System (MVP)
+
+:::info
+**Priority: Critical**
+
+**Goal:** Deliver a stable MVP that fulfills the core requirements for a live demonstration, focusing on the two main pillars: Remote View (VNC) and Script Execution.
+:::
+
+- **Functional Scope**:
+  - Support for **Windows 10/11** and **Linux** on the Agent side.
+  - Real-time, bidirectional communication via **SignalR** for the **Control Plane** (Online/Offline status, commands, logs). The VNC video stream will use a separate, high-performance **WebSocket** channel (**Data Plane**).
+  - An execution module (`SoftwareExecutionModule`) to interpret tasks and select the correct engine (PowerShell/Bash/Nix).
+  - An application repository that abstracts the OS (e.g., `winget install` for Windows vs. `nix-env` for Linux under a single definition).
+- **Expected Outcome**:
+  A system that allows an Agent to be run on Windows and Linux, see both as "Online" in the dashboard, establish a VNC connection, and install a test application on both machines simultaneously while receiving logs.
+
+### Phase 2: Management & Automation
+
+:::info
+**Priority: High**
+
+**Goal:** Enable scalable management of the entire fleet of devices.
+:::
+
+- **Computer Groups**: Logical grouping (e.g., "Lab 101") and bulk operations.
+- **Interactive VNC**: Full desktop control (mouse/keyboard input forwarding).
+- **Machine Profiles (Desired State)**: Define the target state of an environment and have agents automatically conform to it.
+- **Job Queuing**: Handle tasks for offline machines, ensuring execution upon reconnection.
+
+### Phase 3: Monitoring & Extensions
+
+:::info
+**Priority: Medium**
+
+**Goal:** Provide enhanced support for helpdesk and analytics.
+:::
+
+- **System Telemetry**: Collect metrics (CPU, RAM, Disk) and configure alerts.
+- **Hardware Inventory**: Automatically report hardware specifications.
+- **Extended Support Tools**: Finalize tools for system operators.
+
+---
+
+## 3. Security First
+
+:::danger Security is a Core Requirement
+Given the system's nature—executing remote commands—security is the highest priority at every stage of development.
+:::
+
+- **Tokenization (JWT):** Every Agent uses a unique JWT to authorize its SignalR connection.
+- **Encryption (HTTPS/WSS):** All traffic, including commands and video streams, is encrypted in transit.
+- **Command Sanitization (No-Eval):** The Agent never interprets an arbitrary string as a script. It only runs predefined system processes with controlled parameters to prevent remote code execution vulnerabilities.
+- **Isolation:** The Agent Host runs as a privileged service, but the modular architecture allows for future separation of privileges for individual plugins.

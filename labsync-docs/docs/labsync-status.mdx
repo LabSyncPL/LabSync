@@ -1,42 +1,43 @@
 ---
 id: labsync-status
-title: Status projektu LabSync
+title: Project Status
 sidebar_label: Status
 ---
 
 import Heading from '@theme/Heading';
 
-<Heading as="h1">Aktualny status prac nad projektem LabSync</Heading>
+<Heading as="h1">Current Development Status of LabSync</Heading>
 
-> Sekcja statusu jest przeznaczona do regularnej aktualizacji przez zespół projektowy.
+> This status section is intended for regular updates by the project team.
 
-## 1. Status ogólny
+## 1. Overall Status
 
-- Status projektu: W trakcie realizacji Fazy 1 (Core System / MVP).
-- Stabilność: Rdzeń architektury (Micro-Kernel + `IAgentModule`) – w trakcie doprecyzowania i implementacji.
-- Ryzyka kluczowe:
-  - bezpieczeństwo zdalnego wykonywania zadań (tokenizacja, sanityzacja komend),
-  - wieloplatformowość Agenta (różnice między Windows a Linux),
-  - wydajność i skalowalność komunikacji SignalR przy większej liczbie agentów.
+-   **Project Status:** Currently in **Phase 1 (Core System / MVP)**.
+-   **Architectural Stability:** The core architecture (**Micro-Kernel** + `IAgentModule` interface) is being finalized and implemented.
 
-## 2. Stan kluczowych komponentów
+:::warning Key Risks
+-   **Security:** Ensuring the security of remote task execution remains the top priority. This includes robust tokenization, command sanitization, and transport encryption.
+-   **Cross-Platform Agent:** Managing the differences between the Windows and Linux environments for consistent agent behavior.
+-   **Scalability:** Ensuring the SignalR communication layer can perform efficiently with a large number of concurrent agents.
+:::
 
-- Backend (.NET 8, ASP.NET Core + SignalR):
-  - API główne – w trakcie implementacji.
-  - Hub SignalR – TODO
+## 2. Key Component Status
 
-- Baza danych (PostgreSQL):
-  - model danych dla definicji pakietów, logów, użytkowników – w toku projektowania / implementacji.
+-   **Backend (.NET 9, ASP.NET Core + SignalR):**
+    -   Core API Endpoints: `In Progress`
+    -   SignalR Hub for Real-time Communication: `TODO`
 
-- Agent (Worker Service .NET):
-  - Host usługi, ładowanie modułów (`IAgentModule`) – implementacja w toku.
-  - Moduły Core: TODO
+-   **Database (PostgreSQL):**
+    -   Data models for application packages, logs, and users: `In Progress`
 
-- Frontend (SPA – React/Vue, TypeScript):
-  - panel administratora z listą maszyn oraz statusem Online/Offline – TODO
-  - moduł zlecania zadań (instalacja pakietów, podgląd logów) – TODO
+-   **Agent (.NET 9 Worker Service):**
+    -   Service Host & Module Loader (`IAgentModule`): `In Progress`
+    -   Core Modules (Scripting, System Info): `TODO`
 
-## 3. Powiązane dokumenty
+-   **Frontend (React 19, TypeScript):**
+    -   Administrator dashboard with device list and Online/Offline status: `TODO`
+    -   Job execution module (installing packages, viewing logs): `TODO`
 
-- Zobacz także: Harmonogram i roadmapę projektu w sekcji
-  [Harmonogram](/docs/labsync-harmonogram).
+## 3. Related Documents
+
+-   See also: The project roadmap and feature phases in the [Roadmap](/docs/labsync-harmonogram) section.
