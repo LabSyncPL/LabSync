@@ -14,6 +14,7 @@ import { CreateJobModal } from "../components/CreateJobModal";
 import { SystemMetricsCard } from "../components/SystemMetricsCard";
 import type { SystemMetricsDto } from "../types/systemMetrics";
 import { parseSystemMetricsFromJson } from "../types/systemMetrics";
+import { useSystemMetricsSettings } from "../settings/systemMetricsSettings";
 
 function formatLastSeen(value: string | null): string {
   if (value == null) return "—";
@@ -113,6 +114,7 @@ export function DeviceDetails() {
   const [metricsHistory, setMetricsHistory] = useState<MetricsHistoryPoint[]>(
     [],
   );
+  const [metricsSettings] = useSystemMetricsSettings();
 
   const { data: devices = [] } = useQuery({
     queryKey: devicesQueryKey,
@@ -174,18 +176,25 @@ export function DeviceDetails() {
       };
 
       const merged = [...prev, next];
-      if (merged.length > 60) {
-        return merged.slice(merged.length - 60);
+      const maxPoints = Math.max(metricsSettings.maxHistoryPoints, 10);
+      if (merged.length > maxPoints) {
+        return merged.slice(merged.length - maxPoints);
       }
       return merged;
     });
-  }, [latestMetrics]);
+  }, [latestMetrics, metricsSettings.maxHistoryPoints]);
 
   useEffect(() => {
     if (!id || !device?.isOnline) {
       return;
     }
 
+    if (metricsSettings.autoMode !== "auto") {
+      return;
+    }
+
+    const intervalMs =
+      Math.max(metricsSettings.refreshIntervalSeconds, 5) * 1000;
     let intervalId: number | undefined;
 
     intervalId = window.setInterval(() => {
@@ -195,14 +204,20 @@ export function DeviceDetails() {
       if (!hasRunningCollectMetrics) {
         createCollectMetricsJob(id).catch(() => {});
       }
-    }, 15000);
+    }, intervalMs);
 
     return () => {
       if (intervalId !== undefined) {
         window.clearInterval(intervalId);
       }
     };
-  }, [id, device?.isOnline, jobs]);
+  }, [
+    id,
+    device?.isOnline,
+    jobs,
+    metricsSettings.autoMode,
+    metricsSettings.refreshIntervalSeconds,
+  ]);
 
   if (!device) {
     return (

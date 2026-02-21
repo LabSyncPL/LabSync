@@ -9,6 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { DeviceDetails } from './pages/DeviceDetails';
 import { TasksPage } from './pages/TasksPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function App() {
   const [token, setTokenState] = useState<string | null>(() => getToken());
@@ -100,7 +101,7 @@ function App() {
           <Route path="scripts" element={<PlaceholderPage title="Task Runner" />} />
           <Route path="repository" element={<PlaceholderPage title="Repository" />} />
           <Route path="audit" element={<PlaceholderPage title="Audit Log" />} />
-          <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
