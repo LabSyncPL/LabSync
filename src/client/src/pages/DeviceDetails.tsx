@@ -160,28 +160,31 @@ export function DeviceDetails() {
     }
 
     const timestamp = new Date(latestMetrics.timestamp).getTime();
-    setMetricsHistory((prev) => {
-      const last = prev[prev.length - 1];
-      if (last && last.timestamp === timestamp) {
-        return prev;
-      }
-
-      const next: MetricsHistoryPoint = {
-        timestamp,
-        cpu: latestMetrics.cpuLoad,
-        memoryPercent: latestMetrics.memoryInfo.usagePercent,
-        diskPercent: latestMetrics.diskInfo.usagePercent,
-        netRx: latestMetrics.networkInfo.totalBytesReceivedPerSecond,
-        netTx: latestMetrics.networkInfo.totalBytesSentPerSecond,
-      };
-
-      const merged = [...prev, next];
-      const maxPoints = Math.max(metricsSettings.maxHistoryPoints, 10);
-      if (merged.length > maxPoints) {
-        return merged.slice(merged.length - maxPoints);
-      }
-      return merged;
-    });
+    const timerId = window.setTimeout(() => {
+      setMetricsHistory((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.timestamp === timestamp) {
+          return prev;
+        }
+        const next: MetricsHistoryPoint = {
+          timestamp,
+          cpu: latestMetrics.cpuLoad,
+          memoryPercent: latestMetrics.memoryInfo.usagePercent,
+          diskPercent: latestMetrics.diskInfo.usagePercent,
+          netRx: latestMetrics.networkInfo.totalBytesReceivedPerSecond,
+          netTx: latestMetrics.networkInfo.totalBytesSentPerSecond,
+        };
+        const merged = [...prev, next];
+        const maxPoints = Math.max(metricsSettings.maxHistoryPoints, 10);
+        if (merged.length > maxPoints) {
+          return merged.slice(merged.length - maxPoints);
+        }
+        return merged;
+      });
+    }, 0);
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [latestMetrics, metricsSettings.maxHistoryPoints]);
 
   useEffect(() => {
@@ -195,9 +198,7 @@ export function DeviceDetails() {
 
     const intervalMs =
       Math.max(metricsSettings.refreshIntervalSeconds, 5) * 1000;
-    let intervalId: number | undefined;
-
-    intervalId = window.setInterval(() => {
+    const intervalId = window.setInterval(() => {
       const hasRunningCollectMetrics = jobs.some(
         (j) => j.command === COLLECT_METRICS_COMMAND && j.status === 1,
       );
@@ -207,9 +208,7 @@ export function DeviceDetails() {
     }, intervalMs);
 
     return () => {
-      if (intervalId !== undefined) {
-        window.clearInterval(intervalId);
-      }
+      window.clearInterval(intervalId);
     };
   }, [
     id,
@@ -320,250 +319,243 @@ export function DeviceDetails() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-8">
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 lg:col-span-4 space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+            <h3 className="text-slate-400 uppercase text-xs font-semibold mb-4 tracking-wider">
+              System Information
+            </h3>
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-400 mr-4">
+                {getPlatformIcon(device.platform)}
+              </div>
+              <div>
+                <p className="text-white font-medium text-lg">
+                  {device.osVersion}
+                </p>
+                <p className="text-slate-500 text-xs">
+                  {DEVICE_PLATFORM_LABELS[device.platform]}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-slate-700/50">
+                <span className="text-slate-400">IP Address</span>
+                <span className="text-white font-mono text-xs">
+                  {device.ipAddress ?? "—"}
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-700/50">
+                <span className="text-slate-400">MAC Address</span>
+                <span className="text-white font-mono text-xs">
+                  {device.macAddress}
+                </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-slate-400">Last Seen</span>
+                <span
+                  className={
+                    device.isOnline ? "text-success" : "text-slate-400"
+                  }
+                >
+                  {formatLastSeen(device.lastSeenAt)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {device.hardwareInfo && (
             <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
               <h3 className="text-slate-400 uppercase text-xs font-semibold mb-4 tracking-wider">
-                System Information
+                Hardware Specs
               </h3>
-              <div className="flex items-center mb-6">
-                <div className="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-400 mr-4">
-                  {getPlatformIcon(device.platform)}
-                </div>
-                <div>
-                  <p className="text-white font-medium text-lg">
-                    {device.osVersion}
-                  </p>
-                  <p className="text-slate-500 text-xs">
-                    {DEVICE_PLATFORM_LABELS[device.platform]}
-                  </p>
-                </div>
+              <div className="text-slate-300 text-sm font-mono text-xs whitespace-pre-wrap">
+                {device.hardwareInfo}
               </div>
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-slate-700/50">
-                  <span className="text-slate-400">IP Address</span>
-                  <span className="text-white font-mono text-xs">
-                    {device.ipAddress ?? "—"}
-                  </span>
+            </div>
+          )}
+
+          <SystemMetricsCard
+            deviceId={device.id}
+            jobs={jobs}
+            isOnline={device.isOnline}
+          />
+
+          {latestMetrics && (
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-white">
+                  Live resource usage
+                </h3>
+                <span className="text-xs text-slate-500">
+                  Samples: {metricsHistory.length}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/60 flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold uppercase text-slate-400">
+                      CPU
+                    </span>
+                    <span className="text-lg font-bold text-white">
+                      {latestMetrics.cpuLoad.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Sparkline
+                    values={metricsHistory.map((p) => p.cpu)}
+                    colorClass="text-primary-400"
+                  />
                 </div>
-                <div className="flex justify-between py-2 border-b border-slate-700/50">
-                  <span className="text-slate-400">MAC Address</span>
-                  <span className="text-white font-mono text-xs">
-                    {device.macAddress}
-                  </span>
+                <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/60 flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold uppercase text-slate-400">
+                      Memory
+                    </span>
+                    <span className="text-lg font-bold text-white">
+                      {latestMetrics.memoryInfo.usagePercent.toFixed(0)}%
+                    </span>
+                  </div>
+                  <Sparkline
+                    values={metricsHistory.map((p) => p.memoryPercent)}
+                    colorClass="text-success"
+                  />
                 </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-slate-400">Last Seen</span>
-                  <span
-                    className={
-                      device.isOnline ? "text-success" : "text-slate-400"
-                    }
-                  >
-                    {formatLastSeen(device.lastSeenAt)}
-                  </span>
+                <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/60 flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold uppercase text-slate-400">
+                      Network
+                    </span>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-400">
+                        ↓{" "}
+                        {formatBytesPerSecond(
+                          latestMetrics.networkInfo.totalBytesReceivedPerSecond,
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        ↑{" "}
+                        {formatBytesPerSecond(
+                          latestMetrics.networkInfo.totalBytesSentPerSecond,
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Sparkline
+                    values={metricsHistory.map((p) => p.netRx / 1024)}
+                    colorClass="text-blue-400"
+                  />
                 </div>
               </div>
             </div>
+          )}
 
-            {device.hardwareInfo && (
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-                <h3 className="text-slate-400 uppercase text-xs font-semibold mb-4 tracking-wider">
-                  Hardware Specs
-                </h3>
-                <div className="text-slate-300 text-sm font-mono text-xs whitespace-pre-wrap">
-                  {device.hardwareInfo}
-                </div>
+          <div className="bg-slate-800 rounded-xl border border-slate-700">
+            <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+              <h3 className="font-semibold text-white">Recent Jobs</h3>
+              {device?.isApproved && (
+                <button
+                  onClick={() => setShowCreateJob(true)}
+                  className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-1.5 rounded-lg text-xs font-medium shadow-lg shadow-primary-500/20 flex items-center transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4 mr-1.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    ></path>
+                  </svg>
+                  New Job
+                </button>
+              )}
+            </div>
+            {jobs.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-sm">
+                No jobs yet. Create a job to execute commands on this device.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-700 max-h-[420px] overflow-y-auto scrollbar-dark">
+                {jobs.map((job) => {
+                  const statusColor =
+                    job.status === 2
+                      ? "text-success"
+                      : job.status === 3
+                        ? "text-danger"
+                        : job.status === 1
+                          ? "text-primary-400"
+                          : "text-warning";
+                  return (
+                    <div
+                      key={job.id}
+                      className="px-6 py-4 hover:bg-slate-700/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-white">
+                              {job.command}
+                            </span>
+                            <span
+                              className={`text-xs font-medium ${statusColor}`}
+                            >
+                              {JOB_STATUS_LABELS[job.status]}
+                            </span>
+                          </div>
+                          {job.arguments && (
+                            <p className="text-slate-400 text-xs font-mono mb-2">
+                              {job.arguments}
+                            </p>
+                          )}
+                          {job.output && (
+                            <div className="mt-2 p-2 bg-slate-900 rounded text-xs font-mono text-slate-300 max-h-20 overflow-y-auto scrollbar-dark">
+                              {job.output}
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4 text-right text-xs text-slate-500">
+                          <div>{new Date(job.createdAt).toLocaleString()}</div>
+                          {job.exitCode !== null && (
+                            <div className="mt-1">Exit: {job.exitCode}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <div className="col-span-12 lg:col-span-8 space-y-6">
-            <SystemMetricsCard
-              deviceId={device.id}
-              jobs={jobs}
-              isOnline={device.isOnline}
-            />
-
-            {latestMetrics && (
-              <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-white">
-                    Live resource usage
-                  </h3>
-                  <span className="text-xs text-slate-500">
-                    Samples: {metricsHistory.length}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/60 flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">
-                        CPU
-                      </span>
-                      <span className="text-lg font-bold text-white">
-                        {latestMetrics.cpuLoad.toFixed(1)}%
-                      </span>
-                    </div>
-                    <Sparkline
-                      values={metricsHistory.map((p) => p.cpu)}
-                      colorClass="text-primary-400"
-                    />
-                  </div>
-                  <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/60 flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">
-                        Memory
-                      </span>
-                      <span className="text-lg font-bold text-white">
-                        {latestMetrics.memoryInfo.usagePercent.toFixed(0)}%
-                      </span>
-                    </div>
-                    <Sparkline
-                      values={metricsHistory.map((p) => p.memoryPercent)}
-                      colorClass="text-success"
-                    />
-                  </div>
-                  <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/60 flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold uppercase text-slate-400">
-                        Network
-                      </span>
-                      <div className="text-right">
-                        <div className="text-xs text-slate-400">
-                          ↓{" "}
-                          {formatBytesPerSecond(
-                            latestMetrics.networkInfo
-                              .totalBytesReceivedPerSecond,
-                          )}
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          ↑{" "}
-                          {formatBytesPerSecond(
-                            latestMetrics.networkInfo.totalBytesSentPerSecond,
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <Sparkline
-                      values={metricsHistory.map((p) => p.netRx / 1024)}
-                      colorClass="text-blue-400"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-slate-800 rounded-xl border border-slate-700">
-              <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
-                <h3 className="font-semibold text-white">Recent Jobs</h3>
-                {device?.isApproved && (
-                  <button
-                    onClick={() => setShowCreateJob(true)}
-                    className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-1.5 rounded-lg text-xs font-medium shadow-lg shadow-primary-500/20 flex items-center transition-colors"
-                  >
-                    <svg
-                      className="w-4 h-4 mr-1.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      ></path>
-                    </svg>
-                    New Job
-                  </button>
-                )}
-              </div>
-              {jobs.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-sm">
-                  No jobs yet. Create a job to execute commands on this device.
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-700">
-                  {jobs.map((job) => {
-                    const statusColor =
-                      job.status === 2
-                        ? "text-success"
-                        : job.status === 3
-                          ? "text-danger"
-                          : job.status === 1
-                            ? "text-primary-400"
-                            : "text-warning";
-                    return (
-                      <div
-                        key={job.id}
-                        className="px-6 py-4 hover:bg-slate-700/30 transition-colors"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-white">
-                                {job.command}
-                              </span>
-                              <span
-                                className={`text-xs font-medium ${statusColor}`}
-                              >
-                                {JOB_STATUS_LABELS[job.status]}
-                              </span>
-                            </div>
-                            {job.arguments && (
-                              <p className="text-slate-400 text-xs font-mono mb-2">
-                                {job.arguments}
-                              </p>
-                            )}
-                            {job.output && (
-                              <div className="mt-2 p-2 bg-slate-900 rounded text-xs font-mono text-slate-300 max-h-20 overflow-y-auto">
-                                {job.output}
-                              </div>
-                            )}
-                          </div>
-                          <div className="ml-4 text-right text-xs text-slate-500">
-                            <div>
-                              {new Date(job.createdAt).toLocaleString()}
-                            </div>
-                            {job.exitCode !== null && (
-                              <div className="mt-1">Exit: {job.exitCode}</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          <div className="bg-slate-800 rounded-xl border border-slate-700 flex flex-col">
+            <div className="px-6 py-3 border-b border-slate-700 flex space-x-6">
+              <button className="text-primary-400 font-medium text-xs uppercase border-b-2 border-primary-500 py-3 -mb-3.5">
+                Agent Logs
+              </button>
+              <button className="text-slate-400 hover:text-white font-medium text-xs uppercase py-3">
+                Installed Software
+              </button>
+              <button className="text-slate-400 hover:text-white font-medium text-xs uppercase py-3">
+                Processes
+              </button>
             </div>
-
-            <div className="bg-slate-800 rounded-xl border border-slate-700 flex flex-col h-64">
-              <div className="px-6 py-3 border-b border-slate-700 flex space-x-6">
-                <button className="text-primary-400 font-medium text-xs uppercase border-b-2 border-primary-500 py-3 -mb-3.5">
-                  Agent Logs
-                </button>
-                <button className="text-slate-400 hover:text-white font-medium text-xs uppercase py-3">
-                  Installed Software
-                </button>
-                <button className="text-slate-400 hover:text-white font-medium text-xs uppercase py-3">
-                  Processes
-                </button>
-              </div>
-              <div className="flex-1 bg-console p-4 font-mono text-xs overflow-y-auto rounded-b-xl">
-                <div className="space-y-1 text-slate-300">
-                  <div className="flex">
-                    <span className="text-slate-500 min-w-[140px]">
-                      {new Date().toLocaleString()}
-                    </span>
-                    <span className="text-blue-400 mr-2">[INFO]</span>
-                    <span>Device connected to SignalR Hub.</span>
-                  </div>
-                  <div className="flex opacity-50">
-                    <span className="text-slate-500 min-w-[140px]">&gt;_</span>
-                    <span className="text-slate-300 animate-pulse">
-                      Waiting for commands...
-                    </span>
-                  </div>
+            <div className="flex-1 bg-console p-4 font-mono text-xs overflow-y-auto rounded-b-xl max-h-[360px] scrollbar-dark">
+              <div className="space-y-1 text-slate-300">
+                <div className="flex">
+                  <span className="text-slate-500 min-w-[140px]">
+                    {new Date().toLocaleString()}
+                  </span>
+                  <span className="text-blue-400 mr-2">[INFO]</span>
+                  <span>Device connected to SignalR Hub.</span>
+                </div>
+                <div className="flex opacity-50">
+                  <span className="text-slate-500 min-w-[140px]">&gt;_</span>
+                  <span className="text-slate-300 animate-pulse">
+                    Waiting for commands...
+                  </span>
                 </div>
               </div>
             </div>

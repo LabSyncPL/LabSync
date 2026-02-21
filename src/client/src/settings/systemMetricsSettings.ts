@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export type MetricsAutoMode = "manual" | "auto" | "background";
 
@@ -9,6 +9,7 @@ export interface SystemMetricsSettings {
 }
 
 const STORAGE_KEY = "labsync.systemMetricsSettings.v1";
+const SETTINGS_EVENT = "labsync.systemMetricsSettings.change";
 
 function getDefaultSystemMetricsSettings(): SystemMetricsSettings {
   return {
@@ -59,7 +60,10 @@ function saveSystemMetricsSettings(settings: SystemMetricsSettings): void {
   }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {}
+    window.dispatchEvent(new Event(SETTINGS_EVENT));
+  } catch {
+    void 0;
+  }
 }
 
 export function useSystemMetricsSettings(): [
@@ -74,6 +78,23 @@ export function useSystemMetricsSettings(): [
     setSettings(next);
     saveSystemMetricsSettings(next);
   };
+
+  useEffect(() => {
+    const handleChange = () => {
+      setSettings(loadSystemMetricsSettings());
+    };
+    const storageHandler = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        handleChange();
+      }
+    };
+    window.addEventListener(SETTINGS_EVENT, handleChange);
+    window.addEventListener("storage", storageHandler);
+    return () => {
+      window.removeEventListener(SETTINGS_EVENT, handleChange);
+      window.removeEventListener("storage", storageHandler);
+    };
+  }, []);
 
   return [settings, updateSettings];
 }
