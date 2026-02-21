@@ -22,6 +22,16 @@ function formatBytesGB(gb: number): string {
   return `${gb.toFixed(1)} GB`;
 }
 
+function formatBytesPerSecond(bytesPerSecond: number): string {
+  if (bytesPerSecond <= 0) return '0 B/s';
+  const kb = bytesPerSecond / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB/s`;
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(1)} MB/s`;
+  const gb = mb / 1024;
+  return `${gb.toFixed(1)} GB/s`;
+}
+
 function ProgressBar({ percent, label, valueLabel, variant = 'primary' }: {
   percent: number;
   label: string;
@@ -193,6 +203,52 @@ export function SystemMetricsCard({ deviceId, jobs, isOnline }: SystemMetricsCar
               percent={metrics.diskInfo.usagePercent}
               variant={metrics.diskInfo.usagePercent > 90 ? 'danger' : metrics.diskInfo.usagePercent > 85 ? 'warning' : 'primary'}
             />
+
+            {metrics.diskInfo.volumes.length > 0 && (
+              <div className="mt-2 border-t border-slate-700/50 pt-3">
+                <h4 className="text-slate-400 uppercase text-xs font-semibold mb-2 tracking-wider">Disks</h4>
+                <div className="space-y-1 text-xs text-slate-300">
+                  {metrics.diskInfo.volumes.map((v) => (
+                    <div key={v.name} className="flex justify-between gap-2">
+                      <span className="font-mono">{v.name}</span>
+                      <span className="text-slate-400">
+                        {formatBytesGB(v.usedGB)} / {formatBytesGB(v.totalGB)} ({v.usagePercent.toFixed(0)}%)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-700/50">
+              <h4 className="text-slate-400 uppercase text-xs font-semibold mb-3 tracking-wider">Network</h4>
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-col">
+                  <span className="text-slate-500 text-xs">Received</span>
+                  <span className="text-slate-300 font-mono text-xs">
+                    {formatBytesPerSecond(metrics.networkInfo.totalBytesReceivedPerSecond)}
+                  </span>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className="text-slate-500 text-xs">Sent</span>
+                  <span className="text-slate-300 font-mono text-xs">
+                    {formatBytesPerSecond(metrics.networkInfo.totalBytesSentPerSecond)}
+                  </span>
+                </div>
+              </div>
+              {metrics.networkInfo.interfaces.length > 0 && (
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-400">
+                  {metrics.networkInfo.interfaces.slice(0, 4).map((iface) => (
+                    <div key={iface.name} className="flex flex-col">
+                      <span className="text-slate-300 font-mono truncate">{iface.name}</span>
+                      <span className="truncate">
+                        ↓ {formatBytesPerSecond(iface.bytesReceivedPerSecond)} · ↑ {formatBytesPerSecond(iface.bytesSentPerSecond)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="pt-2 border-t border-slate-700/50">
               <h4 className="text-slate-400 uppercase text-xs font-semibold mb-3 tracking-wider">System</h4>
