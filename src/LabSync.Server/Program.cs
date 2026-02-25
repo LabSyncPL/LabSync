@@ -151,5 +151,3 @@ if (!string.IsNullOrEmpty(urls))
 }
 
 app.Run();
-
-app.Run();
