@@ -12,7 +12,7 @@ if (builder.Environment.IsDevelopment())
 
 builder.Configuration.AddEnvironmentVariables();
 
-var serverUrl = builder.Configuration["ServerUrl"]
+var serverUrl = builder.Configuration["AGENT_SERVER_URL"]
     ?? throw new InvalidOperationException("ServerUrl is not configured. Please set it in appsettings.json or an environment variable.");
 
 builder.Services.AddSingleton<AgentIdentityService>();

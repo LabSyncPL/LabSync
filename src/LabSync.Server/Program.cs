@@ -139,4 +139,17 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<AgentHub>("/agentHub");
+
+var urls = builder.Configuration["ASPNETCORE_URLS"];
+if (!string.IsNullOrEmpty(urls))
+{
+    app.Urls.Clear();
+    foreach (var url in urls.Split(';', StringSplitOptions.RemoveEmptyEntries))
+    {
+        app.Urls.Add(url);
+    }
+}
+
+app.Run();
+
 app.Run();
