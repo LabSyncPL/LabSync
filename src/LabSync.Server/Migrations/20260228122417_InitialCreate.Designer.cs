@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LabSync.Server.Migrations
 {
     [DbContext(typeof(LabSyncDbContext))]
-    [Migration("20260227235723_InitialCreate")]
+    [Migration("20260228122417_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

@@ -9,7 +9,7 @@ import {
   createCollectMetricsJob,
 } from "../api/jobs";
 import { DEVICE_PLATFORM_LABELS } from "../types/device";
-import { JOB_STATUS_LABELS, type JobDto } from "../types/job";
+import { JOB_STATUS_LABELS, JobStatus, type JobDto } from "../types/job";
 import { CreateJobModal } from "../components/CreateJobModal";
 import { SystemMetricsCard } from "../components/SystemMetricsCard";
 import type { SystemMetricsDto } from "../types/systemMetrics";
@@ -128,7 +128,7 @@ export function DeviceDetails() {
     refetchInterval: (query) => {
       const data = query.state.data as JobDto[] | undefined;
       const hasRunningCollectMetrics = data?.some(
-        (j) => j.command === "CollectMetrics" && j.status === 1,
+        (j) => j.command === "CollectMetrics" && j.status === JobStatus.Running,
       );
       return hasRunningCollectMetrics ? 2000 : 5000;
     },
@@ -142,7 +142,7 @@ export function DeviceDetails() {
   );
 
   const latestMetricsJob = useMemo(
-    () => metricsJobs.find((j) => j.status === 2 && j.output),
+    () => metricsJobs.find((j) => j.status === JobStatus.Completed && j.output),
     [metricsJobs],
   );
 
@@ -200,7 +200,9 @@ export function DeviceDetails() {
       Math.max(metricsSettings.refreshIntervalSeconds, 5) * 1000;
     const intervalId = window.setInterval(() => {
       const hasRunningCollectMetrics = jobs.some(
-        (j) => j.command === COLLECT_METRICS_COMMAND && j.status === 1,
+        (j) =>
+          j.command === COLLECT_METRICS_COMMAND &&
+          j.status === JobStatus.Running,
       );
       if (!hasRunningCollectMetrics) {
         createCollectMetricsJob(id).catch(() => {});
@@ -362,17 +364,6 @@ export function DeviceDetails() {
               </div>
             </div>
           </div>
-
-          {device.hardwareInfo && (
-            <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-              <h3 className="text-slate-400 uppercase text-xs font-semibold mb-4 tracking-wider">
-                Hardware Specs
-              </h3>
-              <div className="text-slate-300 text-sm font-mono text-xs whitespace-pre-wrap">
-                {device.hardwareInfo}
-              </div>
-            </div>
-          )}
 
           <SystemMetricsCard
             deviceId={device.id}

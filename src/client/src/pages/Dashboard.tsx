@@ -1,17 +1,18 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchDevices, approveDevice, devicesQueryKey } from '../api/devices';
-import { clearToken } from '../auth/authStore';
-import { useNavigate } from 'react-router-dom';
-import type { DeviceDto } from '../types/device';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchDevices, approveDevice, devicesQueryKey } from "../api/devices";
+import { clearToken } from "../auth/authStore";
+import { useNavigate } from "react-router-dom";
+import type { DeviceDto } from "../types/device";
+import { useState } from "react";
 
 function formatLastSeen(value: string | null): string {
-  if (value == null) return '—';
+  if (value == null) return "—";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return "—";
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'Just now';
+  if (diffMins < 1) return "Just now";
   if (diffMins < 60) return `${diffMins} min ago`;
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
@@ -22,13 +23,21 @@ function getPlatformIcon(platform: number) {
   switch (platform) {
     case 1: // Windows
       return (
-        <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+        <svg
+          className="w-4 h-4 text-blue-400"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
           <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
         </svg>
       );
     case 2: // Linux
       return (
-        <svg className="w-4 h-4 text-yellow-500" viewBox="0 0 24 24" fill="currentColor">
+        <svg
+          className="w-4 h-4 text-yellow-500"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
           <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z" />
         </svg>
       );
@@ -40,11 +49,20 @@ function getPlatformIcon(platform: number) {
 export function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: devices = [], isLoading, refetch } = useQuery({
+  const {
+    data: devices = [],
+    isLoading,
+    isError,
+    error,
+    isFetching,
+    refetch,
+  } = useQuery({
     queryKey: devicesQueryKey,
     queryFn: fetchDevices,
     refetchInterval: 30000,
   });
+
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const approveMutation = useMutation({
     mutationFn: approveDevice,
@@ -53,14 +71,17 @@ export function Dashboard() {
     },
   });
 
-  const handleApprove = (e: React.MouseEvent, device: DeviceDto) => {
+  const handleApprove = async (e: React.MouseEvent, device: DeviceDto) => {
     e.stopPropagation();
     if (device.isApproved) return;
-    approveMutation.mutate(device.id, {
-      onError: () => {
-        alert('Failed to approve device.');
-      },
-    });
+    try {
+      setApprovingId(device.id);
+      await approveMutation.mutateAsync(device.id);
+    } catch {
+      alert("Failed to approve device.");
+    } finally {
+      setApprovingId((prev) => (prev === device.id ? null : prev));
+    }
   };
 
   const totalDevices = devices.length;
@@ -69,7 +90,7 @@ export function Dashboard() {
 
   const handleLogout = () => {
     clearToken();
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
@@ -78,6 +99,7 @@ export function Dashboard() {
         <h1 className="text-xl font-semibold text-white">Overview</h1>
         <div className="flex items-center space-x-4">
           <button
+            type="button"
             onClick={handleLogout}
             className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
           >
@@ -91,12 +113,26 @@ export function Dashboard() {
           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-slate-400 text-xs font-medium uppercase">Total Devices</p>
-                <h3 className="text-3xl font-bold text-white mt-1">{totalDevices}</h3>
+                <p className="text-slate-400 text-xs font-medium uppercase">
+                  Total Devices
+                </p>
+                <h3 className="text-3xl font-bold text-white mt-1">
+                  {totalDevices}
+                </h3>
               </div>
               <div className="p-2 bg-slate-700 rounded-lg">
-                <svg className="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                <svg
+                  className="w-6 h-6 text-primary-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  ></path>
                 </svg>
               </div>
             </div>
@@ -105,28 +141,60 @@ export function Dashboard() {
           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-slate-400 text-xs font-medium uppercase">Online Now</p>
-                <h3 className="text-3xl font-bold text-success mt-1">{onlineDevices}</h3>
+                <p className="text-slate-400 text-xs font-medium uppercase">
+                  Online Now
+                </p>
+                <h3 className="text-3xl font-bold text-success mt-1">
+                  {onlineDevices}
+                </h3>
               </div>
               <div className="p-2 bg-slate-700 rounded-lg">
-                <svg className="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"></path>
+                <svg
+                  className="w-6 h-6 text-success"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
+                  ></path>
                 </svg>
               </div>
             </div>
           </div>
 
-          <div className={`bg-slate-800 p-6 rounded-xl border ${pendingDevices > 0 ? 'border-warning/20' : 'border-slate-700'}`}>
+          <div
+            className={`bg-slate-800 p-6 rounded-xl border ${pendingDevices > 0 ? "border-warning/20" : "border-slate-700"}`}
+          >
             <div className="flex justify-between items-start">
               <div>
-                <p className={`text-xs font-medium uppercase ${pendingDevices > 0 ? 'text-warning' : 'text-slate-400'}`}>
+                <p
+                  className={`text-xs font-medium uppercase ${pendingDevices > 0 ? "text-warning" : "text-slate-400"}`}
+                >
                   Pending Approval
                 </p>
-                <h3 className="text-3xl font-bold text-white mt-1">{pendingDevices}</h3>
+                <h3 className="text-3xl font-bold text-white mt-1">
+                  {pendingDevices}
+                </h3>
               </div>
-              <div className={`p-2 rounded-lg ${pendingDevices > 0 ? 'bg-warning/10' : 'bg-slate-700'}`}>
-                <svg className={`w-6 h-6 ${pendingDevices > 0 ? 'text-warning' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              <div
+                className={`p-2 rounded-lg ${pendingDevices > 0 ? "bg-warning/10" : "bg-slate-700"}`}
+              >
+                <svg
+                  className={`w-6 h-6 ${pendingDevices > 0 ? "text-warning" : "text-slate-500"}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  ></path>
                 </svg>
               </div>
             </div>
@@ -137,16 +205,34 @@ export function Dashboard() {
           <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
             <h2 className="font-semibold text-white">Registered Devices</h2>
             <button
+              type="button"
               onClick={() => refetch()}
-              className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors"
+              className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
+              disabled={isFetching}
             >
-              Refresh
+              {isFetching ? "Refreshing…" : "Refresh"}
             </button>
           </div>
           {isLoading ? (
-            <div className="p-8 text-center text-slate-400">Loading devices…</div>
+            <div className="p-8 text-center text-slate-400">
+              Loading devices…
+            </div>
+          ) : isError ? (
+            <div className="p-8 text-center text-danger">
+              Failed to load devices.{" "}
+              {error instanceof Error ? error.message : "Unknown error."}{" "}
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="underline text-danger hover:text-danger/80"
+              >
+                Retry
+              </button>
+            </div>
           ) : devices.length === 0 ? (
-            <div className="p-8 text-center text-slate-400">No devices registered.</div>
+            <div className="p-8 text-center text-slate-400">
+              No devices registered.
+            </div>
           ) : (
             <table className="w-full text-left">
               <thead className="bg-slate-700/50 text-slate-400 text-xs uppercase">
@@ -165,7 +251,7 @@ export function Dashboard() {
                     key={device.id}
                     onClick={() => navigate(`/devices/${device.id}`)}
                     className={`hover:bg-slate-700/30 transition-colors group cursor-pointer ${
-                      !device.isApproved ? 'bg-warning/5' : ''
+                      !device.isApproved ? "bg-warning/5" : ""
                     }`}
                   >
                     <td className="px-6 py-4">
@@ -187,26 +273,38 @@ export function Dashboard() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 font-medium text-white">{device.hostname}</td>
+                    <td className="px-6 py-4 font-medium text-white">
+                      {device.hostname}
+                    </td>
                     <td className="px-6 py-4 flex items-center gap-2">
                       {getPlatformIcon(device.platform)}
                       <span className="text-slate-300">{device.osVersion}</span>
                     </td>
-                    <td className="px-6 py-4 text-slate-400 font-mono text-xs">{device.ipAddress ?? '—'}</td>
-                    <td className="px-6 py-4 text-slate-400">{formatLastSeen(device.lastSeenAt)}</td>
+                    <td className="px-6 py-4 text-slate-400 font-mono text-xs">
+                      {device.ipAddress ?? "—"}
+                    </td>
+                    <td className="px-6 py-4 text-slate-400">
+                      {formatLastSeen(device.lastSeenAt)}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {!device.isApproved ? (
                           <button
+                            type="button"
                             onClick={(e) => handleApprove(e, device)}
-                            disabled={approveMutation.isPending}
+                            disabled={approvingId === device.id}
                             className="bg-primary-600 hover:bg-primary-500 text-white px-3 py-1 rounded text-xs font-medium shadow-lg shadow-primary-500/20 disabled:opacity-50"
                           >
-                            Approve
+                            {approvingId === device.id
+                              ? "Approving…"
+                              : "Approve"}
                           </button>
                         ) : (
                           <>
-                            <button className="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors text-xs">
+                            <button
+                              type="button"
+                              className="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors text-xs"
+                            >
                               Details
                             </button>
                           </>

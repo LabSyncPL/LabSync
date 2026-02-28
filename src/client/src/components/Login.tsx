@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { login } from '../api/auth';
-import { setToken } from '../auth/authStore';
+import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { login } from "../api/auth";
+import { setToken } from "../auth/authStore";
 
 interface LoginProps {
   onSetupRequired?: () => void;
@@ -9,48 +9,53 @@ interface LoginProps {
 
 export function Login({ onSetupRequired }: LoginProps) {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      setError('');
+      setError("");
       setIsSubmitting(true);
       try {
         const res = await login({ username, password });
         setToken(res.accessToken);
-        navigate('/');
+        navigate("/");
       } catch (err: unknown) {
-        const status = err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { status?: number } }).response?.status
-          : undefined;
+        const status =
+          err && typeof err === "object" && "response" in err
+            ? (err as { response?: { status?: number } }).response?.status
+            : undefined;
         if (status === 503 && onSetupRequired) {
           onSetupRequired();
           return;
         }
-        const message =
-          err && typeof err === 'object' && 'response' in err
-            ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-            : 'Login failed.';
-        setError(message ?? 'Login failed.');
+        const message = err instanceof Error ? err.message : "Login failed.";
+        setError(message);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [username, password, onSetupRequired, navigate]
+    [username, password, onSetupRequired, navigate],
   );
 
   return (
     <div className="max-w-md w-full mx-auto">
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-8 shadow-xl">
-        <h2 className="text-2xl font-semibold text-white mb-2 text-center">Admin login</h2>
-        <p className="text-slate-400 text-sm text-center mb-6">Sign in to access LabSync</p>
+        <h2 className="text-2xl font-semibold text-white mb-2 text-center">
+          Admin login
+        </h2>
+        <p className="text-slate-400 text-sm text-center mb-6">
+          Sign in to access LabSync
+        </p>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-slate-300 text-sm font-medium mb-1.5" htmlFor="username">
+            <label
+              className="block text-slate-300 text-sm font-medium mb-1.5"
+              htmlFor="username"
+            >
               Username
             </label>
             <input
@@ -64,7 +69,10 @@ export function Login({ onSetupRequired }: LoginProps) {
             />
           </div>
           <div>
-            <label className="block text-slate-300 text-sm font-medium mb-1.5" htmlFor="password">
+            <label
+              className="block text-slate-300 text-sm font-medium mb-1.5"
+              htmlFor="password"
+            >
               Password
             </label>
             <input
@@ -87,7 +95,7 @@ export function Login({ onSetupRequired }: LoginProps) {
             className="w-full bg-primary-600 hover:bg-primary-500 text-white px-4 py-2.5 rounded-lg font-semibold shadow-lg shadow-primary-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
+            {isSubmitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
       </div>

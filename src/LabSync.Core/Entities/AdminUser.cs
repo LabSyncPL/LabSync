@@ -31,9 +31,6 @@ public class AdminUser
         PasswordHash = newPasswordHash;
     }
 
-    /// <summary>
-    /// Zmienia nazwę użytkownika.
-    /// </summary>
     public void ChangeUsername(string newUsername)
     {
         if (string.IsNullOrWhiteSpace(newUsername))

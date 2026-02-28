@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCollectMetricsJob, deviceJobsQueryKey, COLLECT_METRICS_COMMAND } from '../api/jobs';
 import type { JobDto } from '../types/job';
+import { JobStatus } from '../types/job';
 import type { SystemMetricsDto } from '../types/systemMetrics';
 import { parseSystemMetricsFromJson } from '../types/systemMetrics';
 
-const JOB_STATUS_COMPLETED = 2;
-const JOB_STATUS_RUNNING = 1;
+const JOB_STATUS_COMPLETED = JobStatus.Completed;
+const JOB_STATUS_RUNNING = JobStatus.Running;
 
 interface SystemMetricsCardProps {
   deviceId: string;
