@@ -1,18 +1,15 @@
+﻿using LabSync.Core.Interfaces;
 using System.Security.Cryptography;
 using System.Text;
-using LabSync.Core.Interfaces;
 
 namespace LabSync.Server.Services;
 
-/// <summary>
-/// PBKDF2-based password hasher with per-password salt. Suitable for storing admin passwords.
-/// </summary>
 public class PasswordHasher : IPasswordHasher
 {
-    private const int SaltSize = 16;
-    private const int HashSize = 32;
-    private const int Iterations = 100_000;
-    private const char Separator = ':';
+    private const int  SaltSize   = 16;
+    private const int  HashSize   = 32;
+    private const int  Iterations = 100_000;
+    private const char Separator  = ':';
 
     public string Hash(string password)
     {

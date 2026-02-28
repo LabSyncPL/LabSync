@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -27,7 +26,7 @@ namespace LabSync.Server.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "DeviceGroup",
+                name: "DeviceGroups",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -36,7 +35,7 @@ namespace LabSync.Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceGroup", x => x.Id);
+                    table.PrimaryKey("PK_DeviceGroups", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -46,26 +45,26 @@ namespace LabSync.Server.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Hostname = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     IsApproved = table.Column<bool>(type: "boolean", nullable: false),
-                    MacAddress = table.Column<string>(type: "text", nullable: false),
+                    MacAddress = table.Column<string>(type: "character(17)", fixedLength: true, maxLength: 17, nullable: false),
                     IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: true),
-                    Platform = table.Column<int>(type: "integer", nullable: false),
+                    Platform = table.Column<byte>(type: "smallint", nullable: false),
                     OsVersion = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<byte>(type: "smallint", nullable: false),
                     IsOnline = table.Column<bool>(type: "boolean", nullable: false),
                     RegisteredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     LastSeenAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     GroupId = table.Column<Guid>(type: "uuid", nullable: true),
-                    HardwareInfo = table.Column<JsonDocument>(type: "jsonb", nullable: true),
                     DeviceKeyHash = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Devices", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Devices_DeviceGroup_GroupId",
+                        name: "FK_Devices_DeviceGroups_GroupId",
                         column: x => x.GroupId,
-                        principalTable: "DeviceGroup",
-                        principalColumn: "Id");
+                        principalTable: "DeviceGroups",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -77,9 +76,9 @@ namespace LabSync.Server.Migrations
                     Command = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Arguments = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
                     ScriptPayload = table.Column<string>(type: "text", nullable: true),
-                    Status = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<byte>(type: "smallint", nullable: false),
                     ExitCode = table.Column<int>(type: "integer", nullable: true),
-                    Output = table.Column<string>(type: "text", nullable: true),
+                    Output = table.Column<string>(type: "character varying(50000)", maxLength: 50000, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     FinishedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
@@ -130,7 +129,7 @@ namespace LabSync.Server.Migrations
                 name: "Devices");
 
             migrationBuilder.DropTable(
-                name: "DeviceGroup");
+                name: "DeviceGroups");
         }
     }
 }

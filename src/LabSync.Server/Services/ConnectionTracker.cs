@@ -1,11 +1,7 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 
 namespace LabSync.Server.Services;
 
-/// <summary>
-/// Tracks active SignalR connections for each device. One connection per device;
-/// when a device reconnects, the previous connection is replaced.
-/// </summary>
 public class ConnectionTracker
 {
     private readonly ConcurrentDictionary<Guid, string> _deviceToConnection = new();
