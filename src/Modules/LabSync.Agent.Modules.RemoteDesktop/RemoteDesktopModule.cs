@@ -4,7 +4,9 @@ using LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 using LabSync.Agent.Modules.RemoteDesktop.Capture;
 using LabSync.Agent.Modules.RemoteDesktop.Infrastructure;
 using LabSync.Agent.Modules.RemoteDesktop.Input;
+using LabSync.Agent.Modules.RemoteDesktop.Models;
 using LabSync.Agent.Modules.RemoteDesktop.Services;
+using LabSync.Agent.Modules.RemoteDesktop.WebRtc;
 using LabSync.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -36,12 +38,16 @@ public class RemoteDesktopModule : IRemoteDesktopModule
 
         var captureFactory = ScreenCaptureFactory.Create(serviceProvider);
         var inputFactory = InputInjectionFactory.Create(serviceProvider);
+        var peerFactory = new PlaceholderWebRtcPeerConnectionFactory(signalingService,
+            serviceProvider.GetService(typeof(ILoggerFactory)) is ILoggerFactory pf ? pf.CreateLogger<PlaceholderWebRtcPeerConnectionService>() : Microsoft.Extensions.Logging.Abstractions.NullLogger<PlaceholderWebRtcPeerConnectionService>.Instance);
 
         _sessionManager = new RemoteSessionManager(
             signalingService,
             captureFactory,
             inputFactory,
-            serviceProvider.GetService(typeof(ILoggerFactory)) is ILoggerFactory lm ? lm.CreateLogger<RemoteSessionManager>() : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteSessionManager>.Instance);
+            peerFactory,
+            serviceProvider.GetService(typeof(ILoggerFactory)) is ILoggerFactory lm ? lm.CreateLogger<RemoteSessionManager>() : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteSessionManager>.Instance,
+            SessionOptions.Default);
 
         _logger?.LogInformation("RemoteDesktop module initialized. Platform: {Platform}", RuntimeInformation.OSDescription);
         return Task.CompletedTask;

@@ -18,7 +18,12 @@ public class PlaceholderVideoEncoder : IVideoEncoder
     public Task InitializeAsync(EncoderOptions options, CancellationToken cancellationToken = default)
     {
         _options = options;
-        _channel = Channel.CreateUnbounded<EncodedFrame>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+        _channel = Channel.CreateBounded<EncodedFrame>(new BoundedChannelOptions(2)
+        {
+            SingleReader = true,
+            SingleWriter = true,
+            FullMode = BoundedChannelFullMode.DropOldest
+        });
         return Task.CompletedTask;
     }
 
@@ -26,7 +31,8 @@ public class PlaceholderVideoEncoder : IVideoEncoder
     {
         if (_channel == null)
             return Task.CompletedTask;
-        _channel.Writer.TryWrite(new EncodedFrame(Array.Empty<byte>(), false, DateTime.UtcNow));
+        if (!_channel.Writer.TryWrite(new EncodedFrame(Array.Empty<byte>(), false, DateTime.UtcNow)))
+            _logger.LogTrace("Encoder channel full, frame dropped.");
         return Task.CompletedTask;
     }
 

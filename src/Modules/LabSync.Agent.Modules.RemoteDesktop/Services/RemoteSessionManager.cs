@@ -1,7 +1,10 @@
+using System.Collections.Concurrent;
+using System.Threading.Channels;
 using LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 using LabSync.Agent.Modules.RemoteDesktop.Capture;
 using LabSync.Agent.Modules.RemoteDesktop.Encoding;
 using LabSync.Agent.Modules.RemoteDesktop.Input;
+using LabSync.Agent.Modules.RemoteDesktop.Models;
 using LabSync.Agent.Modules.RemoteDesktop.WebRtc;
 using LabSync.Core.Dto;
 using Microsoft.Extensions.Logging;
@@ -13,87 +16,114 @@ public class RemoteSessionManager : IRemoteSessionManager
     private readonly IRemoteDesktopSignalingService _signalingService;
     private readonly IScreenCaptureFactory _captureFactory;
     private readonly IInputInjectionFactory _inputFactory;
+    private readonly IWebRtcPeerConnectionFactory _peerFactory;
     private readonly ILogger<RemoteSessionManager> _logger;
-    private readonly Dictionary<Guid, ActiveSessionContext> _sessions = new();
-    private readonly object _gate = new();
-
-    private static readonly TimeSpan SignalingAnswerTimeout = TimeSpan.FromSeconds(30);
+    private readonly SessionOptions _options;
+    private readonly ConcurrentDictionary<string, RemoteSessionContext> _sessions = new();
 
     public RemoteSessionManager(
         IRemoteDesktopSignalingService signalingService,
         IScreenCaptureFactory captureFactory,
         IInputInjectionFactory inputFactory,
-        ILogger<RemoteSessionManager> logger)
+        IWebRtcPeerConnectionFactory peerFactory,
+        ILogger<RemoteSessionManager> logger,
+        SessionOptions? options = null)
     {
         _signalingService = signalingService;
         _captureFactory = captureFactory;
         _inputFactory = inputFactory;
+        _peerFactory = peerFactory;
         _logger = logger;
+        _options = options ?? SessionOptions.Default;
     }
 
     public async Task<RemoteSessionResult> StartSessionAsync(StartSessionRequest request, CancellationToken cancellationToken = default)
     {
         var sessionId = Guid.NewGuid();
+        var key = sessionId.ToString("N");
         IScreenCaptureService? capture = null;
         IVideoEncoder? encoder = null;
         IWebRtcPeerConnectionService? peer = null;
         IInputInjectionService? input = null;
+        CancellationTokenSource? lifecycleCts = null;
 
         try
         {
+            lifecycleCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var cts = lifecycleCts;
+
             capture = _captureFactory.Create();
-            await capture.StartCaptureAsync(cancellationToken);
+            await capture.StartCaptureAsync(cts.Token);
 
-            encoder = await CreateEncoderAsync(capture, cancellationToken);
-            peer = await CreatePeerConnectionAsync(sessionId, encoder, cancellationToken);
+            encoder = CreateEncoder();
+            await encoder.InitializeAsync(new EncoderOptions(1920, 1080), cts.Token);
 
-            _signalingService.SubscribeToIceCandidates(sessionId, async c =>
+            peer = _peerFactory.Create(sessionId);
+            peer.OnIceCandidate += (_, candidate) =>
             {
-                if (peer != null)
-                    await peer.AddIceCandidateAsync(c.Candidate, c.SdpMid, c.SdpMLineIndex, CancellationToken.None);
+                if (!cts.Token.IsCancellationRequested)
+                    _ = SafeSendIceCandidate(sessionId, candidate);
+            };
+
+            _signalingService.SubscribeToIceCandidates(sessionId, c =>
+            {
+                if (!cts.Token.IsCancellationRequested && peer != null)
+                    _ = SafeAddIceCandidate(peer, c, cts.Token);
             });
 
-            await peer.CreateOfferAsync(cancellationToken);
+            await peer.CreateOfferAsync(cts.Token);
             var offer = new RemoteDesktopOfferDto(sessionId, request.DeviceId, "offer", peer.GetLocalSdpOffer());
-            await _signalingService.SendOfferAsync(offer, cancellationToken);
+            await _signalingService.SendOfferAsync(offer, cts.Token);
 
-            var answerTask = _signalingService.WaitForAnswerAsync(sessionId, SignalingAnswerTimeout, cancellationToken);
-            var answer = await answerTask;
+            var answer = await _signalingService.WaitForAnswerAsync(sessionId, _options.OfferTimeout, cts.Token);
             if (answer == null)
             {
-                _logger.LogWarning("Remote desktop session {SessionId}: no answer received within timeout.", sessionId);
-                return new RemoteSessionResult(false, null, "Signaling timeout: no answer received.");
+                _logger.LogWarning("Session {SessionId}: offer timeout - no answer within {Timeout}s.",
+                    sessionId, _options.OfferTimeout.TotalSeconds);
+                throw new TimeoutException($"No answer received within {_options.OfferTimeout.TotalSeconds}s.");
             }
 
-            await peer.SetRemoteAnswerAsync(answer.SdpType, answer.Sdp, cancellationToken);
+            await peer.SetRemoteAnswerAsync(answer.SdpType, answer.Sdp, cts.Token);
 
             input = _inputFactory.Create();
-            var dataChannelStream = await peer.OpenDataChannelAsync("input", cancellationToken);
-            _ = RunInputLoopAsync(dataChannelStream, input, cancellationToken);
+            var dataChannelStream = await peer.OpenDataChannelAsync("input", cts.Token);
 
-            await peer.AddVideoTrackFromEncodedStreamAsync(encoder.GetEncodedStreamAsync(cancellationToken), cancellationToken);
-            var streamCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _ = RunStreamingLoopAsync(capture, encoder, peer, streamCts.Token);
-
-            lock (_gate)
+            var captureChannel = Channel.CreateBounded<CaptureFrame>(new BoundedChannelOptions(_options.CaptureChannelCapacity)
             {
-                _sessions[sessionId] = new ActiveSessionContext(
-                    streamCts,
-                    capture,
-                    encoder,
-                    peer,
-                    input,
-                    _signalingService,
-                    sessionId);
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = BoundedChannelFullMode.Wait
+            });
+
+            var captureTask = RunCaptureLoopAsync(capture, captureChannel.Writer, cts.Token);
+            var encodeTask = RunEncodingLoopAsync(captureChannel.Reader, encoder, cts.Token);
+            var streamTask = peer.AddVideoTrackFromEncodedStreamAsync(encoder.GetEncodedStreamAsync(cts.Token), cts.Token);
+            var inputTask = RunInputLoopAsync(dataChannelStream, input, cts.Token);
+
+            var ctx = new RemoteSessionContext(sessionId, capture, encoder, peer, input, _signalingService, lifecycleCts)
+            {
+                State = SessionState.Connected,
+                OfferSentAt = DateTime.UtcNow,
+                AnswerReceivedAt = DateTime.UtcNow,
+                ConnectedAt = DateTime.UtcNow,
+                LastActivityAt = DateTime.UtcNow
+            };
+
+            if (!_sessions.TryAdd(key, ctx))
+            {
+                await RollbackAsync(capture, encoder, peer, input, lifecycleCts, sessionId);
+                throw new InvalidOperationException("Session already exists.");
             }
 
-            _logger.LogInformation("Remote desktop session {SessionId} started for device {DeviceId}.", sessionId, request.DeviceId);
+            _ = TrackBackgroundTasks(sessionId, key, captureTask, encodeTask, streamTask, inputTask);
+
+            _logger.LogInformation("Session {SessionId} started for device {DeviceId}.", sessionId, request.DeviceId);
             return new RemoteSessionResult(true, sessionId, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start remote desktop session.");
-            await DisposeResourcesAsync(capture, encoder, peer, input);
+            _logger.LogError(ex, "Session {SessionId} failed to start.", sessionId);
+            await RollbackAsync(capture, encoder, peer, input, lifecycleCts, sessionId);
             _signalingService.UnsubscribeFromIceCandidates(sessionId);
             return new RemoteSessionResult(false, null, ex.Message);
         }
@@ -101,69 +131,163 @@ public class RemoteSessionManager : IRemoteSessionManager
 
     public async Task StopSessionAsync(Guid sessionId, CancellationToken cancellationToken = default)
     {
-        ActiveSessionContext? ctx;
-        lock (_gate)
+        var key = sessionId.ToString("N");
+        if (!_sessions.TryRemove(key, out var ctx))
         {
-            if (!_sessions.Remove(sessionId, out ctx))
-            {
-                _logger.LogWarning("StopSession called for unknown session {SessionId}.", sessionId);
-                return;
-            }
+            _logger.LogWarning("StopSession: unknown session {SessionId}.", sessionId);
+            return;
         }
 
-        ctx.StreamCts.Cancel();
-        await Task.Delay(500, cancellationToken);
+        ctx.State = SessionState.Disconnecting;
+        ctx.LifecycleCts.Cancel();
+
+        try
+        {
+            await Task.Delay(_options.StopGracePeriod, cancellationToken);
+        }
+        catch (OperationCanceledException) { }
 
         await DisposeResourcesAsync(ctx.Capture, ctx.Encoder, ctx.Peer, ctx.Input);
         ctx.Signaling.UnsubscribeFromIceCandidates(sessionId);
-        _logger.LogInformation("Remote desktop session {SessionId} stopped.", sessionId);
+        ctx.State = SessionState.Disposed;
+        ctx.LifecycleCts.Dispose();
+        _logger.LogInformation("Session {SessionId} stopped.", sessionId);
     }
 
     public bool IsSessionActive(Guid sessionId)
     {
-        lock (_gate)
-            return _sessions.ContainsKey(sessionId);
+        return _sessions.ContainsKey(sessionId.ToString("N"));
     }
 
-    private async Task<IVideoEncoder> CreateEncoderAsync(IScreenCaptureService capture, CancellationToken cancellationToken)
+    private IVideoEncoder CreateEncoder()
     {
-        var encoder = new PlaceholderVideoEncoder(_logger);
-        await encoder.InitializeAsync(new EncoderOptions(1920, 1080), cancellationToken);
-        return encoder;
+        return new PlaceholderVideoEncoder(_logger);
     }
 
-    private Task<IWebRtcPeerConnectionService> CreatePeerConnectionAsync(Guid sessionId, IVideoEncoder encoder, CancellationToken cancellationToken)
+    private static async Task RunCaptureLoopAsync(
+        IScreenCaptureService capture,
+        ChannelWriter<CaptureFrame> writer,
+        CancellationToken cancellationToken)
     {
-        var peer = new PlaceholderWebRtcPeerConnectionService(_signalingService, sessionId, _logger);
-        peer.OnIceCandidate += (_, candidate) =>
+        try
         {
-            _ = _signalingService.SendIceCandidateAsync(new IceCandidateDto(sessionId, candidate, null, null), CancellationToken.None);
-        };
-        return Task.FromResult<IWebRtcPeerConnectionService>(peer);
+            await foreach (var frame in capture.EnumerateFramesAsync(cancellationToken))
+            {
+                await writer.WriteAsync(frame, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            writer.Complete();
+        }
     }
 
-    private static async Task RunStreamingLoopAsync(IScreenCaptureService capture, IVideoEncoder encoder, IWebRtcPeerConnectionService peer, CancellationToken cancellationToken)
+    private static async Task RunEncodingLoopAsync(
+        ChannelReader<CaptureFrame> reader,
+        IVideoEncoder encoder,
+        CancellationToken cancellationToken)
     {
-        await foreach (var frame in capture.EnumerateFramesAsync(cancellationToken))
+        try
         {
-            await encoder.EncodeAsync(frame, cancellationToken);
+            await foreach (var frame in reader.ReadAllAsync(cancellationToken))
+            {
+                await encoder.EncodeAsync(frame, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            throw;
         }
     }
 
     private static async Task RunInputLoopAsync(Stream dataChannelStream, IInputInjectionService input, CancellationToken cancellationToken)
     {
         var buffer = new byte[4096];
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            var read = await dataChannelStream.ReadAsync(buffer, cancellationToken);
-            if (read == 0) break;
-            await ParseAndInjectInputAsync(buffer.AsSpan(0, read), input, cancellationToken);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var read = await dataChannelStream.ReadAsync(buffer, cancellationToken);
+                if (read == 0) break;
+                await ParseAndInjectInputAsync(buffer.AsSpan(0, read), input, cancellationToken);
+            }
         }
+        catch (OperationCanceledException) { }
     }
 
     private static Task ParseAndInjectInputAsync(ReadOnlySpan<byte> payload, IInputInjectionService input, CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
+    }
+
+    private async Task TrackBackgroundTasks(Guid sessionId, string key, params Task[] tasks)
+    {
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Background task failed for session {SessionId}. Stopping session.", sessionId);
+            if (_sessions.TryRemove(key, out var ctx))
+            {
+                ctx.LifecycleCts.Cancel();
+                await DisposeResourcesAsync(ctx.Capture, ctx.Encoder, ctx.Peer, ctx.Input);
+                ctx.Signaling.UnsubscribeFromIceCandidates(sessionId);
+            }
+        }
+    }
+
+    private async Task SafeSendIceCandidate(Guid sessionId, string candidate)
+    {
+        try
+        {
+            await _signalingService.SendIceCandidateAsync(new IceCandidateDto(sessionId, candidate, null, null), CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to send ICE candidate for session {SessionId}.", sessionId);
+        }
+    }
+
+    private static async Task SafeAddIceCandidate(IWebRtcPeerConnectionService peer, IceCandidateDto c, CancellationToken ct)
+    {
+        try
+        {
+            await peer.AddIceCandidateAsync(c.Candidate, c.SdpMid, c.SdpMLineIndex, ct);
+        }
+        catch (ObjectDisposedException) { }
+        catch (OperationCanceledException) { }
+        catch (Exception) { /* peer may be disposed */ }
+    }
+
+    private async Task RollbackAsync(
+        IScreenCaptureService? capture,
+        IVideoEncoder? encoder,
+        IWebRtcPeerConnectionService? peer,
+        IInputInjectionService? input,
+        CancellationTokenSource? cts,
+        Guid sessionId)
+    {
+        cts?.Cancel();
+        try
+        {
+            await Task.Delay(100, CancellationToken.None);
+        }
+        catch { }
+
+        if (encoder != null) await encoder.DisposeAsync();
+        if (capture != null) await capture.DisposeAsync();
+        if (peer != null) await peer.DisposeAsync();
+        if (input != null) await input.DisposeAsync();
+        cts?.Dispose();
+        _logger.LogDebug("Rollback completed for failed session {SessionId}.", sessionId);
     }
 
     private static async Task DisposeResourcesAsync(
@@ -177,14 +301,4 @@ public class RemoteSessionManager : IRemoteSessionManager
         if (peer != null) await peer.DisposeAsync();
         if (input != null) await input.DisposeAsync();
     }
-
-    private sealed record ActiveSessionContext(
-        CancellationTokenSource StreamCts,
-        IScreenCaptureService Capture,
-        IVideoEncoder Encoder,
-        IWebRtcPeerConnectionService Peer,
-        IInputInjectionService Input,
-        IRemoteDesktopSignalingService Signaling,
-        Guid SessionId
-    );
 }
