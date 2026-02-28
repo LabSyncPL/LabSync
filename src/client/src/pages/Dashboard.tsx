@@ -3,52 +3,25 @@ import { fetchDevices, approveDevice, devicesQueryKey } from "../api/devices";
 import { clearToken } from "../auth/authStore";
 import { useNavigate } from "react-router-dom";
 import type { DeviceDto } from "../types/device";
-import { useState } from "react";
-
-function formatLastSeen(value: string | null): string {
-  if (value == null) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} min ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return date.toLocaleDateString();
-}
-
-function getPlatformIcon(platform: number) {
-  switch (platform) {
-    case 1: // Windows
-      return (
-        <svg
-          className="w-4 h-4 text-blue-400"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-        >
-          <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
-        </svg>
-      );
-    case 2: // Linux
-      return (
-        <svg
-          className="w-4 h-4 text-yellow-500"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-        >
-          <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z" />
-        </svg>
-      );
-    default:
-      return null;
-  }
-}
+import { useState, useMemo } from "react";
+import {
+  DeviceFilterControls,
+  type DeviceFilters,
+} from "../components/Dashboard/DeviceFilterControls";
+import { DeviceGridCard } from "../components/Dashboard/DeviceGridCard";
+import { DeviceListItem } from "../components/Dashboard/DeviceListItem";
 
 export function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const [filters, setFilters] = useState<DeviceFilters>({
+    search: "",
+    status: "all",
+    platform: "all",
+    viewMode: "grid",
+  });
+
   const {
     data: devices = [],
     isLoading,
@@ -84,14 +57,34 @@ export function Dashboard() {
     }
   };
 
-  const totalDevices = devices.length;
-  const onlineDevices = devices.filter((d) => d.isOnline).length;
-  const pendingDevices = devices.filter((d) => !d.isApproved).length;
-
   const handleLogout = () => {
     clearToken();
     navigate("/login");
   };
+
+  const filteredDevices = useMemo(() => {
+    return devices.filter((device) => {
+      const matchesSearch =
+        device.hostname.toLowerCase().includes(filters.search.toLowerCase()) ||
+        device.ipAddress?.includes(filters.search) ||
+        device.osVersion.toLowerCase().includes(filters.search.toLowerCase());
+
+      const matchesStatus =
+        filters.status === "all" ||
+        (filters.status === "online" && device.isOnline) ||
+        (filters.status === "offline" && !device.isOnline) ||
+        (filters.status === "pending" && !device.isApproved);
+
+      const matchesPlatform =
+        filters.platform === "all" || device.platform === filters.platform;
+
+      return matchesSearch && matchesStatus && matchesPlatform;
+    });
+  }, [devices, filters]);
+
+  const totalDevices = devices.length;
+  const onlineDevices = devices.filter((d) => d.isOnline).length;
+  const pendingDevices = devices.filter((d) => !d.isApproved).length;
 
   return (
     <>
@@ -108,21 +101,179 @@ export function Dashboard() {
         </div>
       </header>
 
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-slate-400 text-xs font-medium uppercase">
-                  Total Devices
-                </p>
-                <h3 className="text-3xl font-bold text-white mt-1">
-                  {totalDevices}
-                </h3>
+      <div className="flex-1 p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+        <div className="max-w-[1600px] mx-auto">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+                    Total Devices
+                  </p>
+                  <h3 className="text-3xl font-bold text-white mt-2">
+                    {totalDevices}
+                  </h3>
+                </div>
+                <div className="p-3 bg-slate-700/50 rounded-xl border border-slate-600/30">
+                  <svg
+                    className="w-6 h-6 text-primary-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    ></path>
+                  </svg>
+                </div>
               </div>
-              <div className="p-2 bg-slate-700 rounded-lg">
+            </div>
+
+            <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+                    Online Now
+                  </p>
+                  <h3 className="text-3xl font-bold text-success mt-2">
+                    {onlineDevices}
+                  </h3>
+                </div>
+                <div className="p-3 bg-slate-700/50 rounded-xl border border-slate-600/30">
+                  <svg
+                    className="w-6 h-6 text-success"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
+                    ></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className={`bg-slate-800 p-6 rounded-2xl border shadow-sm transition-colors ${
+                pendingDevices > 0
+                  ? "border-warning/30 bg-warning/5"
+                  : "border-slate-700"
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p
+                    className={`text-xs font-bold uppercase tracking-wider ${
+                      pendingDevices > 0 ? "text-warning" : "text-slate-400"
+                    }`}
+                  >
+                    Pending Approval
+                  </p>
+                  <h3
+                    className={`text-3xl font-bold mt-2 ${pendingDevices > 0 ? "text-warning" : "text-white"}`}
+                  >
+                    {pendingDevices}
+                  </h3>
+                </div>
+                <div
+                  className={`p-3 rounded-xl border ${
+                    pendingDevices > 0
+                      ? "bg-warning/10 border-warning/20"
+                      : "bg-slate-700/50 border-slate-600/30"
+                  }`}
+                >
+                  <svg
+                    className={`w-6 h-6 ${pendingDevices > 0 ? "text-warning" : "text-slate-500"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    ></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DeviceFilterControls
+            filters={filters}
+            onFilterChange={setFilters}
+            onRefresh={() => refetch()}
+            isRefreshing={isFetching}
+          />
+
+          {/* Content Area */}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+              <svg
+                className="w-10 h-10 animate-spin mb-4 text-primary-500/50"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <p>Loading devices...</p>
+            </div>
+          ) : isError ? (
+            <div className="bg-danger/10 border border-danger/20 rounded-2xl p-8 text-center max-w-lg mx-auto mt-12">
+              <svg
+                className="w-12 h-12 text-danger mx-auto mb-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <h3 className="text-lg font-bold text-white mb-2">
+                Failed to load devices
+              </h3>
+              <p className="text-slate-400 mb-6 text-sm">
+                {error instanceof Error
+                  ? error.message
+                  : "An unknown error occurred while fetching device data."}
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="bg-danger hover:bg-danger/90 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : filteredDevices.length === 0 ? (
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-16 text-center">
+              <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700">
                 <svg
-                  className="w-6 h-6 text-primary-500"
+                  className="w-8 h-8 text-slate-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -132,189 +283,57 @@ export function Dashboard() {
                     strokeLinejoin="round"
                     strokeWidth="2"
                     d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  ></path>
+                  />
                 </svg>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-slate-400 text-xs font-medium uppercase">
-                  Online Now
-                </p>
-                <h3 className="text-3xl font-bold text-success mt-1">
-                  {onlineDevices}
-                </h3>
-              </div>
-              <div className="p-2 bg-slate-700 rounded-lg">
-                <svg
-                  className="w-6 h-6 text-success"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              <h3 className="text-white font-medium mb-1">No devices found</h3>
+              <p className="text-slate-500 text-sm">
+                {devices.length === 0
+                  ? "No devices have registered with the server yet."
+                  : "Try adjusting your filters to see more results."}
+              </p>
+              {devices.length > 0 && (
+                <button
+                  onClick={() =>
+                    setFilters({
+                      search: "",
+                      status: "all",
+                      platform: "all",
+                      viewMode: filters.viewMode,
+                    })
+                  }
+                  className="mt-4 text-primary-400 hover:text-primary-300 text-sm font-medium"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
-                  ></path>
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`bg-slate-800 p-6 rounded-xl border ${pendingDevices > 0 ? "border-warning/20" : "border-slate-700"}`}
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <p
-                  className={`text-xs font-medium uppercase ${pendingDevices > 0 ? "text-warning" : "text-slate-400"}`}
-                >
-                  Pending Approval
-                </p>
-                <h3 className="text-3xl font-bold text-white mt-1">
-                  {pendingDevices}
-                </h3>
-              </div>
-              <div
-                className={`p-2 rounded-lg ${pendingDevices > 0 ? "bg-warning/10" : "bg-slate-700"}`}
-              >
-                <svg
-                  className={`w-6 h-6 ${pendingDevices > 0 ? "text-warning" : "text-slate-500"}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  ></path>
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
-            <h2 className="font-semibold text-white">Registered Devices</h2>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
-              disabled={isFetching}
-            >
-              {isFetching ? "Refreshing…" : "Refresh"}
-            </button>
-          </div>
-          {isLoading ? (
-            <div className="p-8 text-center text-slate-400">
-              Loading devices…
-            </div>
-          ) : isError ? (
-            <div className="p-8 text-center text-danger">
-              Failed to load devices.{" "}
-              {error instanceof Error ? error.message : "Unknown error."}{" "}
-              <button
-                type="button"
-                onClick={() => refetch()}
-                className="underline text-danger hover:text-danger/80"
-              >
-                Retry
-              </button>
-            </div>
-          ) : devices.length === 0 ? (
-            <div className="p-8 text-center text-slate-400">
-              No devices registered.
+                  Clear all filters
+                </button>
+              )}
             </div>
           ) : (
-            <table className="w-full text-left">
-              <thead className="bg-slate-700/50 text-slate-400 text-xs uppercase">
-                <tr>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium">Hostname</th>
-                  <th className="px-6 py-3 font-medium">OS</th>
-                  <th className="px-6 py-3 font-medium">IP Address</th>
-                  <th className="px-6 py-3 font-medium">Last Seen</th>
-                  <th className="px-6 py-3 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700">
-                {devices.map((device) => (
-                  <tr
+            <div
+              className={
+                filters.viewMode === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  : "flex flex-col gap-3"
+              }
+            >
+              {filteredDevices.map((device) =>
+                filters.viewMode === "grid" ? (
+                  <DeviceGridCard
                     key={device.id}
-                    onClick={() => navigate(`/devices/${device.id}`)}
-                    className={`hover:bg-slate-700/30 transition-colors group cursor-pointer ${
-                      !device.isApproved ? "bg-warning/5" : ""
-                    }`}
-                  >
-                    <td className="px-6 py-4">
-                      {device.isOnline ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
-                          <span className="w-1.5 h-1.5 bg-success rounded-full mr-1.5"></span>
-                          Online
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-slate-400 border border-slate-600">
-                          <span className="w-1.5 h-1.5 bg-slate-500 rounded-full mr-1.5"></span>
-                          Offline
-                        </span>
-                      )}
-                      {!device.isApproved && (
-                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
-                          <span className="w-1.5 h-1.5 bg-warning rounded-full mr-1.5 animate-pulse"></span>
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 font-medium text-white">
-                      {device.hostname}
-                    </td>
-                    <td className="px-6 py-4 flex items-center gap-2">
-                      {getPlatformIcon(device.platform)}
-                      <span className="text-slate-300">{device.osVersion}</span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-400 font-mono text-xs">
-                      {device.ipAddress ?? "—"}
-                    </td>
-                    <td className="px-6 py-4 text-slate-400">
-                      {formatLastSeen(device.lastSeenAt)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {!device.isApproved ? (
-                          <button
-                            type="button"
-                            onClick={(e) => handleApprove(e, device)}
-                            disabled={approvingId === device.id}
-                            className="bg-primary-600 hover:bg-primary-500 text-white px-3 py-1 rounded text-xs font-medium shadow-lg shadow-primary-500/20 disabled:opacity-50"
-                          >
-                            {approvingId === device.id
-                              ? "Approving…"
-                              : "Approve"}
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              className="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors text-xs"
-                            >
-                              Details
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    device={device}
+                    onApprove={handleApprove}
+                    isApproving={approvingId === device.id}
+                  />
+                ) : (
+                  <DeviceListItem
+                    key={device.id}
+                    device={device}
+                    onApprove={handleApprove}
+                    isApproving={approvingId === device.id}
+                  />
+                ),
+              )}
+            </div>
           )}
         </div>
       </div>
