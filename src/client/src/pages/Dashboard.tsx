@@ -19,6 +19,7 @@ export function Dashboard() {
     search: "",
     status: "all",
     platform: "all",
+    group: "all",
     viewMode: "grid",
   });
 
@@ -62,6 +63,14 @@ export function Dashboard() {
     navigate("/login");
   };
 
+  const uniqueGroups = useMemo(() => {
+    const groups = new Set<string>();
+    devices.forEach((d) => {
+      if (d.groupName) groups.add(d.groupName);
+    });
+    return Array.from(groups).sort();
+  }, [devices]);
+
   const filteredDevices = useMemo(() => {
     return devices.filter((device) => {
       const matchesSearch =
@@ -78,7 +87,12 @@ export function Dashboard() {
       const matchesPlatform =
         filters.platform === "all" || device.platform === filters.platform;
 
-      return matchesSearch && matchesStatus && matchesPlatform;
+      const matchesGroup =
+        filters.group === "all" ||
+        (filters.group === "no-group" && !device.groupName) ||
+        device.groupName === filters.group;
+
+      return matchesSearch && matchesStatus && matchesPlatform && matchesGroup;
     });
   }, [devices, filters]);
 
@@ -87,10 +101,56 @@ export function Dashboard() {
   const pendingDevices = devices.filter((d) => !d.isApproved).length;
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       <header className="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900 shrink-0">
-        <h1 className="text-xl font-semibold text-white">Overview</h1>
+        <div className="flex items-center gap-8">
+          <h1 className="text-xl font-semibold text-white">Overview</h1>
+
+          <div className="hidden lg:flex items-center gap-6 border-l border-slate-800 pl-6 h-8">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-400">Devices</span>
+              <span className="text-white font-semibold bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                {totalDevices}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-400">Online</span>
+              <span className="text-success font-semibold bg-success/10 px-2 py-0.5 rounded border border-success/20">
+                {onlineDevices}
+              </span>
+            </div>
+            {pendingDevices > 0 && (
+              <div className="flex items-center gap-2 text-sm animate-pulse">
+                <span className="text-warning">Pending</span>
+                <span className="text-warning font-semibold bg-warning/10 px-2 py-0.5 rounded border border-warning/20">
+                  {pendingDevices}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center space-x-4">
+          <button
+            type="button"
+            className="text-primary-400 hover:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-primary-500/20 bg-primary-500/5 hover:bg-primary-500/10 flex items-center gap-2"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Create Group
+          </button>
+          <div className="h-6 w-px bg-slate-800"></div>
           <button
             type="button"
             onClick={handleLogout}
@@ -101,121 +161,16 @@ export function Dashboard() {
         </div>
       </header>
 
-      <div className="flex-1 p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
-        <div className="max-w-[1600px] mx-auto">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">
-                    Total Devices
-                  </p>
-                  <h3 className="text-3xl font-bold text-white mt-2">
-                    {totalDevices}
-                  </h3>
-                </div>
-                <div className="p-3 bg-slate-700/50 rounded-xl border border-slate-600/30">
-                  <svg
-                    className="w-6 h-6 text-primary-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    ></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">
-                    Online Now
-                  </p>
-                  <h3 className="text-3xl font-bold text-success mt-2">
-                    {onlineDevices}
-                  </h3>
-                </div>
-                <div className="p-3 bg-slate-700/50 rounded-xl border border-slate-600/30">
-                  <svg
-                    className="w-6 h-6 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
-                    ></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className={`bg-slate-800 p-6 rounded-2xl border shadow-sm transition-colors ${
-                pendingDevices > 0
-                  ? "border-warning/30 bg-warning/5"
-                  : "border-slate-700"
-              }`}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p
-                    className={`text-xs font-bold uppercase tracking-wider ${
-                      pendingDevices > 0 ? "text-warning" : "text-slate-400"
-                    }`}
-                  >
-                    Pending Approval
-                  </p>
-                  <h3
-                    className={`text-3xl font-bold mt-2 ${pendingDevices > 0 ? "text-warning" : "text-white"}`}
-                  >
-                    {pendingDevices}
-                  </h3>
-                </div>
-                <div
-                  className={`p-3 rounded-xl border ${
-                    pendingDevices > 0
-                      ? "bg-warning/10 border-warning/20"
-                      : "bg-slate-700/50 border-slate-600/30"
-                  }`}
-                >
-                  <svg
-                    className={`w-6 h-6 ${pendingDevices > 0 ? "text-warning" : "text-slate-500"}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    ></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900 p-8">
+        <div className="max-w-[1600px] mx-auto space-y-6">
           <DeviceFilterControls
             filters={filters}
+            groups={uniqueGroups}
             onFilterChange={setFilters}
             onRefresh={() => refetch()}
             isRefreshing={isFetching}
           />
 
-          {/* Content Area */}
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-500">
               <svg
@@ -299,6 +254,7 @@ export function Dashboard() {
                       search: "",
                       status: "all",
                       platform: "all",
+                      group: "all",
                       viewMode: filters.viewMode,
                     })
                   }
@@ -337,6 +293,6 @@ export function Dashboard() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
