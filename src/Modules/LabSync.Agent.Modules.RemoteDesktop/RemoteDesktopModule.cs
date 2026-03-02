@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using LabSync.Agent.Modules.RemoteDesktop.Abstractions;
@@ -32,21 +33,31 @@ public class RemoteDesktopModule : IRemoteDesktopModule
             _logger?.LogWarning("IAgentHubInvoker not registered. Remote desktop signaling will be unavailable.");
         }
 
+        var loggerFactory = serviceProvider.GetService(typeof(ILoggerFactory)) as ILoggerFactory;
+
         var signalingService = new RemoteDesktopSignalingService(
             hubInvoker ?? throw new InvalidOperationException("IAgentHubInvoker must be registered by the host for Remote Desktop module."),
-            serviceProvider.GetService(typeof(ILoggerFactory)) is ILoggerFactory lf ? lf.CreateLogger<RemoteDesktopSignalingService>() : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteDesktopSignalingService>.Instance);
+            loggerFactory != null
+                ? loggerFactory.CreateLogger<RemoteDesktopSignalingService>()
+                : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteDesktopSignalingService>.Instance);
 
         var captureFactory = ScreenCaptureFactory.Create(serviceProvider);
         var inputFactory = InputInjectionFactory.Create(serviceProvider);
-        var peerFactory = new PlaceholderWebRtcPeerConnectionFactory(signalingService,
-            serviceProvider.GetService(typeof(ILoggerFactory)) is ILoggerFactory pf ? pf.CreateLogger<PlaceholderWebRtcPeerConnectionService>() : Microsoft.Extensions.Logging.Abstractions.NullLogger<PlaceholderWebRtcPeerConnectionService>.Instance);
+
+        var sipsLogger = loggerFactory != null
+            ? loggerFactory.CreateLogger<SipsorceryWebRtcPeerConnectionService>()
+            : Microsoft.Extensions.Logging.Abstractions.NullLogger<SipsorceryWebRtcPeerConnectionService>.Instance;
+        IWebRtcPeerConnectionFactory peerFactory = new SipsorceryWebRtcPeerConnectionFactory(sipsLogger);
+        _logger?.LogInformation("RemoteDesktop module configured to use SIPSorcery WebRTC peer connection. STUN server: stun:stun.l.google.com:19302.");
 
         _sessionManager = new RemoteSessionManager(
             signalingService,
             captureFactory,
             inputFactory,
             peerFactory,
-            serviceProvider.GetService(typeof(ILoggerFactory)) is ILoggerFactory lm ? lm.CreateLogger<RemoteSessionManager>() : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteSessionManager>.Instance,
+            loggerFactory != null
+                ? loggerFactory.CreateLogger<RemoteSessionManager>()
+                : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteSessionManager>.Instance,
             SessionOptions.Default);
 
         _logger?.LogInformation("RemoteDesktop module initialized. Platform: {Platform}", RuntimeInformation.OSDescription);

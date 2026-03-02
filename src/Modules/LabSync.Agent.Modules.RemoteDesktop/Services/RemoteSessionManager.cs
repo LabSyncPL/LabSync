@@ -161,7 +161,13 @@ public class RemoteSessionManager : IRemoteSessionManager
 
     private IVideoEncoder CreateEncoder()
     {
-        return new PlaceholderVideoEncoder(_logger);
+        if (OperatingSystem.IsWindows())
+        {
+            _logger.LogInformation("Using WindowsFfmpegVideoEncoder on Windows.");
+            return new WindowsFfmpegVideoEncoder(_logger, _options.EncodedChannelCapacity);
+        }
+
+        return new PlaceholderVideoEncoder(_logger, _options.EncodedChannelCapacity);
     }
 
     private static async Task RunCaptureLoopAsync(
@@ -215,15 +221,71 @@ public class RemoteSessionManager : IRemoteSessionManager
             {
                 var read = await dataChannelStream.ReadAsync(buffer, cancellationToken);
                 if (read == 0) break;
-                await ParseAndInjectInputAsync(buffer.AsSpan(0, read), input, cancellationToken);
+                await ParseAndInjectInputAsync(buffer, read, input, cancellationToken);
             }
         }
         catch (OperationCanceledException) { }
     }
 
-    private static Task ParseAndInjectInputAsync(ReadOnlySpan<byte> payload, IInputInjectionService input, CancellationToken cancellationToken)
+    private static async Task ParseAndInjectInputAsync(byte[] payload, int length, IInputInjectionService input, CancellationToken cancellationToken)
     {
-        return Task.CompletedTask;
+        if (length <= 0)
+            return;
+
+        // Simple JSON-based input protocol:
+        // { "type": "mouseMove", "x": 100, "y": 200 }
+        // { "type": "mouseButton", "button": "left", "pressed": true }
+        // { "type": "mouseWheel", "deltaX": 0, "deltaY": -120 }
+        // { "type": "key", "keyCode": 65, "pressed": true }
+
+        try
+        {
+            var json = System.Text.Encoding.UTF8.GetString(payload, 0, length);
+            var message = System.Text.Json.JsonSerializer.Deserialize<InputMessage>(json);
+            if (message is null || string.IsNullOrWhiteSpace(message.Type))
+                return;
+
+            switch (message.Type)
+            {
+                case "mouseMove" when message.X is not null && message.Y is not null:
+                    await input.InjectMouseMoveAsync(message.X.Value, message.Y.Value, cancellationToken);
+                    break;
+
+                case "mouseButton" when message.Button is not null && message.Pressed is not null:
+                    if (Enum.TryParse<MouseButton>(message.Button, ignoreCase: true, out var button))
+                    {
+                        await input.InjectMouseButtonAsync(button, message.Pressed.Value, cancellationToken);
+                    }
+                    break;
+
+                case "mouseWheel" when message.DeltaX is not null && message.DeltaY is not null:
+                    await input.InjectMouseWheelAsync(message.DeltaX.Value, message.DeltaY.Value, cancellationToken);
+                    break;
+
+                case "key" when message.KeyCode is not null && message.Pressed is not null:
+                    if (message.KeyCode.Value is >= 0 and <= 255)
+                    {
+                        await input.InjectKeyAsync(message.KeyCode.Value, message.Pressed.Value, cancellationToken);
+                    }
+                    break;
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Ignore malformed input.
+        }
+    }
+
+    private sealed class InputMessage
+    {
+        public string? Type { get; set; }
+        public int? X { get; set; }
+        public int? Y { get; set; }
+        public string? Button { get; set; }
+        public bool? Pressed { get; set; }
+        public int? DeltaX { get; set; }
+        public int? DeltaY { get; set; }
+        public int? KeyCode { get; set; }
     }
 
     private async Task TrackBackgroundTasks(Guid sessionId, string key, params Task[] tasks)

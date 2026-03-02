@@ -7,18 +7,20 @@ namespace LabSync.Agent.Modules.RemoteDesktop.Encoding;
 public class PlaceholderVideoEncoder : IVideoEncoder
 {
     private readonly ILogger _logger;
+    private readonly int _channelCapacity;
     private Channel<EncodedFrame>? _channel;
     private EncoderOptions? _options;
 
-    public PlaceholderVideoEncoder(ILogger logger)
+    public PlaceholderVideoEncoder(ILogger logger, int channelCapacity)
     {
         _logger = logger;
+        _channelCapacity = channelCapacity > 0 ? channelCapacity : 2;
     }
 
     public Task InitializeAsync(EncoderOptions options, CancellationToken cancellationToken = default)
     {
         _options = options;
-        _channel = Channel.CreateBounded<EncodedFrame>(new BoundedChannelOptions(2)
+        _channel = Channel.CreateBounded<EncodedFrame>(new BoundedChannelOptions(_channelCapacity)
         {
             SingleReader = true,
             SingleWriter = true,
