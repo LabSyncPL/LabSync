@@ -8,6 +8,7 @@ public class AgentHubInvoker : IAgentHubInvoker
     private HubConnection? _hubConnection;
     private readonly List<Delegate> _remoteDesktopAnswerHandlers = new();
     private readonly List<Delegate> _remoteDesktopIceCandidateHandlers = new();
+    private readonly List<Delegate> _startRemoteDesktopSessionHandlers = new();
     private readonly object _gate = new();
 
     public void AttachConnection(object hubConnection)
@@ -27,6 +28,14 @@ public class AgentHubInvoker : IAgentHubInvoker
             {
                 foreach (var h in _remoteDesktopIceCandidateHandlers)
                     ((Action<Guid, string, string?, int?>)h)(sessionId, candidate, sdpMid, sdpMLineIndex);
+            }
+        });
+        _hubConnection.On<Guid>("StartRemoteDesktopSession", (sessionId) =>
+        {
+            lock (_gate)
+            {
+                foreach (var h in _startRemoteDesktopSessionHandlers)
+                    ((Action<Guid>)h)(sessionId);
             }
         });
     }
@@ -51,6 +60,14 @@ public class AgentHubInvoker : IAgentHubInvoker
         if (methodName == "RemoteDesktopIceCandidate")
         {
             lock (_gate) _remoteDesktopIceCandidateHandlers.Add(handler);
+        }
+    }
+
+    public void RegisterHandler<T1>(string methodName, Action<T1> handler)
+    {
+        if (methodName == "StartRemoteDesktopSession")
+        {
+            lock (_gate) _startRemoteDesktopSessionHandlers.Add(handler);
         }
     }
 }

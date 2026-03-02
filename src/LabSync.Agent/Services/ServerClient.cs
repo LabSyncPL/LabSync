@@ -10,16 +10,19 @@ public class ServerClient : IAsyncDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<ServerClient> _logger;
+    private readonly AgentContext _agentContext;
     private readonly IAgentHubInvoker? _hubInvoker;
     private HubConnection? _hubConnection;
 
-    public ServerClient(HttpClient httpClient, ILogger<ServerClient> logger, IAgentHubInvoker? hubInvoker = null)
+    public ServerClient(HttpClient httpClient, ILogger<ServerClient> logger, AgentContext agentContext, IAgentHubInvoker? hubInvoker = null)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _agentContext = agentContext;
         _hubInvoker = hubInvoker;
     }
     public Action<Guid, string, string, string?>? OnReceiveJob;
+    public Action<Guid>? OnStartRemoteDesktopSession;
 
     public async Task<string?> RegisterAgentAsync(RegisterAgentRequest request)
     {
@@ -37,7 +40,8 @@ public class ServerClient : IAsyncDisposable
                     return null;
                 }
 
-                _logger.LogInformation("Registration successful! Token received.");
+                _agentContext.SetDeviceId(result.DeviceId);
+                _logger.LogInformation("Registration successful! Token received. DeviceId: {DeviceId}", result.DeviceId);
                 return result.Token;
             }
 
@@ -74,6 +78,12 @@ public class ServerClient : IAsyncDisposable
             OnReceiveJob?.Invoke(jobId, command, arguments, scriptPayload);
         });
 
+        _hubConnection.On<Guid>("StartRemoteDesktopSession", (sessionId) =>
+        {
+            _logger.LogInformation("Received StartRemoteDesktopSession for session {SessionId}", sessionId);
+            OnStartRemoteDesktopSession?.Invoke(sessionId);
+        });
+
         _hubConnection.On("Ping", () => _logger.LogDebug("Received Ping from server."));
 
         _hubConnection.Reconnecting += error =>
@@ -92,6 +102,20 @@ public class ServerClient : IAsyncDisposable
 
         await _hubConnection.StartAsync(cancellationToken);
         _logger.LogInformation("SignalR Hub connection established successfully.");
+    }
+
+    public async Task SendRemoteDesktopOfferAsync(Guid sessionId, string sdpType, string sdp)
+    {
+        if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+            return;
+        await _hubConnection.InvokeAsync("RemoteDesktopOffer", sessionId, Guid.Empty, sdpType, sdp);
+    }
+
+    public async Task SendRemoteDesktopIceCandidateAsync(Guid sessionId, string candidate)
+    {
+        if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+            return;
+        await _hubConnection.InvokeAsync("RemoteDesktopIceCandidate", sessionId, candidate, null, 0);
     }
 
     public async Task ReportJobResultAsync(JobResultDto result)

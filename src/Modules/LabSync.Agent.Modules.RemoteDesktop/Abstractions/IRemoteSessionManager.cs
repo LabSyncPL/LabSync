@@ -9,7 +9,8 @@ public interface IRemoteSessionManager
 
 public record StartSessionRequest(
     Guid DeviceId,
-    string? RequestedByUserId
+    string? RequestedByUserId,
+    Guid? SessionId = null
 );
 
 public record RemoteSessionResult(

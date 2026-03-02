@@ -1,37 +1,46 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as signalR from '@microsoft/signalr';
-import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
-import { getToken } from '../../auth/authStore';
+import React, { useEffect, useRef, useState } from "react";
+import * as signalR from "@microsoft/signalr";
+import { MessagePackHubProtocol } from "@microsoft/signalr-protocol-msgpack";
+import { getToken } from "../../auth/authStore";
 
 // Temporary inline hook until file is picked up or imported properly
 // In a real app, this would be imported from hooks/useRemoteDesktop
-const DEFAULT_BASE_URL = 'http://localhost:5038';
+const DEFAULT_BASE_URL = "http://localhost:5038";
 const BASE_URL =
-  (typeof import.meta !== 'undefined' &&
+  (typeof import.meta !== "undefined" &&
     (import.meta as any)?.env?.VITE_API_BASE_URL) ||
   DEFAULT_BASE_URL;
 
-export function RemoteControlModal({ deviceId, onClose }: { deviceId: string; onClose: () => void }) {
+export function RemoteControlModal({
+  deviceId,
+  onClose,
+}: {
+  deviceId: string;
+  onClose: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
+  const [status, setStatus] = useState<
+    "connecting" | "connected" | "disconnected" | "error"
+  >("connecting");
   const [error, setError] = useState<string | null>(null);
-  
+
   // Connection refs to persist across renders
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
 
   useEffect(() => {
     let mounted = true;
 
     const startSession = async () => {
       try {
-        setStatus('connecting');
+        setStatus("connecting");
         const token = getToken();
 
         const connection = new signalR.HubConnectionBuilder()
           .withUrl(`${BASE_URL}/remoteDesktopHub`, {
-            accessTokenFactory: () => token || '',
+            accessTokenFactory: () => token || "",
           })
           .withHubProtocol(new MessagePackHubProtocol())
           .withAutomaticReconnect()
@@ -41,78 +50,167 @@ export function RemoteControlModal({ deviceId, onClose }: { deviceId: string; on
 
         connection.onclose(() => {
           if (mounted) {
-            setStatus('disconnected');
+            setStatus("disconnected");
             // optionally auto-close or show error
           }
         });
 
         // --- Signaling Handlers ---
 
-        connection.on('ReceiveOffer', async (sessionId: string, sdp: string) => {
-          console.log('[RemoteDesktop] Received Offer', sessionId);
-          
-          if (pcRef.current) {
-            pcRef.current.close();
-          }
+        connection.on(
+          "ReceiveRemoteDesktopOffer",
+          async (
+            sessionId: string,
+            _deviceId: string,
+            sdpType: string,
+            sdp: string,
+          ) => {
+            console.log("[RemoteDesktop] Received Offer", sessionId);
 
-          const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-          });
-          pcRef.current = pc;
-
-          pc.ontrack = (event) => {
-            console.log('[RemoteDesktop] Track received', event.streams);
-            if (videoRef.current && event.streams[0]) {
-              videoRef.current.srcObject = event.streams[0];
+            if (pcRef.current) {
+              pcRef.current.close();
             }
-          };
 
-          pc.onicecandidate = (event) => {
-            if (event.candidate) {
-              connection.invoke('SendIceCandidate', sessionId, JSON.stringify(event.candidate))
-                .catch(err => console.error('Error sending ICE candidate:', err));
+            const pc = new RTCPeerConnection({
+              iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+            });
+            pcRef.current = pc;
+            iceCandidatesQueue.current = [];
+
+            pc.ontrack = (event) => {
+              console.log("[RemoteDesktop] Track received", event.streams);
+              if (videoRef.current) {
+                videoRef.current.srcObject = event.streams[0];
+                videoRef.current
+                  .play()
+                  .catch((e) => console.error("Error playing video:", e));
+              }
+            };
+
+            pc.onicecandidate = (event) => {
+              if (event.candidate) {
+                connection
+                  .invoke(
+                    "SendRemoteDesktopIceCandidate",
+                    sessionId,
+                    deviceId,
+                    event.candidate.candidate,
+                    event.candidate.sdpMid,
+                    event.candidate.sdpMLineIndex,
+                  )
+                  .catch((err) =>
+                    console.error("Error sending ICE candidate:", err),
+                  );
+              }
+            };
+
+            // Setup data channel for input if offered
+            pc.ondatachannel = (event) => {
+              console.log(
+                "[RemoteDesktop] Data channel received:",
+                event.channel.label,
+              );
+              dataChannelRef.current = event.channel;
+            };
+
+            await pc.setRemoteDescription(
+              new RTCSessionDescription({ type: sdpType as RTCSdpType, sdp }),
+            );
+
+            // Process queued candidates
+            for (const candidate of iceCandidatesQueue.current) {
+              try {
+                console.log(
+                  "[RemoteDesktop] Adding queued ICE candidate:",
+                  candidate,
+                );
+                await pc.addIceCandidate(candidate);
+              } catch (e) {
+                console.error(
+                  "Error adding queued ICE candidate",
+                  e,
+                  candidate,
+                );
+              }
             }
-          };
+            iceCandidatesQueue.current = [];
 
-          // Setup data channel for input if offered
-          pc.ondatachannel = (event) => {
-             console.log('[RemoteDesktop] Data channel received:', event.channel.label);
-             dataChannelRef.current = event.channel;
-          };
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
 
-          await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
+            await connection.invoke(
+              "SendRemoteDesktopAnswer",
+              sessionId,
+              deviceId,
+              "answer",
+              answer.sdp,
+            );
+          },
+        );
 
-          await connection.invoke('SendAnswer', sessionId, answer.sdp);
-        });
+        connection.on(
+          "ReceiveRemoteDesktopIceCandidate",
+          async (
+            _sessionId: string,
+            candidate: string,
+            sdpMid: string,
+            sdpMLineIndex: number,
+          ) => {
+            console.log("[RemoteDesktop] Raw ICE from server:", {
+              candidate,
+              sdpMid,
+              sdpMLineIndex,
+            });
 
-        connection.on('ReceiveIceCandidate', async (_sessionId: string, candidateJson: string) => {
-          if (pcRef.current) {
-             try {
-               await pcRef.current.addIceCandidate(JSON.parse(candidateJson));
-             } catch (e) {
-               console.error('Error adding ICE candidate', e);
-             }
-          }
-        });
+            // Check if candidate string has the "candidate:" prefix required by some browsers
+            let candidateStr = candidate;
+            if (candidateStr && !candidateStr.startsWith("candidate:")) {
+              candidateStr = "candidate:" + candidateStr;
+            }
+
+            const iceCandidate = {
+              candidate: candidateStr,
+              sdpMid,
+              sdpMLineIndex,
+            };
+
+            if (pcRef.current && pcRef.current.remoteDescription) {
+              try {
+                console.log(
+                  "[RemoteDesktop] Adding ICE candidate:",
+                  iceCandidate,
+                );
+                await pcRef.current.addIceCandidate(iceCandidate);
+              } catch (e) {
+                console.error("Error adding ICE candidate", e, iceCandidate);
+              }
+            } else {
+              console.log(
+                "[RemoteDesktop] Queueing ICE candidate:",
+                iceCandidate,
+              );
+              iceCandidatesQueue.current.push(iceCandidate);
+            }
+          },
+        );
 
         await connection.start();
-        console.log('[RemoteDesktop] SignalR Connected');
+        console.log("[RemoteDesktop] SignalR Connected");
 
         // Initiate session request
         // The backend expects 'RequestSession(deviceId)'
-        await connection.invoke('RequestSession', deviceId);
-        
-        if (mounted) {
-          setStatus('connected');
-        }
+        await connection.invoke("RequestSession", deviceId);
 
-      } catch (err: any) {
-        console.error('[RemoteDesktop] Connection Error:', err);
         if (mounted) {
-          setStatus('error');
-          setError(err.message || 'Failed to connect to remote desktop service.');
+          setStatus("connected");
+        }
+      } catch (err: any) {
+        console.error("[RemoteDesktop] Connection Error:", err);
+        if (mounted) {
+          setStatus("error");
+          setError(
+            err.message || "Failed to connect to remote desktop service.",
+          );
         }
       }
     };
@@ -128,32 +226,65 @@ export function RemoteControlModal({ deviceId, onClose }: { deviceId: string; on
   }, [deviceId]);
 
   const sendInput = (type: string, data: any) => {
-    if (dataChannelRef.current?.readyState === 'open') {
-      // Basic protocol: { t: 'mm', x: 0.5, y: 0.5 }
-      dataChannelRef.current.send(JSON.stringify({ t: type, ...data }));
+    if (dataChannelRef.current?.readyState === "open") {
+      dataChannelRef.current.send(JSON.stringify({ type, ...data }));
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current) return;
     const rect = videoRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    sendInput('mm', { x, y });
+
+    // Backend: ParseAndInjectInputAsync
+    // message.X, message.Y -> await input.InjectMouseMoveAsync(message.X.Value, message.Y.Value, cancellationToken);
+    // Usually Windows API expects absolute coordinates or screen relative.
+    // If we send relative 0-1, backend needs to scale.
+    // Looking at RemoteSessionManager.cs:245: await input.InjectMouseMoveAsync(message.X.Value, message.Y.Value, cancellationToken);
+    // Let's assume for now we send raw coords relative to video element, but this is likely wrong if resolution differs.
+    // Better to send relative 0-1 and have backend scale, OR send scaled coords here.
+    // The backend seems to just pass X/Y to InjectMouseMoveAsync.
+    // Let's assume backend expects pixels. We need the remote screen size.
+    // We don't know remote screen size here.
+    // But wait, the video stream has a resolution.
+    const videoWidth = videoRef.current.videoWidth;
+    const videoHeight = videoRef.current.videoHeight;
+
+    // Calculate position relative to the video frame (which might be scaled in CSS)
+    // e.clientX is viewport relative. rect is element relative to viewport.
+    const relX = e.clientX - rect.left;
+    const relY = e.clientY - rect.top;
+
+    // Scale to actual video resolution
+    const actualX = Math.round((relX / rect.width) * videoWidth);
+    const actualY = Math.round((relY / rect.height) * videoHeight);
+
+    sendInput("mouseMove", { x: actualX, y: actualY });
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLVideoElement>) => {
-    sendInput('md', { b: e.button });
+    // 0: left, 1: middle, 2: right
+    let btn = "left";
+    if (e.button === 1) btn = "middle";
+    if (e.button === 2) btn = "right";
+    sendInput("mouseButton", { button: btn, pressed: true });
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLVideoElement>) => {
-    sendInput('mu', { b: e.button });
+    let btn = "left";
+    if (e.button === 1) btn = "middle";
+    if (e.button === 2) btn = "right";
+    sendInput("mouseButton", { button: btn, pressed: false });
   };
-  
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-     // Prevent default browser actions for common keys if focused
-     // e.preventDefault(); 
-     sendInput('kd', { k: e.key });
+    // TODO: proper key code mapping if needed
+    // Backend expects 'keyCode' (int).
+    // e.keyCode is deprecated but often used.
+    sendInput("key", { keyCode: e.keyCode, pressed: true });
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    sendInput("key", { keyCode: e.keyCode, pressed: false });
   };
 
   return (
@@ -163,7 +294,8 @@ export function RemoteControlModal({ deviceId, onClose }: { deviceId: string; on
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
           <span className="text-white font-medium text-sm">
-            Remote Control: <span className="text-slate-400 font-mono">{deviceId}</span>
+            Remote Control:{" "}
+            <span className="text-slate-400 font-mono">{deviceId}</span>
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -181,24 +313,54 @@ export function RemoteControlModal({ deviceId, onClose }: { deviceId: string; on
 
       {/* Video Area */}
       <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden group">
-        {status === 'connecting' && (
+        {status === "connecting" && (
           <div className="text-slate-500 flex flex-col items-center animate-pulse">
-            <svg className="w-12 h-12 mb-4 opacity-50" fill="none" viewBox="0 0 24 24">
-               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            <svg
+              className="w-12 h-12 mb-4 opacity-50"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
             </svg>
             <span>Establishing secure connection...</span>
           </div>
         )}
-        
-        {status === 'error' && (
+
+        {status === "error" && (
           <div className="text-danger flex flex-col items-center max-w-md text-center p-8">
-            <svg className="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              className="w-12 h-12 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
             <h3 className="text-lg font-bold mb-2">Connection Failed</h3>
             <p className="text-slate-400 text-sm">{error}</p>
-            <button onClick={onClose} className="mt-6 text-slate-300 hover:text-white underline">Close</button>
+            <button
+              onClick={onClose}
+              className="mt-6 text-slate-300 hover:text-white underline"
+            >
+              Close
+            </button>
           </div>
         )}
 
@@ -207,12 +369,13 @@ export function RemoteControlModal({ deviceId, onClose }: { deviceId: string; on
           autoPlay
           playsInline
           muted
-          className={`max-w-full max-h-full outline-none cursor-none ${status === 'connected' ? 'block' : 'hidden'}`}
+          className={`max-w-full max-h-full outline-none cursor-none ${status === "connected" ? "block" : "hidden"}`}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           tabIndex={0}
           onKeyDown={handleKeyDown}
+          onKeyUp={handleKeyUp}
         />
       </div>
     </div>

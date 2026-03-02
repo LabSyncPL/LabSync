@@ -36,38 +36,52 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         _onConnectionClosed = onConnectionClosed;
     }
 
-    public Task CreateOfferAsync(CancellationToken cancellationToken = default)
+    public async Task CreateOfferAsync(CancellationToken cancellationToken = default)
     {
         var config = new RTCConfiguration
         {
-            iceServers = new List<RTCIceServer> { new() { urls = StunUrl } }
+            iceServers = new List<RTCIceServer> { new RTCIceServer { urls = StunUrl } }
         };
         _pc = new RTCPeerConnection(config);
 
-        var videoFormats = new List<SDPAudioVideoMediaFormat>
-        {
-            new(SDPMediaTypesEnum.video, 96, "H264", 90000)
-        };
-        _videoTrack = new MediaStreamTrack(SDPMediaTypesEnum.video, false, videoFormats, MediaStreamStatusEnum.SendRecv);
-        _pc.addTrack(_videoTrack);
-        _videoSsrc = _videoTrack.Ssrc;
+        var videoTrack = new MediaStreamTrack(SDPMediaTypesEnum.video, false, 
+            new List<SDPAudioVideoMediaFormat> 
+            { 
+                // Using 0 for channels (5th argument) as required by SIPSorcery constructor
+                new SDPAudioVideoMediaFormat(SDPMediaTypesEnum.video, 96, "H264", 90000, 0, "packetization-mode=1;profile-level-id=42e01f") 
+            }, 
+            MediaStreamStatusEnum.SendRecv);
+        
+        _pc.addTrack(videoTrack);
+        _videoTrack = videoTrack;
+        _videoSsrc = videoTrack.Ssrc;
 
         _pc.onicecandidate += (candidate) =>
         {
             if (candidate == null) return;
-            var json = candidate.toJSON();
+            // Manual JSON serialization to ensure all fields are present and compatible with frontend
+            var candidateDict = new Dictionary<string, object>
+            {
+                // Ensure candidate string starts with "candidate:" prefix if missing, though SIPSorcery usually includes it.
+                // The browser expects "candidate:..." string.
+                { "candidate", candidate.candidate }, 
+                { "sdpMid", candidate.sdpMid ?? "" },
+                { "sdpMLineIndex", candidate.sdpMLineIndex }
+            };
+            
+            var json = System.Text.Json.JsonSerializer.Serialize(candidateDict);
             OnIceCandidate?.Invoke(this, json);
         };
 
         _pc.onconnectionstatechange += (state) =>
         {
-            OnConnectionStateChanged?.Invoke(this, EventArgs.Empty);
+            if (OnConnectionStateChanged != null) OnConnectionStateChanged(this, EventArgs.Empty);
             if (state == RTCPeerConnectionState.failed || state == RTCPeerConnectionState.closed)
                 _onConnectionClosed?.Invoke();
         };
 
         var offer = _pc.createOffer(null);
-        return _pc.setLocalDescription(offer);
+        await _pc.setLocalDescription(offer);
     }
 
     public Task SetRemoteAnswerAsync(string sdpType, string sdp, CancellationToken cancellationToken = default)
@@ -84,7 +98,7 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         var result = pc.setRemoteDescription(init);
         if (result != SetDescriptionResultEnum.OK)
         {
-            _logger.LogWarning("setRemoteDescription failed: {Result}", result);
+            _logger.LogWarning("setRemoteDescription failed: {Result}. SDP: {Sdp}", result, sdp);
             throw new InvalidOperationException($"setRemoteDescription failed: {result}");
         }
         return Task.CompletedTask;

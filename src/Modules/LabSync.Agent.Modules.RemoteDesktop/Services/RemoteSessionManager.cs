@@ -39,7 +39,7 @@ public class RemoteSessionManager : IRemoteSessionManager
 
     public async Task<RemoteSessionResult> StartSessionAsync(StartSessionRequest request, CancellationToken cancellationToken = default)
     {
-        var sessionId = Guid.NewGuid();
+        var sessionId = request.SessionId ?? Guid.NewGuid();
         var key = sessionId.ToString("N");
         IScreenCaptureService? capture = null;
         IVideoEncoder? encoder = null;
@@ -67,7 +67,7 @@ public class RemoteSessionManager : IRemoteSessionManager
 
             _signalingService.SubscribeToIceCandidates(sessionId, c =>
             {
-                if (!cts.Token.IsCancellationRequested && peer != null)
+                if (!cts.Token.IsCancellationRequested)
                     _ = SafeAddIceCandidate(peer, c, cts.Token);
             });
 
@@ -241,7 +241,7 @@ public class RemoteSessionManager : IRemoteSessionManager
         try
         {
             var json = System.Text.Encoding.UTF8.GetString(payload, 0, length);
-            var message = System.Text.Json.JsonSerializer.Deserialize<InputMessage>(json);
+            var message = System.Text.Json.JsonSerializer.Deserialize<InputMessage>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (message is null || string.IsNullOrWhiteSpace(message.Type))
                 return;
 
@@ -310,7 +310,27 @@ public class RemoteSessionManager : IRemoteSessionManager
     {
         try
         {
-            await _signalingService.SendIceCandidateAsync(new IceCandidateDto(sessionId, candidate, null, null), CancellationToken.None);
+            // Parse candidate JSON to extract sdpMid and sdpMLineIndex if available
+            // SipsorceryWebRtcPeerConnectionService now sends a JSON with { candidate, sdpMid, sdpMLineIndex }
+            
+            string candStr = candidate;
+            string? sdpMid = null;
+            int? sdpMLineIndex = null;
+
+            try 
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(candidate);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("candidate", out var cProp)) candStr = cProp.GetString() ?? "";
+                if (root.TryGetProperty("sdpMid", out var midProp)) sdpMid = midProp.GetString();
+                if (root.TryGetProperty("sdpMLineIndex", out var idxProp)) sdpMLineIndex = idxProp.GetInt32();
+            }
+            catch
+            {
+                // Fallback: assume it's just the candidate string
+            }
+
+            await _signalingService.SendIceCandidateAsync(new IceCandidateDto(sessionId, candStr, sdpMid, sdpMLineIndex), CancellationToken.None);
         }
         catch (Exception ex)
         {

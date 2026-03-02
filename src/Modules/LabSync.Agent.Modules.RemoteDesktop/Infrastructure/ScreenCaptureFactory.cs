@@ -16,15 +16,16 @@ public static class ScreenCaptureFactory
             ? factory.CreateLogger<PlaceholderScreenCaptureService>()
             : null;
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (OperatingSystem.IsWindows())
             return new WindowsScreenCaptureFactory(logger);
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (OperatingSystem.IsLinux())
             return new LinuxScreenCaptureFactory(logger);
 
         return new PlaceholderScreenCaptureFactory(logger);
     }
 }
 
+[SupportedOSPlatform("windows")]
 internal sealed class WindowsScreenCaptureFactory : IScreenCaptureFactory
 {
     private readonly ILogger? _logger;

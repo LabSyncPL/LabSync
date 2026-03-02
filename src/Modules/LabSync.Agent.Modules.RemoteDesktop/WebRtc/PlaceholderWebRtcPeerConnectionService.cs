@@ -21,7 +21,7 @@ public class PlaceholderWebRtcPeerConnectionService : IWebRtcPeerConnectionServi
     }
 
     public event EventHandler<string>? OnIceCandidate;
-    public event EventHandler? OnConnectionStateChanged;
+    public event EventHandler? OnConnectionStateChanged { add { } remove { } }
 
     public Task CreateOfferAsync(CancellationToken cancellationToken = default)
     {

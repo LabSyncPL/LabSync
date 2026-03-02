@@ -11,4 +11,5 @@ public interface IAgentHubInvoker
     Task InvokeAsync(string methodName, object?[] args, CancellationToken cancellationToken = default);
     void RegisterHandler<T1, T2, T3>(string methodName, Action<T1, T2, T3> handler);
     void RegisterHandler<T1, T2, T3, T4>(string methodName, Action<T1, T2, T3, T4> handler);
+    void RegisterHandler<T1>(string methodName, Action<T1> handler);
 }

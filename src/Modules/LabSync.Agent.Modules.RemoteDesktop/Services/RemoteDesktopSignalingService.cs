@@ -13,6 +13,8 @@ public class RemoteDesktopSignalingService : IRemoteDesktopSignalingService
     private readonly Dictionary<Guid, Action<IceCandidateDto>> _iceHandlers = new();
     private readonly object _gate = new();
 
+    public event Action<Guid> OnStartSessionRequested = delegate { };
+
     public RemoteDesktopSignalingService(
         IAgentHubInvoker hubInvoker,
         ILogger<RemoteDesktopSignalingService> logger)
@@ -23,6 +25,8 @@ public class RemoteDesktopSignalingService : IRemoteDesktopSignalingService
             CompleteAnswer(sessionId, new RemoteDesktopAnswerDto(sessionId, sdpType, sdp)));
         _hubInvoker.RegisterHandler<Guid, string, string?, int?>("RemoteDesktopIceCandidate", (sessionId, candidate, sdpMid, sdpMLineIndex) =>
             OnRemoteIceCandidate(new IceCandidateDto(sessionId, candidate, sdpMid, sdpMLineIndex)));
+        _hubInvoker.RegisterHandler<Guid>("StartRemoteDesktopSession", (sessionId) =>
+            OnStartSessionRequested(sessionId));
     }
 
     public async Task SendOfferAsync(RemoteDesktopOfferDto offer, CancellationToken cancellationToken = default)

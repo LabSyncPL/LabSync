@@ -16,6 +16,8 @@ var serverUrl = builder.Configuration["AGENT_SERVER_URL"]
     ?? throw new InvalidOperationException("ServerUrl is not configured. Please set it in appsettings.json or an environment variable.");
 
 builder.Services.AddSingleton<AgentIdentityService>();
+builder.Services.AddSingleton<AgentContext>();
+builder.Services.AddSingleton<LabSync.Core.Interfaces.IAgentContext>(sp => sp.GetRequiredService<AgentContext>());
 builder.Services.AddSingleton<LabSync.Core.Interfaces.IAgentHubInvoker, AgentHubInvoker>();
 builder.Services.AddSingleton<ServerClient>();
 builder.Services.AddSingleton<ModuleLoader>();

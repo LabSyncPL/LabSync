@@ -34,9 +34,15 @@ public class RemoteDesktopModule : IRemoteDesktopModule
         }
 
         var loggerFactory = serviceProvider.GetService(typeof(ILoggerFactory)) as ILoggerFactory;
+        var agentContext = serviceProvider.GetService(typeof(LabSync.Core.Interfaces.IAgentContext)) as LabSync.Core.Interfaces.IAgentContext;
+
+        if (hubInvoker == null)
+        {
+            return Task.CompletedTask;
+        }
 
         var signalingService = new RemoteDesktopSignalingService(
-            hubInvoker ?? throw new InvalidOperationException("IAgentHubInvoker must be registered by the host for Remote Desktop module."),
+            hubInvoker,
             loggerFactory != null
                 ? loggerFactory.CreateLogger<RemoteDesktopSignalingService>()
                 : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteDesktopSignalingService>.Instance);
@@ -59,6 +65,35 @@ public class RemoteDesktopModule : IRemoteDesktopModule
                 ? loggerFactory.CreateLogger<RemoteSessionManager>()
                 : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteSessionManager>.Instance,
             SessionOptions.Default);
+
+        signalingService.OnStartSessionRequested += (sessionId) =>
+        {
+            if (agentContext != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var deviceId = agentContext.DeviceId;
+                        if (deviceId == Guid.Empty)
+                        {
+                            _logger?.LogWarning("AgentContext returned empty DeviceId for session {SessionId}. Aborting session start.", sessionId);
+                            return;
+                        }
+
+                        await _sessionManager.StartSessionAsync(new StartSessionRequest(deviceId, null, sessionId));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to start session from SignalR request. SessionId: {SessionId}", sessionId);
+                    }
+                });
+            }
+            else
+            {
+                _logger?.LogWarning("Cannot start session {SessionId} because AgentContext is not available (DeviceId unknown).", sessionId);
+            }
+        };
 
         _logger?.LogInformation("RemoteDesktop module initialized. Platform: {Platform}", RuntimeInformation.OSDescription);
         return Task.CompletedTask;
