@@ -85,8 +85,12 @@ builder.Services.AddAuthentication(options => {
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
-                if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/agentHub"))
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && 
+                    (path.StartsWithSegments("/agentHub") || path.StartsWithSegments("/remoteDesktopHub")))
+                {
                     context.Token = accessToken;
+                }
                 return Task.CompletedTask;
             }
         };
@@ -145,6 +149,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<AgentHub>("/agentHub");
+app.MapHub<RemoteDesktopHub>("/remoteDesktopHub");
 
 var urls = builder.Configuration["ASPNETCORE_URLS"];
 if (!string.IsNullOrEmpty(urls))

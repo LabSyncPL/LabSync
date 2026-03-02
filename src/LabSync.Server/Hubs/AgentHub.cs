@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Dto;
+using LabSync.Core.Dto;
 using LabSync.Core.Interfaces;
 using LabSync.Core.Types;
 using LabSync.Server.Authentication;
@@ -15,7 +15,8 @@ namespace LabSync.Server.Hubs;
 [Authorize(AuthenticationSchemes = $"{JwtBearerDefaults.AuthenticationScheme},{DeviceKeyAuthenticationHandler.SchemeName}", Roles = "Agent")]
 public class AgentHub(
     LabSyncDbContext dbContext,
-    ConnectionTracker _connectionTracker, 
+    ConnectionTracker _connectionTracker,
+    IHubContext<RemoteDesktopHub> remoteDesktopHubContext,
     ILogger<AgentHub> logger)
     : Hub<IAgentClient>
 {
@@ -67,6 +68,46 @@ public class AgentHub(
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    private static string DeviceGroup(Guid deviceId) => $"device:{deviceId:N}";
+
+    /// <summary>
+    /// Called by agent module when it has created an SDP offer for remote desktop.
+    /// Forwards the offer to all viewers subscribed to the device group.
+    /// </summary>
+    public async Task RemoteDesktopOffer(Guid sessionId, Guid deviceId, string sdpType, string sdp)
+    {
+        var deviceIdFromContext = GetDeviceIdFromContext();
+        if (deviceIdFromContext == Guid.Empty || deviceIdFromContext != deviceId)
+        {
+            logger.LogWarning("RemoteDesktopOffer: deviceId mismatch. FromContext={ContextDeviceId}, PayloadDeviceId={DeviceId}",
+                deviceIdFromContext, deviceId);
+            return;
+        }
+
+        logger.LogInformation("Received RemoteDesktopOffer for session {SessionId} from device {DeviceId}. Forwarding to viewers.",
+            sessionId, deviceId);
+
+        await remoteDesktopHubContext.Clients.Group(DeviceGroup(deviceId))
+            .SendAsync("ReceiveRemoteDesktopOffer", sessionId, deviceId, sdpType, sdp);
+    }
+
+    /// <summary>
+    /// Called by agent module when it has gathered ICE candidates.
+    /// Forwards candidates to all viewers in the device group.
+    /// </summary>
+    public async Task RemoteDesktopIceCandidate(Guid sessionId, string candidate, string? sdpMid, int? sdpMLineIndex)
+    {
+        var deviceId = GetDeviceIdFromContext();
+        if (deviceId == Guid.Empty)
+        {
+            logger.LogWarning("RemoteDesktopIceCandidate: could not resolve deviceId from context.");
+            return;
+        }
+
+        await remoteDesktopHubContext.Clients.Group(DeviceGroup(deviceId))
+            .SendAsync("ReceiveRemoteDesktopIceCandidate", sessionId, candidate, sdpMid, sdpMLineIndex);
     }
 
     public async Task UploadJobResult(JobResultDto result)
