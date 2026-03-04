@@ -37,7 +37,7 @@ public class RemoteDesktopSignalingService : IRemoteDesktopSignalingService
 
     public async Task SendOfferAsync(RemoteDesktopOfferDto offer, CancellationToken cancellationToken = default)
     {
-        await _hubInvoker.InvokeAsync("RemoteDesktopOffer", new object?[] { offer.SessionId, offer.DeviceId, offer.SdpType, offer.Sdp }, cancellationToken);
+        await _hubInvoker.InvokeAsync("RemoteDesktopOffer", new object?[] { offer.SessionId, offer.DeviceId, offer.SdpType, offer.Sdp, offer.AvailableEncoders }, cancellationToken);
     }
 
     public async Task SendIceCandidateAsync(IceCandidateDto candidate, CancellationToken cancellationToken = default)

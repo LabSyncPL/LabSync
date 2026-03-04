@@ -31,6 +31,7 @@ export function RemoteControlModal({
     "connecting" | "connected" | "disconnected" | "error"
   >("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [availableEncoders, setAvailableEncoders] = useState<string[]>([]);
 
   // Settings state
   const [showSettings, setShowSettings] = useState(false);
@@ -145,9 +146,36 @@ export function RemoteControlModal({
             _deviceId: string,
             sdpType: string,
             sdp: string,
+            encoders?: string[],
           ) => {
             console.log("[RemoteDesktop] Received Offer", sessionId);
             sessionIdRef.current = sessionId;
+
+            let currentPrefs = { ...preferences };
+
+            if (encoders && encoders.length > 0) {
+              console.log("[RemoteDesktop] Available encoders:", encoders);
+              setAvailableEncoders(encoders);
+
+              // Auto-select GPU encoder if not already set and available
+              // Priority: Nvidia > AMD > Intel > Software
+              let bestEncoder = "Software";
+              if (encoders.includes("NvidiaNvenc")) bestEncoder = "NvidiaNvenc";
+              else if (encoders.includes("AmdAmf")) bestEncoder = "AmdAmf";
+              else if (encoders.includes("IntelQsv")) bestEncoder = "IntelQsv";
+
+              if (
+                bestEncoder !== "Software" &&
+                currentPrefs.preferredEncoder === "Software"
+              ) {
+                console.log(
+                  "[RemoteDesktop] Upgrading encoder to:",
+                  bestEncoder,
+                );
+                currentPrefs.preferredEncoder = bestEncoder;
+                setPreferences(currentPrefs);
+              }
+            }
 
             if (pcRef.current) {
               pcRef.current.close();
@@ -198,9 +226,18 @@ export function RemoteControlModal({
               event.channel.onopen = () => {
                 console.log(
                   "[RemoteDesktop] DataChannel OPEN. Sending initial config.",
+                  currentPrefs,
                 );
-                // Optionally send config again to be sure
-                // sendConfiguration(preferences);
+                // Send the potentially updated preferences immediately
+                const configMessage = {
+                  type: "configure",
+                  width: currentPrefs.initialWidth,
+                  height: currentPrefs.initialHeight,
+                  fps: currentPrefs.initialFps,
+                  bitrateKbps: currentPrefs.initialBitrateKbps,
+                  encoderType: currentPrefs.preferredEncoder,
+                };
+                event.channel.send(JSON.stringify(configMessage));
               };
             };
 
@@ -493,10 +530,20 @@ export function RemoteControlModal({
                 }
                 className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full"
               >
-                <option value="Software">Software (x264)</option>
-                <option value="NvidiaNvenc">NVIDIA NVENC</option>
-                <option value="AmdAmf">AMD AMF</option>
-                <option value="IntelQsv">Intel QSV</option>
+                {availableEncoders.length > 0 ? (
+                  availableEncoders.map((enc) => (
+                    <option key={enc} value={enc}>
+                      {enc}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Software">Software (x264)</option>
+                    <option value="NvidiaNvenc">NVIDIA NVENC</option>
+                    <option value="AmdAmf">AMD AMF</option>
+                    <option value="IntelQsv">Intel QSV</option>
+                  </>
+                )}
               </select>
             </div>
 

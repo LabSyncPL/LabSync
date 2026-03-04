@@ -95,6 +95,10 @@ public class RemoteSessionManager : IRemoteSessionManager
                 _logger.LogWarning("Preferred encoder not available. Falling back to {Encoder}", preferredEncoderType);
             }
 
+            // Report available encoders to the client (optional, could be sent via a separate message or included in offer)
+            // For now, we just log them. In a real scenario, we might want to send this back.
+            _logger.LogInformation("Available encoders: {Encoders}", string.Join(", ", availableEncoders));
+
             int targetWidth = request.Preferences?.InitialWidth ?? sourceWidth;
             int targetHeight = request.Preferences?.InitialHeight ?? sourceHeight;
             int fps = request.Preferences?.InitialFps ?? 30;
@@ -136,9 +140,17 @@ public class RemoteSessionManager : IRemoteSessionManager
             // Create Data Channel BEFORE Offer
             var dataChannelStream = await peer.OpenDataChannelAsync("input", cts.Token);
 
+            // 5. Send Offer
             await peer.CreateOfferAsync(cts.Token);
-            var offer = new RemoteDesktopOfferDto(sessionId, request.DeviceId, "offer", peer.GetLocalSdpOffer());
+            var offer = new RemoteDesktopOfferDto(
+                sessionId,
+                request.DeviceId,
+                "offer",
+                peer.GetLocalSdpOffer(),
+                availableEncoders.Select(e => e.ToString()).ToArray());
             await _signalingService.SendOfferAsync(offer, cts.Token);
+
+            _logger.LogInformation("Sent SDP Offer for session {SessionId}.", sessionId);
 
             var answer = await _signalingService.WaitForAnswerAsync(sessionId, _options.OfferTimeout, cts.Token);
             if (answer == null)

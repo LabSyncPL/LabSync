@@ -98,11 +98,11 @@ public class ServerClient : IAsyncDisposable
         _logger.LogInformation("SignalR Hub connection established successfully.");
     }
 
-    public async Task SendRemoteDesktopOfferAsync(Guid sessionId, string sdpType, string sdp)
+    public async Task SendRemoteDesktopOfferAsync(Guid sessionId, string sdpType, string sdp, string[]? availableEncoders = null)
     {
         if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
             return;
-        await _hubConnection.InvokeAsync("RemoteDesktopOffer", sessionId, Guid.Empty, sdpType, sdp);
+        await _hubConnection.InvokeAsync("RemoteDesktopOffer", sessionId, Guid.Empty, sdpType, sdp, availableEncoders);
     }
 
     public async Task SendRemoteDesktopIceCandidateAsync(Guid sessionId, string candidate)

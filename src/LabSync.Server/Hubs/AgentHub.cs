@@ -76,7 +76,7 @@ public class AgentHub(
     /// Called by agent module when it has created an SDP offer for remote desktop.
     /// Forwards the offer to all viewers subscribed to the device group.
     /// </summary>
-    public async Task RemoteDesktopOffer(Guid sessionId, Guid deviceId, string sdpType, string sdp)
+    public async Task RemoteDesktopOffer(Guid sessionId, Guid deviceId, string sdpType, string sdp, string[]? availableEncoders = null)
     {
         var deviceIdFromContext = GetDeviceIdFromContext();
         if (deviceIdFromContext == Guid.Empty || deviceIdFromContext != deviceId)
@@ -90,7 +90,7 @@ public class AgentHub(
             sessionId, deviceId);
 
         await remoteDesktopHubContext.Clients.Group(DeviceGroup(deviceId))
-            .SendAsync("ReceiveRemoteDesktopOffer", sessionId, deviceId, sdpType, sdp);
+            .SendAsync("ReceiveRemoteDesktopOffer", sessionId, deviceId, sdpType, sdp, availableEncoders);
     }
 
     /// <summary>

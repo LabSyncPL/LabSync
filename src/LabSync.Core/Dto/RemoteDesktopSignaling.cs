@@ -9,7 +9,8 @@ public record RemoteDesktopOfferDto(
     Guid SessionId,
     Guid DeviceId,
     string SdpType,
-    string Sdp
+    string Sdp,
+    string[]? AvailableEncoders = null
 );
 
 public record RemoteDesktopAnswerDto(
