@@ -27,6 +27,9 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
     private uint _currentRtpTimestamp = 0;
     private bool _isNewFrame = true;
 
+    private byte[]? _lastSps;
+    private byte[]? _lastPps;
+
     private const string StunUrl = "stun:stun.l.google.com:19302";
 
     public event EventHandler<string>? OnIceCandidate;
@@ -198,15 +201,25 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         {
             int nalType = frame.Data[0] & 0x1F;
 
+            if (nalType == 7) _lastSps = frame.Data;
+            if (nalType == 8) _lastPps = frame.Data;
+
             if (pc.connectionState == RTCPeerConnectionState.connected)
             {
-                // Zmiana czasu nastêpuje tylko na progu nowej klatki obrazu
+                // Zmiana czasu TYLKO na progu nowej klatki obrazu
                 if (_isNewFrame)
                 {
                     long currentTicks = DateTime.UtcNow.Ticks;
                     if (_startTimestamp == 0) _startTimestamp = currentTicks;
                     _currentRtpTimestamp = (uint)((currentTicks - _startTimestamp) * 90000 / 10000000);
                     _isNewFrame = false;
+                }
+
+                // Aplikacja SPS/PPS przy klatce kluczowej
+                if (nalType == 5)
+                {
+                    if (_lastSps != null) pc.SendRtpRaw(SDPMediaTypesEnum.video, _lastSps, _currentRtpTimestamp, 0, _videoPayloadType);
+                    if (_lastPps != null) pc.SendRtpRaw(SDPMediaTypesEnum.video, _lastPps, _currentRtpTimestamp, 0, _videoPayloadType);
                 }
 
                 if (frame.Data.Length > 1200)
@@ -219,6 +232,7 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
                     pc.SendRtpRaw(SDPMediaTypesEnum.video, frame.Data, _currentRtpTimestamp, markerBit, _videoPayloadType);
                 }
 
+                // Koniec klatki = ustawiamy flagê
                 if (nalType == 1 || nalType == 5)
                 {
                     _isNewFrame = true;
@@ -260,9 +274,10 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
             isFirst = false;
 
             packetsSent++;
-            if (packetsSent % 20 == 0)
+            // Pacing (ograniczenie tempa wysy³ania UDP). 
+            // 30 pakietów to kompromis: karta sieciowa siê nie d³awi, a klatka przesy³ana jest bardzo szybko.
+            if (packetsSent % 30 == 0)
             {
-                // Task.Yield() daje "oddech" buforom UDP w systemie bez wprowadzania milisekundowych lagów!
                 await Task.Yield();
             }
         }

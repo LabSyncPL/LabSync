@@ -92,18 +92,14 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
 
     private static string BuildFfmpegArguments(EncoderOptions options)
     {
-        // Input: raw BGRA frames via stdin.
-        // Output: Annex B H.264 to stdout.
-        var bitrate = options.TargetBitrateKbps > 0 ? options.TargetBitrateKbps : 2000;
+        var bitrate = options.TargetBitrateKbps > 0 ? options.TargetBitrateKbps : 1500;
         var fps = options.TargetFps > 0 ? options.TargetFps : 30;
 
-        // -preset ultrafast (instead of veryfast) for maximum speed
-        // -threads 0 to let ffmpeg use all cores
-        // Add scaling filter to reduce resolution and improve encoding speed on weak hardware
-        // Scale to width 1024, keeping aspect ratio (height=-2 ensures even height)
+        // USUNIÊTO -tune zerolatency!
+        // DODANO -preset fast oraz bufsize równe 2-krotnoœci bitrate'u, co daje buforowanie.
         return $"-f rawvideo -pix_fmt bgra -s {options.Width}x{options.Height} -r {fps} -i - " +
                $"-vf scale=1024:-2 " +
-               $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset veryfast -tune zerolatency -b:v {bitrate}k -g 15 -keyint_min 15 -sc_threshold 0 -bf 0 -slices 1 -threads 0 " +
+               $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset fast -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -keyint_min {fps} -sc_threshold 0 -bf 0 -slices 1 -threads 0 " +
                "-f h264 -an -";
     }
 
