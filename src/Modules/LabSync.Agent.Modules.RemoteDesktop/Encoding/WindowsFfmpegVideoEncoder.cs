@@ -37,7 +37,7 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         {
             SingleReader = true,
             SingleWriter = true,
-            FullMode = BoundedChannelFullMode.DropOldest
+            FullMode = BoundedChannelFullMode.Wait
         });
 
         var psi = new ProcessStartInfo
@@ -103,7 +103,7 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         // Scale to width 1024, keeping aspect ratio (height=-2 ensures even height)
         return $"-f rawvideo -pix_fmt bgra -s {options.Width}x{options.Height} -r {fps} -i - " +
                $"-vf scale=1024:-2 " +
-               $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset ultrafast -tune zerolatency -b:v {bitrate}k -g {fps} -keyint_min {fps} -sc_threshold 0 -threads 0 " +
+               $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset veryfast -tune zerolatency -b:v {bitrate}k -g 15 -keyint_min 15 -sc_threshold 0 -bf 0 -slices 1 -threads 0 " +
                "-f h264 -an -";
     }
 
@@ -146,49 +146,57 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         if (channel == null) return;
 
         var stdout = process.StandardOutput.BaseStream;
-        var buffer = new byte[1024 * 128]; // 128 KB bufora
+        var buffer = new byte[1024 * 1024 * 4];
         int bufferLen = 0;
+        int searchIndex = 0;
 
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                int read = await stdout.ReadAsync(buffer.AsMemory(bufferLen, buffer.Length - bufferLen), cancellationToken);
+                int availableSpace = buffer.Length - bufferLen;
+                if (availableSpace == 0)
+                {
+                    _logger.LogWarning("Bufor FFmpeg jest pe³ny! Resetowanie.");
+                    bufferLen = 0;
+                    searchIndex = 0;
+                    availableSpace = buffer.Length;
+                }
+
+                int read = await stdout.ReadAsync(buffer.AsMemory(bufferLen, availableSpace), cancellationToken);
                 if (read == 0) break;
 
                 bufferLen += read;
-                int i = 0;
 
-                while (i < bufferLen - 3)
+                while (searchIndex < bufferLen - 3)
                 {
-                    // Wyszukiwanie sekwencji startowych Annex B
                     int startCodeLen = 0;
-                    if (buffer[i] == 0 && buffer[i + 1] == 0 && buffer[i + 2] == 1)
+                    if (buffer[searchIndex] == 0 && buffer[searchIndex + 1] == 0 && buffer[searchIndex + 2] == 1)
                         startCodeLen = 3;
-                    else if (buffer[i] == 0 && buffer[i + 1] == 0 && buffer[i + 2] == 0 && buffer[i + 3] == 1)
+                    else if (buffer[searchIndex] == 0 && buffer[searchIndex + 1] == 0 && buffer[searchIndex + 2] == 0 && buffer[searchIndex + 3] == 1)
                         startCodeLen = 4;
 
                     if (startCodeLen > 0)
                     {
-                        if (i > 0)
+                        if (searchIndex > 0)
                         {
-                            var nalUnit = new byte[i];
-                            Buffer.BlockCopy(buffer, 0, nalUnit, 0, i);
+                            var nalUnit = new byte[searchIndex];
+                            Buffer.BlockCopy(buffer, 0, nalUnit, 0, searchIndex);
 
                             var isKeyFrame = IsIdrNal(nalUnit);
                             var frame = new EncodedFrame(nalUnit, isKeyFrame, DateTime.UtcNow);
-                            channel.Writer.TryWrite(frame);
+
+                            await channel.Writer.WriteAsync(frame, cancellationToken);
                         }
 
-                        // Usuwamy NAL i sekwencjê startow¹ z bufora, przesuwaj¹c resztê danych na pocz¹tek
-                        int consume = i + startCodeLen;
+                        int consume = searchIndex + startCodeLen;
                         bufferLen -= consume;
                         Buffer.BlockCopy(buffer, consume, buffer, 0, bufferLen);
-                        i = 0; // Resetujemy indeks, szukamy dalej
+                        searchIndex = 0;
                     }
                     else
                     {
-                        i++;
+                        searchIndex++;
                     }
                 }
             }

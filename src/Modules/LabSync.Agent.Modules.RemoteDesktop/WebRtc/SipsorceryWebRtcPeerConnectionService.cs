@@ -23,9 +23,9 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
     private readonly object _gate = new();
     private bool _disposed;
 
-    private byte[]? _lastSps;
-    private byte[]? _lastPps;
     private long _startTimestamp = 0;
+    private uint _currentRtpTimestamp = 0;
+    private bool _isNewFrame = true;
 
     private const string StunUrl = "stun:stun.l.google.com:19302";
 
@@ -192,50 +192,42 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
     public async Task AddVideoTrackFromEncodedStreamAsync(IAsyncEnumerable<EncodedFrame> stream, CancellationToken cancellationToken = default)
     {
         var pc = _pc;
-        if (pc == null || _videoTrack == null)
-            return;
+        if (pc == null || _videoTrack == null) return;
 
         await foreach (var frame in stream.WithCancellation(cancellationToken))
         {
             int nalType = frame.Data[0] & 0x1F;
 
-            // 1. Zapisujemy parametry SPS i PPS
-            if (nalType == 7) _lastSps = frame.Data;
-            if (nalType == 8) _lastPps = frame.Data;
-
-            // Przetwarzamy tylko, gdy WebRTC jest po³¹czone
             if (pc.connectionState == RTCPeerConnectionState.connected)
             {
-                // Pobieramy aktualny czas w momencie wysy³ania pakietu
-                long currentTicks = DateTime.UtcNow.Ticks;
-                if (_startTimestamp == 0) _startTimestamp = currentTicks;
-
-                // Konwersja Ticków (100 ns) na zegar RTP wideo (90000 Hz)
-                uint rtpTimestamp = (uint)((currentTicks - _startTimestamp) * 90000 / 10000000);
-
-                // Przed klatk¹ kluczow¹ wpychamy SPS/PPS z tym samym timestampem
-                if (nalType == 5)
+                // Zmiana czasu nastêpuje tylko na progu nowej klatki obrazu
+                if (_isNewFrame)
                 {
-                    if (_lastSps != null) pc.SendRtpRaw(SDPMediaTypesEnum.video, _lastSps, rtpTimestamp, 0, _videoPayloadType);
-                    if (_lastPps != null) pc.SendRtpRaw(SDPMediaTypesEnum.video, _lastPps, rtpTimestamp, 0, _videoPayloadType);
+                    long currentTicks = DateTime.UtcNow.Ticks;
+                    if (_startTimestamp == 0) _startTimestamp = currentTicks;
+                    _currentRtpTimestamp = (uint)((currentTicks - _startTimestamp) * 90000 / 10000000);
+                    _isNewFrame = false;
                 }
 
                 if (frame.Data.Length > 1200)
                 {
-                    // Du¿a klatka - fragmentujemy (zaktualizowana metoda SendFragmentedH264 z parametrem nalType)
-                    SendFragmentedH264(pc, _videoSsrc, rtpTimestamp, frame.Data, nalType);
+                    await SendFragmentedH264Async(pc, _videoSsrc, _currentRtpTimestamp, frame.Data, nalType);
                 }
                 else
                 {
-                    // Ma³a klatka - wysy³amy w ca³oœci
                     int markerBit = (nalType == 1 || nalType == 5) ? 1 : 0;
-                    pc.SendRtpRaw(SDPMediaTypesEnum.video, frame.Data, rtpTimestamp, markerBit, _videoPayloadType);
+                    pc.SendRtpRaw(SDPMediaTypesEnum.video, frame.Data, _currentRtpTimestamp, markerBit, _videoPayloadType);
+                }
+
+                if (nalType == 1 || nalType == 5)
+                {
+                    _isNewFrame = true;
                 }
             }
         }
     }
 
-    private void SendFragmentedH264(RTCPeerConnection pc, uint ssrc, uint timestamp, byte[] nalUnit, int originalNalType)
+    private async Task SendFragmentedH264Async(RTCPeerConnection pc, uint ssrc, uint timestamp, byte[] nalUnit, int originalNalType)
     {
         const int MTU = 1200;
         byte nalHeader = nalUnit[0];
@@ -244,6 +236,7 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         int offset = 1;
         int remaining = nalUnit.Length - 1;
         bool isFirst = true;
+        int packetsSent = 0;
 
         while (remaining > 0)
         {
@@ -258,7 +251,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
             payload[1] = fuHeader;
             Buffer.BlockCopy(nalUnit, offset, payload, 2, len);
 
-            // MarkerBit ustawiamy na 1 TYLKO w ostatnim fragmencie prawdziwego obrazu
             int markerBit = (isLast && (originalNalType == 1 || originalNalType == 5)) ? 1 : 0;
 
             pc.SendRtpRaw(SDPMediaTypesEnum.video, payload, timestamp, markerBit, _videoPayloadType);
@@ -266,6 +258,13 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
             offset += len;
             remaining -= len;
             isFirst = false;
+
+            packetsSent++;
+            if (packetsSent % 20 == 0)
+            {
+                // Task.Yield() daje "oddech" buforom UDP w systemie bez wprowadzania milisekundowych lagów!
+                await Task.Yield();
+            }
         }
     }
 
