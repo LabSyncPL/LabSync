@@ -10,6 +10,7 @@ public class AgentHubInvoker : IAgentHubInvoker
     private readonly List<Delegate> _remoteDesktopAnswerHandlers = new();
     private readonly List<Delegate> _remoteDesktopIceCandidateHandlers = new();
     private readonly List<Delegate> _startRemoteDesktopSessionHandlers = new();
+    private readonly List<Delegate> _stopRemoteDesktopSessionHandlers = new();
     private readonly object _gate = new();
 
     public void AttachConnection(object hubConnection)
@@ -40,6 +41,14 @@ public class AgentHubInvoker : IAgentHubInvoker
                     if (h is Action<Guid> action1) action1(sessionId);
                     else if (h is Action<Guid, RemoteDesktopPreferencesDto?> action2) action2(sessionId, prefs);
                 }
+            }
+        });
+        _hubConnection.On<Guid>("StopRemoteDesktopSession", (sessionId) =>
+        {
+            lock (_gate)
+            {
+                foreach (var h in _stopRemoteDesktopSessionHandlers)
+                    ((Action<Guid>)h)(sessionId);
             }
         });
     }
@@ -81,5 +90,14 @@ public class AgentHubInvoker : IAgentHubInvoker
         {
             lock (_gate) _startRemoteDesktopSessionHandlers.Add(handler);
         }
+        else if (methodName == "StopRemoteDesktopSession")
+        {
+            lock (_gate) _stopRemoteDesktopSessionHandlers.Add(handler);
+        }
+    }
+
+    public void RegisterHandler(string methodName, Action handler)
+    {
+        // No implementation needed for now as we don't have parameterless handlers yet
     }
 }

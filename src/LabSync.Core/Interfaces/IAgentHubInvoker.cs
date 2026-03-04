@@ -13,4 +13,5 @@ public interface IAgentHubInvoker
     void RegisterHandler<T1, T2, T3, T4>(string methodName, Action<T1, T2, T3, T4> handler);
     void RegisterHandler<T1, T2>(string methodName, Action<T1, T2> handler);
     void RegisterHandler<T1>(string methodName, Action<T1> handler);
+    void RegisterHandler(string methodName, Action handler);
 }

@@ -14,6 +14,7 @@ public class RemoteDesktopSignalingService : IRemoteDesktopSignalingService
     private readonly object _gate = new();
 
     public event Action<Guid, RemoteDesktopPreferencesDto?> OnStartSessionRequested = delegate { };
+    public event Action<Guid> OnStopSessionRequested = delegate { };
 
     public RemoteDesktopSignalingService(
         IAgentHubInvoker hubInvoker,
@@ -29,6 +30,9 @@ public class RemoteDesktopSignalingService : IRemoteDesktopSignalingService
         // Try to handle both signatures if possible, or assume updated protocol
         _hubInvoker.RegisterHandler<Guid, RemoteDesktopPreferencesDto?>("StartRemoteDesktopSession", (sessionId, prefs) =>
             OnStartSessionRequested(sessionId, prefs));
+            
+        _hubInvoker.RegisterHandler<Guid>("StopRemoteDesktopSession", (sessionId) =>
+            OnStopSessionRequested(sessionId));
     }
 
     public async Task SendOfferAsync(RemoteDesktopOfferDto offer, CancellationToken cancellationToken = default)

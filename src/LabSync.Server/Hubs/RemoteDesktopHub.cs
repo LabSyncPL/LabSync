@@ -62,6 +62,28 @@ public class RemoteDesktopHub(
     }
 
     /// <summary>
+    /// Viewer requests to stop a remote desktop session.
+    /// This method signals the agent to stop streaming.
+    /// </summary>
+    public async Task StopSession(Guid deviceId, Guid sessionId)
+    {
+        var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
+        if (agentConnectionId is null)
+        {
+            logger.LogWarning("StopSession: no connected agent for device {DeviceId}.", deviceId);
+            return;
+        }
+
+        logger.LogInformation("Stopping session {SessionId} on agent {AgentConnectionId}.", sessionId, agentConnectionId);
+
+        // Signal the agent to stop the session
+        await agentHubContext.Clients.Client(agentConnectionId)
+            .SendAsync("StopRemoteDesktopSession", sessionId);
+
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, DeviceGroup(deviceId));
+    }
+
+    /// <summary>
     /// Viewer sends SDP answer back to the agent.
     /// </summary>
     public async Task SendRemoteDesktopAnswer(Guid sessionId, Guid deviceId, string sdpType, string sdp)

@@ -49,6 +49,7 @@ export function RemoteControlModal({
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
   const resizeTimeoutRef = useRef<number | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
 
   const sendConfiguration = useCallback((prefs: RemoteDesktopPreferences) => {
     if (dataChannelRef.current?.readyState === "open") {
@@ -146,6 +147,7 @@ export function RemoteControlModal({
             sdp: string,
           ) => {
             console.log("[RemoteDesktop] Received Offer", sessionId);
+            sessionIdRef.current = sessionId;
 
             if (pcRef.current) {
               pcRef.current.close();
@@ -281,6 +283,16 @@ export function RemoteControlModal({
 
     return () => {
       mounted = false;
+      if (
+        sessionIdRef.current &&
+        connectionRef.current &&
+        connectionRef.current.state === signalR.HubConnectionState.Connected
+      ) {
+        connectionRef.current
+          .invoke("StopSession", deviceId, sessionIdRef.current)
+          .catch((err) => console.error("Error stopping session:", err));
+      }
+
       if (dataChannelRef.current) dataChannelRef.current.close();
       if (pcRef.current) pcRef.current.close();
       if (connectionRef.current) connectionRef.current.stop();

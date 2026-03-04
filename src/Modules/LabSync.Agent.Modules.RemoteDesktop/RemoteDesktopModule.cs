@@ -101,6 +101,22 @@ public class RemoteDesktopModule : IRemoteDesktopModule
             }
         };
 
+        signalingService.OnStopSessionRequested += (sessionId) =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logger?.LogInformation("Stopping session {SessionId} from SignalR request.", sessionId);
+                    await _sessionManager.StopSessionAsync(sessionId);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to stop session from SignalR request. SessionId: {SessionId}", sessionId);
+                }
+            });
+        };
+
         _logger?.LogInformation("RemoteDesktop module initialized. Platform: {Platform}", RuntimeInformation.OSDescription);
         return Task.CompletedTask;
     }

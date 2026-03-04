@@ -10,4 +10,5 @@ public interface IRemoteDesktopSignalingService
     void SubscribeToIceCandidates(Guid sessionId, Action<IceCandidateDto> onCandidate);
     void UnsubscribeFromIceCandidates(Guid sessionId);
     event Action<Guid, RemoteDesktopPreferencesDto?> OnStartSessionRequested;
+    event Action<Guid> OnStopSessionRequested;
 }
