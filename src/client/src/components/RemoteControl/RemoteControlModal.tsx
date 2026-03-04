@@ -396,28 +396,60 @@ export function RemoteControlModal({
     sendInput("key", { keyCode: e.keyCode, pressed: false });
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black z-[100] flex flex-col">
-      {/* Header / Toolbar */}
-      <div className="h-12 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 relative z-20">
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-2 h-2 rounded-full ${status === "connected" ? "bg-success animate-pulse" : "bg-warning"}`}
-          ></span>
-          <span className="text-white font-medium text-sm">
-            Remote: <span className="text-slate-400 font-mono">{deviceId}</span>
-          </span>
-          {status === "connected" && (
-            <div className="ml-4 text-xs text-slate-500 font-mono hidden md:block">
-              {preferences.initialWidth}x{preferences.initialHeight} |{" "}
-              {preferences.initialFps}FPS | {preferences.preferredEncoder}
-            </div>
-          )}
-        </div>
+    <div className="fixed inset-0 bg-black z-[100] flex flex-col group/container">
+      {/* Floating Toolbar */}
+      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between px-6 py-4 z-50 transition-transform duration-300 transform -translate-y-full group-hover/container:translate-y-0">
         <div className="flex items-center gap-3">
+          <div
+            className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)] ${status === "connected" ? "bg-green-500 animate-pulse" : status === "error" ? "bg-red-500" : "bg-yellow-500"}`}
+          ></div>
+          <div className="flex flex-col">
+            <span className="text-white font-semibold text-sm leading-tight drop-shadow-md">
+              {deviceId}
+            </span>
+            {status === "connected" && (
+              <span className="text-[10px] text-slate-300 font-mono opacity-80 drop-shadow-md">
+                {preferences.initialWidth}x{preferences.initialHeight} •{" "}
+                {preferences.initialFps}FPS • {preferences.preferredEncoder}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleFullscreen}
+            className="p-2 rounded-full bg-black/40 hover:bg-white/20 text-white backdrop-blur-sm transition-all"
+            title="Toggle Fullscreen"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+              ></path>
+            </svg>
+          </button>
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className={`p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors ${showSettings ? "bg-slate-700 text-white" : ""}`}
+            className={`p-2 rounded-full bg-black/40 hover:bg-white/20 text-white backdrop-blur-sm transition-all ${showSettings ? "bg-white/20 ring-1 ring-white/50" : ""}`}
             title="Stream Settings"
           >
             <svg
@@ -440,69 +472,109 @@ export function RemoteControlModal({
               />
             </svg>
           </button>
-
-          <div className="text-xs text-slate-500 px-2 py-1 bg-slate-800 rounded">
-            {status.toUpperCase()}
-          </div>
           <button
             onClick={onClose}
-            className="bg-danger hover:bg-danger-600 text-white px-3 py-1.5 rounded text-sm font-bold transition-colors"
+            className="bg-red-600/90 hover:bg-red-600 text-white px-4 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm shadow-lg transition-all ml-2"
           >
             Disconnect
           </button>
         </div>
       </div>
 
-      {/* Settings Modal */}
+      {/* Settings Modal - Floating */}
       {showSettings && (
-        <div className="absolute top-14 right-4 z-30 w-80 bg-slate-800 border border-slate-700 shadow-xl rounded-lg p-4 text-sm text-slate-300">
-          <h3 className="font-bold text-white mb-3">Stream Settings</h3>
+        <div className="absolute top-20 right-6 z-50 w-80 bg-slate-900/95 backdrop-blur-md border border-slate-700/50 shadow-2xl rounded-xl p-5 text-sm text-slate-300 animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
+            <h3 className="font-semibold text-white">Stream Settings</h3>
+            <button
+              onClick={() => setShowSettings(false)}
+              className="text-slate-400 hover:text-white"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </button>
+          </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label>Auto-Resize</label>
-              <input
-                type="checkbox"
-                checked={autoResize}
-                onChange={(e) => setAutoResize(e.target.checked)}
-                className="rounded bg-slate-700 border-slate-600"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs mb-1">Resolution</label>
-              <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-white/5 p-2 rounded-lg">
+              <label className="text-slate-200">Auto-Resize</label>
+              <div className="relative inline-block w-10 h-5 transition duration-200 ease-in-out">
                 <input
-                  type="number"
-                  disabled={autoResize}
-                  value={preferences.initialWidth}
-                  onChange={(e) =>
-                    setPreferences((p) => ({
-                      ...p,
-                      initialWidth: parseInt(e.target.value),
-                    }))
-                  }
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full disabled:opacity-50"
-                  placeholder="Width"
+                  type="checkbox"
+                  id="toggle-autoresize-modal"
+                  className="peer absolute opacity-0 w-0 h-0"
+                  checked={autoResize}
+                  onChange={(e) => setAutoResize(e.target.checked)}
                 />
-                <input
-                  type="number"
-                  disabled={autoResize}
-                  value={preferences.initialHeight}
-                  onChange={(e) =>
-                    setPreferences((p) => ({
-                      ...p,
-                      initialHeight: parseInt(e.target.value),
-                    }))
-                  }
-                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full disabled:opacity-50"
-                  placeholder="Height"
-                />
+                <label
+                  htmlFor="toggle-autoresize-modal"
+                  className={`block w-10 h-5 rounded-full cursor-pointer transition-colors duration-200 ${autoResize ? "bg-primary-600" : "bg-slate-600"}`}
+                ></label>
+                <div
+                  className={`absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-200 ${autoResize ? "translate-x-5" : "translate-x-0"}`}
+                ></div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs mb-1">Target FPS</label>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider">
+                Resolution
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative">
+                  <input
+                    type="number"
+                    disabled={autoResize}
+                    value={preferences.initialWidth}
+                    onChange={(e) =>
+                      setPreferences((p) => ({
+                        ...p,
+                        initialWidth: parseInt(e.target.value),
+                      }))
+                    }
+                    className="bg-black/40 border border-slate-700 rounded-lg px-3 py-2 w-full text-white disabled:opacity-50 focus:outline-none focus:border-primary-500 transition-colors"
+                    placeholder="W"
+                  />
+                  <span className="absolute right-2 top-2 text-xs text-slate-500 pointer-events-none">
+                    px
+                  </span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    disabled={autoResize}
+                    value={preferences.initialHeight}
+                    onChange={(e) =>
+                      setPreferences((p) => ({
+                        ...p,
+                        initialHeight: parseInt(e.target.value),
+                      }))
+                    }
+                    className="bg-black/40 border border-slate-700 rounded-lg px-3 py-2 w-full text-white disabled:opacity-50 focus:outline-none focus:border-primary-500 transition-colors"
+                    placeholder="H"
+                  />
+                  <span className="absolute right-2 top-2 text-xs text-slate-500 pointer-events-none">
+                    px
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider">
+                Target FPS
+              </label>
               <select
                 value={preferences.initialFps}
                 onChange={(e) =>
@@ -511,15 +583,17 @@ export function RemoteControlModal({
                     initialFps: parseInt(e.target.value),
                   }))
                 }
-                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full"
+                className="bg-black/40 border border-slate-700 rounded-lg px-3 py-2 w-full text-white focus:outline-none focus:border-primary-500 transition-colors appearance-none"
               >
                 <option value="30">30 FPS</option>
                 <option value="60">60 FPS</option>
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs mb-1">Bitrate</label>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider">
+                Bitrate
+              </label>
               <select
                 value={preferences.initialBitrateKbps}
                 onChange={(e) =>
@@ -528,7 +602,7 @@ export function RemoteControlModal({
                     initialBitrateKbps: parseInt(e.target.value),
                   }))
                 }
-                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full"
+                className="bg-black/40 border border-slate-700 rounded-lg px-3 py-2 w-full text-white focus:outline-none focus:border-primary-500 transition-colors appearance-none"
               >
                 <option value="1000">1 Mbps (Low)</option>
                 <option value="2000">2 Mbps (Medium)</option>
@@ -538,8 +612,10 @@ export function RemoteControlModal({
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs mb-1">Encoder</label>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider">
+                Encoder
+              </label>
               <select
                 value={preferences.preferredEncoder}
                 onChange={(e) =>
@@ -548,16 +624,21 @@ export function RemoteControlModal({
                     preferredEncoder: e.target.value,
                   }))
                 }
-                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full"
+                className="bg-black/40 border border-slate-700 rounded-lg px-3 py-2 w-full text-white focus:outline-none focus:border-primary-500 transition-colors appearance-none"
               >
                 {availableEncoders.length > 0 ? (
-                  availableEncoders.map((enc) => (
-                    <option key={enc} value={enc}>
-                      {enc}
-                    </option>
-                  ))
+                  <>
+                    {/* Show Auto only if we want to allow switching back to auto logic */}
+                    {/* But since we resolve Auto immediately, maybe just show the actual list */}
+                    {availableEncoders.map((enc) => (
+                      <option key={enc} value={enc}>
+                        {enc}
+                      </option>
+                    ))}
+                  </>
                 ) : (
                   <>
+                    <option value="Auto">Auto</option>
                     <option value="Software">Software (x264)</option>
                     <option value="NvidiaNvenc">NVIDIA NVENC</option>
                     <option value="AmdAmf">AMD AMF</option>
@@ -569,9 +650,9 @@ export function RemoteControlModal({
 
             <button
               onClick={() => handleApplySettings(preferences)}
-              className="w-full bg-primary-600 hover:bg-primary-500 text-white font-bold py-1.5 rounded mt-2 transition-colors"
+              className="w-full bg-primary-600 hover:bg-primary-500 text-white font-semibold py-2 rounded-lg mt-2 transition-all shadow-lg shadow-primary-500/20 active:scale-[0.98]"
             >
-              Apply & Update
+              Apply Changes
             </button>
           </div>
         </div>
@@ -580,55 +661,64 @@ export function RemoteControlModal({
       {/* Video Area */}
       <div
         ref={containerRef}
-        className="flex-1 bg-black flex items-center justify-center relative overflow-hidden group"
+        className="flex-1 bg-black flex items-center justify-center relative overflow-hidden"
       >
         {status === "connecting" && (
-          <div className="text-slate-500 flex flex-col items-center animate-pulse">
-            <svg
-              className="w-12 h-12 mb-4 opacity-50"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            <span>Establishing secure connection...</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">
+            <div className="relative w-24 h-24 mb-8">
+              <div className="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-primary-500 rounded-full border-t-transparent animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg
+                  className="w-8 h-8 text-primary-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-medium text-white mb-2">
+              Connecting to Device
+            </h3>
+            <p className="text-slate-400 text-sm">
+              Establishing secure peer-to-peer connection...
+            </p>
           </div>
         )}
 
         {status === "error" && (
-          <div className="text-danger flex flex-col items-center max-w-md text-center p-8">
-            <svg
-              className="w-12 h-12 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <h3 className="text-lg font-bold mb-2">Connection Failed</h3>
-            <p className="text-slate-400 text-sm">{error}</p>
+          <div className="text-danger flex flex-col items-center max-w-md text-center p-8 z-10">
+            <div className="w-16 h-16 bg-danger/10 rounded-full flex items-center justify-center mb-6">
+              <svg
+                className="w-8 h-8 text-danger"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">
+              Connection Failed
+            </h3>
+            <p className="text-slate-400 mb-8">{error}</p>
             <button
               onClick={onClose}
-              className="mt-6 text-slate-300 hover:text-white underline"
+              className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
             >
-              Close
+              Close Window
             </button>
           </div>
         )}
@@ -638,13 +728,14 @@ export function RemoteControlModal({
           autoPlay
           playsInline
           muted
-          className={`max-w-full max-h-full outline-none ${status === "connected" ? "opacity-100" : "opacity-0 absolute"}`}
+          className={`max-w-full max-h-full outline-none transition-opacity duration-500 ${status === "connected" ? "opacity-100" : "opacity-0"}`}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           tabIndex={0}
           onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
+          onContextMenu={(e) => e.preventDefault()}
         />
       </div>
     </div>
