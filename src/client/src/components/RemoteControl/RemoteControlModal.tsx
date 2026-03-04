@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 import { MessagePackHubProtocol } from "@microsoft/signalr-protocol-msgpack";
 import { getToken } from "../../auth/authStore";
+import { useRemoteDesktopSettings } from "../../settings/remoteDesktopSettings";
 
 const DEFAULT_BASE_URL = "http://localhost:5038";
 const BASE_URL =
@@ -33,15 +34,18 @@ export function RemoteControlModal({
   const [error, setError] = useState<string | null>(null);
   const [availableEncoders, setAvailableEncoders] = useState<string[]>([]);
 
+  // Persistent settings
+  const [storedSettings, setStoredSettings] = useRemoteDesktopSettings();
+
   // Settings state
   const [showSettings, setShowSettings] = useState(false);
-  const [autoResize, setAutoResize] = useState(true);
+  const [autoResize, setAutoResize] = useState(storedSettings.autoResize);
   const [preferences, setPreferences] = useState<RemoteDesktopPreferences>({
-    initialWidth: 1920,
-    initialHeight: 1080,
-    initialFps: 30,
-    initialBitrateKbps: 4000,
-    preferredEncoder: "Software",
+    initialWidth: storedSettings.initialWidth,
+    initialHeight: storedSettings.initialHeight,
+    initialFps: storedSettings.initialFps,
+    initialBitrateKbps: storedSettings.initialBitrateKbps,
+    preferredEncoder: storedSettings.preferredEncoder,
   });
 
   // Connection refs
@@ -70,6 +74,17 @@ export function RemoteControlModal({
   const handleApplySettings = (newPrefs: RemoteDesktopPreferences) => {
     setPreferences(newPrefs);
     sendConfiguration(newPrefs);
+
+    // Save to persistent storage
+    setStoredSettings({
+      ...storedSettings,
+      initialWidth: newPrefs.initialWidth || 1920,
+      initialHeight: newPrefs.initialHeight || 1080,
+      initialFps: newPrefs.initialFps || 30,
+      initialBitrateKbps: newPrefs.initialBitrateKbps || 4000,
+      preferredEncoder: newPrefs.preferredEncoder || "Software",
+    });
+
     setShowSettings(false);
   };
 
@@ -166,7 +181,8 @@ export function RemoteControlModal({
 
               if (
                 bestEncoder !== "Software" &&
-                currentPrefs.preferredEncoder === "Software"
+                (currentPrefs.preferredEncoder === "Software" ||
+                  currentPrefs.preferredEncoder === "Auto")
               ) {
                 console.log(
                   "[RemoteDesktop] Upgrading encoder to:",
@@ -174,6 +190,10 @@ export function RemoteControlModal({
                 );
                 currentPrefs.preferredEncoder = bestEncoder;
                 setPreferences(currentPrefs);
+
+                // NOTE: We do NOT update persistent storage here.
+                // We keep "Auto" or "Software" as the user preference,
+                // but use the specific GPU encoder for this session.
               }
             }
 
