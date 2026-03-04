@@ -9,5 +9,5 @@ public interface IRemoteDesktopSignalingService
     Task<RemoteDesktopAnswerDto?> WaitForAnswerAsync(Guid sessionId, TimeSpan timeout, CancellationToken cancellationToken = default);
     void SubscribeToIceCandidates(Guid sessionId, Action<IceCandidateDto> onCandidate);
     void UnsubscribeFromIceCandidates(Guid sessionId);
-    event Action<Guid> OnStartSessionRequested;
+    event Action<Guid, RemoteDesktopPreferencesDto?> OnStartSessionRequested;
 }

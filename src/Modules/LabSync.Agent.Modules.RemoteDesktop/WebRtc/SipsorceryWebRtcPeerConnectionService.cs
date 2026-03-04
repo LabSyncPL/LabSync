@@ -232,7 +232,7 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
                     pc.SendRtpRaw(SDPMediaTypesEnum.video, frame.Data, _currentRtpTimestamp, markerBit, _videoPayloadType);
                 }
 
-                // Koniec klatki = ustawiamy flagê
+                // Koniec klatki = ustawiamy flagï¿½
                 if (nalType == 1 || nalType == 5)
                 {
                     _isNewFrame = true;
@@ -274,8 +274,8 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
             isFirst = false;
 
             packetsSent++;
-            // Pacing (ograniczenie tempa wysy³ania UDP). 
-            // 30 pakietów to kompromis: karta sieciowa siê nie d³awi, a klatka przesy³ana jest bardzo szybko.
+            // Pacing (ograniczenie tempa wysyï¿½ania UDP). 
+            // 30 pakietï¿½w to kompromis: karta sieciowa siï¿½ nie dï¿½awi, a klatka przesyï¿½ana jest bardzo szybko.
             if (packetsSent % 30 == 0)
             {
                 await Task.Yield();

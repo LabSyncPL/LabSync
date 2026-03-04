@@ -47,4 +47,10 @@ public class PlaceholderVideoEncoder : IVideoEncoder
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    public Task UpdateSettingsAsync(EncoderOptions options, CancellationToken cancellationToken = default)
+    {
+        _options = options;
+        return Task.CompletedTask;
+    }
 }

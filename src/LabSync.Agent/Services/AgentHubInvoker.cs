@@ -1,3 +1,4 @@
+using LabSync.Core.Dto;
 using LabSync.Core.Interfaces;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -30,12 +31,15 @@ public class AgentHubInvoker : IAgentHubInvoker
                     ((Action<Guid, string, string?, int?>)h)(sessionId, candidate, sdpMid, sdpMLineIndex);
             }
         });
-        _hubConnection.On<Guid>("StartRemoteDesktopSession", (sessionId) =>
+        _hubConnection.On<Guid, RemoteDesktopPreferencesDto?>("StartRemoteDesktopSession", (sessionId, prefs) =>
         {
             lock (_gate)
             {
                 foreach (var h in _startRemoteDesktopSessionHandlers)
-                    ((Action<Guid>)h)(sessionId);
+                {
+                    if (h is Action<Guid> action1) action1(sessionId);
+                    else if (h is Action<Guid, RemoteDesktopPreferencesDto?> action2) action2(sessionId, prefs);
+                }
             }
         });
     }
@@ -60,6 +64,14 @@ public class AgentHubInvoker : IAgentHubInvoker
         if (methodName == "RemoteDesktopIceCandidate")
         {
             lock (_gate) _remoteDesktopIceCandidateHandlers.Add(handler);
+        }
+    }
+
+    public void RegisterHandler<T1, T2>(string methodName, Action<T1, T2> handler)
+    {
+        if (methodName == "StartRemoteDesktopSession")
+        {
+            lock (_gate) _startRemoteDesktopSessionHandlers.Add(handler);
         }
     }
 

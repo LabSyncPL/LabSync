@@ -56,17 +56,23 @@ public class RemoteDesktopModule : IRemoteDesktopModule
         IWebRtcPeerConnectionFactory peerFactory = new SipsorceryWebRtcPeerConnectionFactory(sipsLogger);
         _logger?.LogInformation("RemoteDesktop module configured to use SIPSorcery WebRTC peer connection. STUN server: stun:stun.l.google.com:19302.");
 
+        var gpuLogger = loggerFactory != null
+            ? loggerFactory.CreateLogger<GpuDiscoveryService>()
+            : Microsoft.Extensions.Logging.Abstractions.NullLogger<GpuDiscoveryService>.Instance;
+        IGpuDiscoveryService gpuDiscovery = new GpuDiscoveryService(gpuLogger);
+
         _sessionManager = new RemoteSessionManager(
             signalingService,
             captureFactory,
             inputFactory,
             peerFactory,
+            gpuDiscovery,
             loggerFactory != null
                 ? loggerFactory.CreateLogger<RemoteSessionManager>()
                 : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteSessionManager>.Instance,
             SessionOptions.Default);
 
-        signalingService.OnStartSessionRequested += (sessionId) =>
+        signalingService.OnStartSessionRequested += (sessionId, prefs) =>
         {
             if (agentContext != null)
             {
@@ -81,7 +87,7 @@ public class RemoteDesktopModule : IRemoteDesktopModule
                             return;
                         }
 
-                        await _sessionManager.StartSessionAsync(new StartSessionRequest(deviceId, null, sessionId));
+                        await _sessionManager.StartSessionAsync(new StartSessionRequest(deviceId, null, sessionId, prefs));
                     }
                     catch (Exception ex)
                     {

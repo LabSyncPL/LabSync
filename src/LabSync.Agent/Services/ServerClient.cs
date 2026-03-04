@@ -78,12 +78,6 @@ public class ServerClient : IAsyncDisposable
             OnReceiveJob?.Invoke(jobId, command, arguments, scriptPayload);
         });
 
-        _hubConnection.On<Guid>("StartRemoteDesktopSession", (sessionId) =>
-        {
-            _logger.LogInformation("Received StartRemoteDesktopSession for session {SessionId}", sessionId);
-            OnStartRemoteDesktopSession?.Invoke(sessionId);
-        });
-
         _hubConnection.On("Ping", () => _logger.LogDebug("Received Ping from server."));
 
         _hubConnection.Reconnecting += error =>

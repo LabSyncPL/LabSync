@@ -1,15 +1,21 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 import { MessagePackHubProtocol } from "@microsoft/signalr-protocol-msgpack";
 import { getToken } from "../../auth/authStore";
 
-// Temporary inline hook until file is picked up or imported properly
-// In a real app, this would be imported from hooks/useRemoteDesktop
 const DEFAULT_BASE_URL = "http://localhost:5038";
 const BASE_URL =
   (typeof import.meta !== "undefined" &&
     (import.meta as any)?.env?.VITE_API_BASE_URL) ||
   DEFAULT_BASE_URL;
+
+interface RemoteDesktopPreferences {
+  initialWidth?: number;
+  initialHeight?: number;
+  initialFps?: number;
+  initialBitrateKbps?: number;
+  preferredEncoder?: string;
+}
 
 export function RemoteControlModal({
   deviceId,
@@ -19,20 +25,95 @@ export function RemoteControlModal({
   onClose: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const [status, setStatus] = useState<
     "connecting" | "connected" | "disconnected" | "error"
   >("connecting");
   const [error, setError] = useState<string | null>(null);
 
-  // Connection refs to persist across renders
+  // Settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [autoResize, setAutoResize] = useState(true);
+  const [preferences, setPreferences] = useState<RemoteDesktopPreferences>({
+    initialWidth: 1920,
+    initialHeight: 1080,
+    initialFps: 30,
+    initialBitrateKbps: 4000,
+    preferredEncoder: "Software",
+  });
+
+  // Connection refs
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
+  const resizeTimeoutRef = useRef<number | null>(null);
+
+  const sendConfiguration = useCallback((prefs: RemoteDesktopPreferences) => {
+    if (dataChannelRef.current?.readyState === "open") {
+      const configMessage = {
+        type: "configure",
+        width: prefs.initialWidth,
+        height: prefs.initialHeight,
+        fps: prefs.initialFps,
+        bitrateKbps: prefs.initialBitrateKbps,
+        encoderType: prefs.preferredEncoder,
+      };
+      console.log("[RemoteDesktop] Sending configuration:", configMessage);
+      dataChannelRef.current.send(JSON.stringify(configMessage));
+    }
+  }, []);
+
+  const handleApplySettings = (newPrefs: RemoteDesktopPreferences) => {
+    setPreferences(newPrefs);
+    sendConfiguration(newPrefs);
+    setShowSettings(false);
+  };
+
+  // Auto-resize logic
+  useEffect(() => {
+    if (!autoResize || status !== "connected" || !containerRef.current) return;
+
+    const handleResize = () => {
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+
+      resizeTimeoutRef.current = window.setTimeout(() => {
+        if (!containerRef.current) return;
+        const { clientWidth, clientHeight } = containerRef.current;
+
+        // Round to even numbers
+        const width = Math.floor(clientWidth / 2) * 2;
+        const height = Math.floor(clientHeight / 2) * 2;
+
+        if (
+          width !== preferences.initialWidth ||
+          height !== preferences.initialHeight
+        ) {
+          const newPrefs = {
+            ...preferences,
+            initialWidth: width,
+            initialHeight: height,
+          };
+          setPreferences(newPrefs);
+          sendConfiguration(newPrefs);
+        }
+      }, 500); // Debounce 500ms
+    };
+
+    const observer = new ResizeObserver(handleResize);
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+    };
+  }, [autoResize, status, preferences, sendConfiguration]);
 
   useEffect(() => {
     let mounted = true;
     let isInitializing = false;
+
     const startSession = async () => {
       if (isInitializing) return;
       isInitializing = true;
@@ -53,11 +134,8 @@ export function RemoteControlModal({
         connection.onclose(() => {
           if (mounted) {
             setStatus("disconnected");
-            // optionally auto-close or show error
           }
         });
-
-        // --- Signaling Handlers ---
 
         connection.on(
           "ReceiveRemoteDesktopOffer",
@@ -83,21 +161,11 @@ export function RemoteControlModal({
               console.log("[RemoteDesktop] Track received", event.streams);
               const video = videoRef.current;
               if (video && event.streams[0]) {
-                console.log("[RemoteDesktop] Setting video srcObject");
                 video.srcObject = event.streams[0];
-                video.muted = true; // Ensure autoplay works
-                video.playsInline = true; // For iOS/Mobile
+                video.muted = true;
+                video.playsInline = true;
                 video.autoplay = true;
-
-                video.play().catch((e) => {
-                  if (e.name === "AbortError") {
-                    console.warn(
-                      "[RemoteDesktop] Playback interrupted (AbortError), usually harmless during setup.",
-                    );
-                  } else {
-                    console.error("[RemoteDesktop] Playback error:", e);
-                  }
-                });
+                video.play().catch((e) => console.warn("Playback warning:", e));
               }
             };
 
@@ -118,33 +186,31 @@ export function RemoteControlModal({
               }
             };
 
-            // Setup data channel for input if offered
             pc.ondatachannel = (event) => {
               console.log(
                 "[RemoteDesktop] Data channel received:",
                 event.channel.label,
               );
               dataChannelRef.current = event.channel;
+
+              event.channel.onopen = () => {
+                console.log(
+                  "[RemoteDesktop] DataChannel OPEN. Sending initial config.",
+                );
+                // Optionally send config again to be sure
+                // sendConfiguration(preferences);
+              };
             };
 
             await pc.setRemoteDescription(
               new RTCSessionDescription({ type: sdpType as RTCSdpType, sdp }),
             );
 
-            // Process queued candidates
             for (const candidate of iceCandidatesQueue.current) {
               try {
-                console.log(
-                  "[RemoteDesktop] Adding queued ICE candidate:",
-                  candidate,
-                );
                 await pc.addIceCandidate(candidate);
               } catch (e) {
-                console.error(
-                  "Error adding queued ICE candidate",
-                  e,
-                  candidate,
-                );
+                console.error("Error adding queued ICE candidate", e);
               }
             }
             iceCandidatesQueue.current = [];
@@ -170,13 +236,6 @@ export function RemoteControlModal({
             sdpMid: string,
             sdpMLineIndex: number,
           ) => {
-            console.log("[RemoteDesktop] Raw ICE from server:", {
-              candidate,
-              sdpMid,
-              sdpMLineIndex,
-            });
-
-            // Check if candidate string has the "candidate:" prefix required by some browsers
             let candidateStr = candidate;
             if (candidateStr && !candidateStr.startsWith("candidate:")) {
               candidateStr = "candidate:" + candidateStr;
@@ -190,19 +249,11 @@ export function RemoteControlModal({
 
             if (pcRef.current && pcRef.current.remoteDescription) {
               try {
-                console.log(
-                  "[RemoteDesktop] Adding ICE candidate:",
-                  iceCandidate,
-                );
                 await pcRef.current.addIceCandidate(iceCandidate);
               } catch (e) {
-                console.error("Error adding ICE candidate", e, iceCandidate);
+                console.error("Error adding ICE candidate", e);
               }
             } else {
-              console.log(
-                "[RemoteDesktop] Queueing ICE candidate:",
-                iceCandidate,
-              );
               iceCandidatesQueue.current.push(iceCandidate);
             }
           },
@@ -211,9 +262,8 @@ export function RemoteControlModal({
         await connection.start();
         console.log("[RemoteDesktop] SignalR Connected");
 
-        // Initiate session request
-        // The backend expects 'RequestSession(deviceId)'
-        await connection.invoke("RequestSession", deviceId);
+        // Pass preferences to RequestSession
+        await connection.invoke("RequestSession", deviceId, preferences);
 
         if (mounted) {
           setStatus("connected");
@@ -222,9 +272,7 @@ export function RemoteControlModal({
         console.error("[RemoteDesktop] Connection Error:", err);
         if (mounted) {
           setStatus("error");
-          setError(
-            err.message || "Failed to connect to remote desktop service.",
-          );
+          setError(err.message || "Failed to connect.");
         }
       }
     };
@@ -237,7 +285,7 @@ export function RemoteControlModal({
       if (pcRef.current) pcRef.current.close();
       if (connectionRef.current) connectionRef.current.stop();
     };
-  }, [deviceId]);
+  }, [deviceId]); // Re-run if deviceId changes, but NOT if preferences change (we handle that via DataChannel)
 
   const sendInput = (type: string, data: any) => {
     if (dataChannelRef.current?.readyState === "open") {
@@ -248,35 +296,16 @@ export function RemoteControlModal({
   const handleMouseMove = (e: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current) return;
     const rect = videoRef.current.getBoundingClientRect();
-
-    // Backend: ParseAndInjectInputAsync
-    // message.X, message.Y -> await input.InjectMouseMoveAsync(message.X.Value, message.Y.Value, cancellationToken);
-    // Usually Windows API expects absolute coordinates or screen relative.
-    // If we send relative 0-1, backend needs to scale.
-    // Looking at RemoteSessionManager.cs:245: await input.InjectMouseMoveAsync(message.X.Value, message.Y.Value, cancellationToken);
-    // Let's assume for now we send raw coords relative to video element, but this is likely wrong if resolution differs.
-    // Better to send relative 0-1 and have backend scale, OR send scaled coords here.
-    // The backend seems to just pass X/Y to InjectMouseMoveAsync.
-    // Let's assume backend expects pixels. We need the remote screen size.
-    // We don't know remote screen size here.
-    // But wait, the video stream has a resolution.
     const videoWidth = videoRef.current.videoWidth;
     const videoHeight = videoRef.current.videoHeight;
-
-    // Calculate position relative to the video frame (which might be scaled in CSS)
-    // e.clientX is viewport relative. rect is element relative to viewport.
     const relX = e.clientX - rect.left;
     const relY = e.clientY - rect.top;
-
-    // Scale to actual video resolution
     const actualX = Math.round((relX / rect.width) * videoWidth);
     const actualY = Math.round((relY / rect.height) * videoHeight);
-
     sendInput("mouseMove", { x: actualX, y: actualY });
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLVideoElement>) => {
-    // 0: left, 1: middle, 2: right
     let btn = "left";
     if (e.button === 1) btn = "middle";
     if (e.button === 2) btn = "right";
@@ -291,9 +320,6 @@ export function RemoteControlModal({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // TODO: proper key code mapping if needed
-    // Backend expects 'keyCode' (int).
-    // e.keyCode is deprecated but often used.
     sendInput("key", { keyCode: e.keyCode, pressed: true });
   };
 
@@ -304,15 +330,48 @@ export function RemoteControlModal({
   return (
     <div className="fixed inset-0 bg-black z-[100] flex flex-col">
       {/* Header / Toolbar */}
-      <div className="h-12 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0">
+      <div className="h-12 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 relative z-20">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+          <span
+            className={`w-2 h-2 rounded-full ${status === "connected" ? "bg-success animate-pulse" : "bg-warning"}`}
+          ></span>
           <span className="text-white font-medium text-sm">
-            Remote Control:{" "}
-            <span className="text-slate-400 font-mono">{deviceId}</span>
+            Remote: <span className="text-slate-400 font-mono">{deviceId}</span>
           </span>
+          {status === "connected" && (
+            <div className="ml-4 text-xs text-slate-500 font-mono hidden md:block">
+              {preferences.initialWidth}x{preferences.initialHeight} |{" "}
+              {preferences.initialFps}FPS | {preferences.preferredEncoder}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors ${showSettings ? "bg-slate-700 text-white" : ""}`}
+            title="Stream Settings"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
+
           <div className="text-xs text-slate-500 px-2 py-1 bg-slate-800 rounded">
             {status.toUpperCase()}
           </div>
@@ -325,8 +384,125 @@ export function RemoteControlModal({
         </div>
       </div>
 
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="absolute top-14 right-4 z-30 w-80 bg-slate-800 border border-slate-700 shadow-xl rounded-lg p-4 text-sm text-slate-300">
+          <h3 className="font-bold text-white mb-3">Stream Settings</h3>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label>Auto-Resize</label>
+              <input
+                type="checkbox"
+                checked={autoResize}
+                onChange={(e) => setAutoResize(e.target.checked)}
+                className="rounded bg-slate-700 border-slate-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1">Resolution</label>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  disabled={autoResize}
+                  value={preferences.initialWidth}
+                  onChange={(e) =>
+                    setPreferences((p) => ({
+                      ...p,
+                      initialWidth: parseInt(e.target.value),
+                    }))
+                  }
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full disabled:opacity-50"
+                  placeholder="Width"
+                />
+                <input
+                  type="number"
+                  disabled={autoResize}
+                  value={preferences.initialHeight}
+                  onChange={(e) =>
+                    setPreferences((p) => ({
+                      ...p,
+                      initialHeight: parseInt(e.target.value),
+                    }))
+                  }
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full disabled:opacity-50"
+                  placeholder="Height"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1">Target FPS</label>
+              <select
+                value={preferences.initialFps}
+                onChange={(e) =>
+                  setPreferences((p) => ({
+                    ...p,
+                    initialFps: parseInt(e.target.value),
+                  }))
+                }
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full"
+              >
+                <option value="30">30 FPS</option>
+                <option value="60">60 FPS</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1">Bitrate</label>
+              <select
+                value={preferences.initialBitrateKbps}
+                onChange={(e) =>
+                  setPreferences((p) => ({
+                    ...p,
+                    initialBitrateKbps: parseInt(e.target.value),
+                  }))
+                }
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full"
+              >
+                <option value="1000">1 Mbps (Low)</option>
+                <option value="2000">2 Mbps (Medium)</option>
+                <option value="4000">4 Mbps (High)</option>
+                <option value="8000">8 Mbps (Ultra)</option>
+                <option value="16000">16 Mbps (Lossless-ish)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1">Encoder</label>
+              <select
+                value={preferences.preferredEncoder}
+                onChange={(e) =>
+                  setPreferences((p) => ({
+                    ...p,
+                    preferredEncoder: e.target.value,
+                  }))
+                }
+                className="bg-slate-900 border border-slate-700 rounded px-2 py-1 w-full"
+              >
+                <option value="Software">Software (x264)</option>
+                <option value="NvidiaNvenc">NVIDIA NVENC</option>
+                <option value="AmdAmf">AMD AMF</option>
+                <option value="IntelQsv">Intel QSV</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => handleApplySettings(preferences)}
+              className="w-full bg-primary-600 hover:bg-primary-500 text-white font-bold py-1.5 rounded mt-2 transition-colors"
+            >
+              Apply & Update
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Video Area */}
-      <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden group">
+      <div
+        ref={containerRef}
+        className="flex-1 bg-black flex items-center justify-center relative overflow-hidden group"
+      >
         {status === "connecting" && (
           <div className="text-slate-500 flex flex-col items-center animate-pulse">
             <svg

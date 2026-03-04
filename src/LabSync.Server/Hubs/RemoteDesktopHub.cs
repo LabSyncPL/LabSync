@@ -40,7 +40,7 @@ public class RemoteDesktopHub(
     /// Viewer requests to start a remote desktop session.
     /// This method signals the agent to begin streaming.
     /// </summary>
-    public async Task RequestSession(Guid deviceId)
+    public async Task RequestSession(Guid deviceId, RemoteDesktopPreferencesDto? preferences = null)
     {
         var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
         if (agentConnectionId is null)
@@ -53,12 +53,12 @@ public class RemoteDesktopHub(
         await Groups.AddToGroupAsync(Context.ConnectionId, DeviceGroup(deviceId));
         
         var sessionId = Guid.NewGuid();
-        logger.LogInformation("Requesting session {SessionId} from agent {AgentConnectionId} for viewer {ViewerConnectionId}.",
-            sessionId, agentConnectionId, Context.ConnectionId);
+        logger.LogInformation("Requesting session {SessionId} from agent {AgentConnectionId} for viewer {ViewerConnectionId}. Prefs: {@Prefs}",
+            sessionId, agentConnectionId, Context.ConnectionId, preferences);
 
         // Signal the agent to start the session
         await agentHubContext.Clients.Client(agentConnectionId)
-            .SendAsync("StartRemoteDesktopSession", sessionId);
+            .SendAsync("StartRemoteDesktopSession", sessionId, preferences);
     }
 
     /// <summary>

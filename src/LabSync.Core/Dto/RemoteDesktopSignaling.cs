@@ -24,3 +24,11 @@ public record IceCandidateDto(
     string? SdpMid,
     int? SdpMLineIndex
 );
+
+public record RemoteDesktopPreferencesDto(
+    int? InitialWidth,
+    int? InitialHeight,
+    int? InitialFps,
+    int? InitialBitrateKbps,
+    string? PreferredEncoder
+);

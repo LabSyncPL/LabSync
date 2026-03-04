@@ -1,3 +1,5 @@
+using LabSync.Core.Dto;
+
 namespace LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 
 public interface IRemoteSessionManager
@@ -10,7 +12,8 @@ public interface IRemoteSessionManager
 public record StartSessionRequest(
     Guid DeviceId,
     string? RequestedByUserId,
-    Guid? SessionId = null
+    Guid? SessionId = null,
+    RemoteDesktopPreferencesDto? Preferences = null
 );
 
 public record RemoteSessionResult(

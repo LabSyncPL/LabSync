@@ -8,6 +8,7 @@ namespace LabSync.Agent.Modules.RemoteDesktop.Encoding;
 /// <summary>
 /// Windows-only H.264 encoder using an external ffmpeg process.
 /// Expects raw BGRA frames and produces Annex B H.264 NAL units.
+/// Supports dynamic reconfiguration (resolution, bitrate, encoder type) without dropping the stream.
 /// </summary>
 public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
 {
@@ -22,6 +23,7 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
     private CancellationTokenSource? _readerCts;
     private Task? _readerTask;
     private bool _disposed;
+    private readonly SemaphoreSlim _reconfigureLock = new(1, 1);
 
     public WindowsFfmpegVideoEncoder(ILogger logger, int channelCapacity, string ffmpegPath = "ffmpeg")
     {
@@ -40,14 +42,46 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
             FullMode = BoundedChannelFullMode.Wait
         });
 
+        await StartFfmpegProcessAsync(cancellationToken);
+    }
+
+    public async Task UpdateSettingsAsync(EncoderOptions options, CancellationToken cancellationToken = default)
+    {
+        if (_disposed) return;
+
+        await _reconfigureLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_options == options) return;
+
+            _logger.LogInformation("Reconfiguring encoder: {@Options}", options);
+            
+            // Stop current process
+            await StopFfmpegProcessAsync();
+
+            _options = options;
+
+            // Start new process
+            await StartFfmpegProcessAsync(cancellationToken);
+        }
+        finally
+        {
+            _reconfigureLock.Release();
+        }
+    }
+
+    private async Task StartFfmpegProcessAsync(CancellationToken cancellationToken = default)
+    {
+        if (_options == null) return;
+
         var psi = new ProcessStartInfo
         {
             FileName = _ffmpegPath,
-            Arguments = BuildFfmpegArguments(options),
+            Arguments = BuildFfmpegArguments(_options),
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
-            RedirectStandardError = true, // Capture stderr to debug crashes
+            RedirectStandardError = true,
             CreateNoWindow = true
         };
 
@@ -55,81 +89,107 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         {
             _process = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start ffmpeg process.");
             _stdin = _process.StandardInput.BaseStream;
-            
+
             // Start reading stderr in background
             _ = ReadStdErrAsync(_process);
-            
+
             _logger.LogInformation("ffmpeg process started. PID: {Pid}", _process.Id);
+
+            _readerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken); // Note: This token is just for the loop
+            _readerTask = Task.Run(() => ReadEncodedOutputAsync(_process, _channel, _readerCts.Token), _readerCts.Token);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start ffmpeg. Falling back to no-op encoding.");
-            // Leave _channel initialized so GetEncodedStreamAsync still works, but no frames will be produced.
-            return;
+            _logger.LogError(ex, "Failed to start ffmpeg.");
+            throw;
         }
-
-        _readerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _readerTask = Task.Run(() => ReadEncodedOutputAsync(_process, _channel, _readerCts.Token), _readerCts.Token);
 
         await Task.CompletedTask;
     }
 
-    private async Task ReadStdErrAsync(Process process)
+    private async Task StopFfmpegProcessAsync()
     {
-        try
+        // Cancel the reader task
+        _readerCts?.Cancel();
+        
+        if (_readerTask != null)
         {
-            var stderr = process.StandardError;
-            while (true)
-            {
-                var line = await stderr.ReadLineAsync();
-                if (line == null) break;
+            try { await _readerTask; } catch { }
+        }
 
-                _logger.LogTrace("ffmpeg stderr: {Line}", line);
+        if (_stdin != null)
+        {
+            try { await _stdin.DisposeAsync(); } catch { }
+            _stdin = null;
+        }
+
+        if (_process != null && !_process.HasExited)
+        {
+            try
+            {
+                _process.Kill(true);
+                await _process.WaitForExitAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error killing ffmpeg process.");
+            }
+            finally
+            {
+                _process.Dispose();
+                _process = null;
             }
         }
-        catch { }
     }
 
-    private static string BuildFfmpegArguments(EncoderOptions options)
+    private string BuildFfmpegArguments(EncoderOptions options)
     {
         var bitrate = options.TargetBitrateKbps > 0 ? options.TargetBitrateKbps : 1500;
         var fps = options.TargetFps > 0 ? options.TargetFps : 30;
+        
+        // Input options
+        var args = $"-f rawvideo -pix_fmt bgra -s {options.SourceWidth}x{options.SourceHeight} -r {fps} -i - ";
 
-        // USUNIÊTO -tune zerolatency!
-        // DODANO -preset fast oraz bufsize równe 2-krotnoœci bitrate'u, co daje buforowanie.
-        return $"-f rawvideo -pix_fmt bgra -s {options.Width}x{options.Height} -r {fps} -i - " +
-               $"-vf scale=1024:-2 " +
-               $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset fast -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -keyint_min {fps} -sc_threshold 0 -bf 0 -slices 1 -threads 0 " +
-               "-f h264 -an -";
+        // Scaling logic
+        string scaleFilter = "";
+        if (options.OutputWidth != options.SourceWidth || options.OutputHeight != options.SourceHeight)
+        {
+            // Use -2 to keep aspect ratio if one dimension is provided, or explicit size
+            scaleFilter = $"-vf scale={options.OutputWidth}:{options.OutputHeight}";
+        }
+
+        // Encoder selection
+        string encoderArgs = options.EncoderType switch
+        {
+            VideoEncoderType.NvidiaNvenc => $"-c:v h264_nvenc -preset p1 -rc:v cbr -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -zerolatency 1",
+            VideoEncoderType.AmdAmf => $"-c:v h264_amf -usage ultra_low_latency -rc cbr -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps}",
+            VideoEncoderType.IntelQsv => $"-c:v h264_qsv -preset veryfast -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -async_depth 1",
+            _ => $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset fast -tune zerolatency -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -keyint_min {fps} -sc_threshold 0 -bf 0 -slices 1 -threads 0"
+        };
+
+        // Combine
+        return $"{args} {scaleFilter} {encoderArgs} -f h264 -an -";
     }
 
     public async Task EncodeAsync(CaptureFrame frame, CancellationToken cancellationToken = default)
     {
-        if (_disposed || _stdin == null || _options == null)
-            return;
+        if (_disposed || _stdin == null || _options == null) return;
 
         try
         {
-            // Assume frame.Format is BGRA32 and matches ffmpeg -pix_fmt bgra.
-            // _logger.LogTrace("Writing {Bytes} bytes to ffmpeg stdin.", frame.Data.Length);
             await _stdin.WriteAsync(frame.Data, 0, frame.Data.Length, cancellationToken);
             await _stdin.FlushAsync(cancellationToken);
         }
-        catch (OperationCanceledException)
+        catch (Exception)
         {
-            // Normal on shutdown.
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error while sending raw frame to ffmpeg.");
+            // Ignore write errors (process might be restarting)
         }
     }
 
     public async IAsyncEnumerable<EncodedFrame> GetEncodedStreamAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var channel = _channel;
-        if (channel == null)
-            yield break;
+        if (channel == null) yield break;
 
         await foreach (var frame in channel.Reader.ReadAllAsync(cancellationToken))
         {
@@ -153,7 +213,7 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
                 int availableSpace = buffer.Length - bufferLen;
                 if (availableSpace == 0)
                 {
-                    _logger.LogWarning("Bufor FFmpeg jest pe³ny! Resetowanie.");
+                    _logger.LogWarning("FFmpeg buffer full. Resetting.");
                     bufferLen = 0;
                     searchIndex = 0;
                     availableSpace = buffer.Length;
@@ -198,67 +258,52 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { _logger.LogWarning(ex, "B³¹d podczas odczytu z FFmpeg."); }
-        finally { channel.Writer.TryComplete(); }
+        catch (Exception ex) { _logger.LogWarning(ex, "Error reading from FFmpeg."); }
+        // IMPORTANT: Do NOT complete the channel writer here, because we might just be restarting the process!
+        // The channel should only be completed in DisposeAsync.
+    }
+
+    private async Task ReadStdErrAsync(Process process)
+    {
+        try
+        {
+            var stderr = process.StandardError;
+            while (true)
+            {
+                var line = await stderr.ReadLineAsync();
+                if (line == null) break;
+                // Only log warnings/errors to reduce noise, unless debugging
+                if (line.Contains("error", StringComparison.OrdinalIgnoreCase) || line.Contains("warning", StringComparison.OrdinalIgnoreCase))
+                    _logger.LogWarning("ffmpeg stderr: {Line}", line);
+                else
+                    _logger.LogTrace("ffmpeg stderr: {Line}", line);
+            }
+        }
+        catch { }
     }
 
     private static bool IsIdrNal(byte[] nalUnit)
     {
-        // Check NAL unit type from the first byte (since start codes are stripped)
         if (nalUnit == null || nalUnit.Length == 0) return false;
-        
-        var nalHeader = nalUnit[0];
-        var nalType = nalHeader & 0x1F;
-        
-        // IDR slice = 5 in H.264.
+        var nalType = nalUnit[0] & 0x1F;
         return nalType == 5;
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
-            return;
-
+        if (_disposed) return;
         _disposed = true;
 
+        await _reconfigureLock.WaitAsync();
         try
         {
-            _readerCts?.Cancel();
+            await StopFfmpegProcessAsync();
+            _channel?.Writer.TryComplete();
         }
-        catch { }
-
-        if (_stdin != null)
+        finally
         {
-            try
-            {
-                await _stdin.FlushAsync();
-                _stdin.Dispose();
-            }
-            catch { }
-        }
-
-        if (_readerTask != null)
-        {
-            try
-            {
-                await _readerTask;
-            }
-            catch { }
-        }
-
-        if (_process != null)
-        {
-            try
-            {
-                if (!_process.HasExited)
-                    _process.Kill(true);
-            }
-            catch { }
-            finally
-            {
-                _process.Dispose();
-            }
+            _reconfigureLock.Release();
+            _reconfigureLock.Dispose();
         }
     }
 }
-

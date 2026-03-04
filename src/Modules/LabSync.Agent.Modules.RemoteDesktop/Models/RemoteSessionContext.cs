@@ -17,6 +17,7 @@ internal sealed class RemoteSessionContext
     public DateTime? AnswerReceivedAt { get; set; }
     public DateTime? ConnectedAt { get; set; }
     public DateTime LastActivityAt { get; set; }
+    public EncoderOptions CurrentEncoderOptions { get; set; }
 
     public RemoteSessionContext(
         Guid sessionId,
@@ -25,7 +26,8 @@ internal sealed class RemoteSessionContext
         IWebRtcPeerConnectionService peer,
         IInputInjectionService input,
         IRemoteDesktopSignalingService signaling,
-        CancellationTokenSource lifecycleCts)
+        CancellationTokenSource lifecycleCts,
+        EncoderOptions initialOptions)
     {
         SessionId = sessionId;
         Capture = capture;
@@ -34,6 +36,7 @@ internal sealed class RemoteSessionContext
         Input = input;
         Signaling = signaling;
         LifecycleCts = lifecycleCts;
+        CurrentEncoderOptions = initialOptions;
         State = SessionState.Initializing;
         CreatedAt = DateTime.UtcNow;
         LastActivityAt = DateTime.UtcNow;
