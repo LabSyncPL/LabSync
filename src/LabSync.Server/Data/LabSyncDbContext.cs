@@ -13,10 +13,17 @@ public class LabSyncDbContext : DbContext
     public DbSet<Device> Devices { get; set; }
     public DbSet<Job> Jobs { get; set; }
     public DbSet<AdminUser> AdminUsers { get; set; }
+    
+
+    public DbSet<AgentLog> AgentLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        
+        modelBuilder.Entity<AgentLog>()
+            .HasKey(l => new { l.DeviceId, l.Timestamp });
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(LabSyncDbContext).Assembly);
     }
 }
