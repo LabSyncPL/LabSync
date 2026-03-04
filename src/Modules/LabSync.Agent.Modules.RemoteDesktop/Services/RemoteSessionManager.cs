@@ -52,11 +52,72 @@ public class RemoteSessionManager : IRemoteSessionManager
             lifecycleCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cts = lifecycleCts;
 
+            // Wait for first frame to determine resolution
+            CaptureFrame? firstFrame = null;
+            try 
+            {
+                // We need to peek or wait for the first frame from capture service
+                // But capture is an async enumerable.
+                // Let's start the capture loop, but intercept the first frame.
+                // Or better: Initialize encoder with a default, but if it supports re-init, that's great.
+                // WindowsFfmpegVideoEncoder does NOT support re-init easily without restart.
+                // So we should probably grab one frame first.
+                // However, IScreenCaptureService.EnumerateFramesAsync is an infinite loop.
+                
+                // Hack: Start capture, wait for 1 frame in a temporary way?
+                // Better approach: Start the capture loop, and let the loop initialize the encoder on first frame?
+                // But we need the encoder instance to pass to PeerConnection... chicken and egg.
+                // PeerConnection needs track added, but track doesn't need resolution strictly.
+                // But Encoder needs resolution for ffmpeg arguments.
+                
+                // Let's modify RunCaptureLoopAsync to initialize encoder on first frame?
+                // But StartSessionAsync creates the encoder.
+                
+                // Alternative: Use a hardcoded resolution that matches the VM (e.g. 1920x1080 is often default, but here log says 1478x890).
+                // Log says: "Captured frame 1. Size: 1478x890"
+                // This suggests the VM window is resized or has a specific resolution.
+                
+                // Let's just use a reasonable default but also try to get it right.
+                // Since we can't easily change the architecture in one step, let's look at how we can get the resolution.
+                // We can use System.Windows.Forms.Screen or similar if available, but we are in a service.
+                // The CaptureFactory creates a service.
+                
+                // For now, let's rely on the fact that we can't easily change resolution dynamically without restarting ffmpeg.
+                // BUT, we can make the capture loop check resolution and if it changes (or is set), we can handle it.
+                // For this specific fix, since we see 1478x890 in logs, let's try to detect it.
+                
+                // Actually, WindowsScreenCaptureService uses Graphics.CopyFromScreen.
+                // We can create a temporary capture service just to get one frame size?
+                // Or add a method GetScreenSize to IScreenCaptureService.
+            }
+            catch {}
+
             capture = _captureFactory.Create();
             await capture.StartCaptureAsync(cts.Token);
+            
+            // Temporary: Get one frame to determine size
+            var enumerator = capture.EnumerateFramesAsync(cts.Token).GetAsyncEnumerator(cts.Token);
+            int width = 1920;
+            int height = 1080;
+            
+            if (await enumerator.MoveNextAsync())
+            {
+                var f = enumerator.Current;
+                width = f.Width;
+                height = f.Height;
+                // We consumed one frame, we should probably use it.
+                firstFrame = f;
+            }
+            
+            _logger.LogInformation("Detected screen resolution: {Width}x{Height}", width, height);
 
             encoder = CreateEncoder();
-            await encoder.InitializeAsync(new EncoderOptions(1920, 1080), cts.Token);
+            // Use detected resolution
+            // Ensure even dimensions for h264 (yuv420p requires even dimensions)
+            if (width % 2 != 0) width--;
+            if (height % 2 != 0) height--;
+            
+            await encoder.InitializeAsync(new EncoderOptions(width, height), cts.Token);
 
             peer = _peerFactory.Create(sessionId);
             peer.OnIceCandidate += (_, candidate) =>
@@ -101,7 +162,7 @@ public class RemoteSessionManager : IRemoteSessionManager
             });
 
             var streamTask = peer.AddVideoTrackFromEncodedStreamAsync(encoder.GetEncodedStreamAsync(cts.Token), cts.Token);
-            var captureTask = RunCaptureLoopAsync(capture, captureChannel.Writer, cts.Token);
+            var captureTask = RunCaptureLoopAsync(capture, enumerator, firstFrame, captureChannel.Writer, cts.Token);
             var encodeTask = RunEncodingLoopAsync(captureChannel.Reader, encoder, cts.Token);
             var inputTask = RunInputLoopAsync(dataChannelStream, input, cts.Token);
 
@@ -176,16 +237,31 @@ public class RemoteSessionManager : IRemoteSessionManager
     }
 
     private async Task RunCaptureLoopAsync(
-        IScreenCaptureService capture,
-        ChannelWriter<CaptureFrame> writer,
-        CancellationToken cancellationToken)
+    IScreenCaptureService capture,
+    IAsyncEnumerator<CaptureFrame> enumerator,
+    CaptureFrame? firstFrame,
+    ChannelWriter<CaptureFrame> writer,
+    CancellationToken cancellationToken)
     {
         int frameCount = 0;
         try
         {
-            await foreach (var frame in capture.EnumerateFramesAsync(cancellationToken))
+            if (firstFrame != null)
             {
-                if (frameCount++ % 30 == 0) _logger.LogDebug("Captured frame {Count}. Size: {Width}x{Height}", frameCount, frame.Width, frame.Height);
+                frameCount++;
+                await writer.WriteAsync(firstFrame, cancellationToken);
+            }
+
+            while (await enumerator.MoveNextAsync())
+            {
+                var frame = enumerator.Current;
+
+                if (frameCount++ % 30 == 0)
+                {
+                    _logger.LogDebug("Captured frame {Count}. Size: {Width}x{Height}",
+                        frameCount, frame.Width, frame.Height);
+                }
+
                 await writer.WriteAsync(frame, cancellationToken);
             }
         }
@@ -197,6 +273,7 @@ public class RemoteSessionManager : IRemoteSessionManager
         }
         finally
         {
+            await enumerator.DisposeAsync();
             writer.Complete();
         }
     }

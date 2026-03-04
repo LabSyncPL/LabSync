@@ -26,7 +26,7 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
     public WindowsFfmpegVideoEncoder(ILogger logger, int channelCapacity, string ffmpegPath = "ffmpeg")
     {
         _logger = logger;
-        _channelCapacity = channelCapacity > 0 ? channelCapacity : 4;
+        _channelCapacity = channelCapacity > 0 ? channelCapacity : 60;
         _ffmpegPath = string.IsNullOrWhiteSpace(ffmpegPath) ? "ffmpeg" : ffmpegPath;
     }
 
@@ -47,7 +47,7 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
-            RedirectStandardError = false,
+            RedirectStandardError = true, // Capture stderr to debug crashes
             CreateNoWindow = true
         };
 
@@ -55,6 +55,11 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         {
             _process = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start ffmpeg process.");
             _stdin = _process.StandardInput.BaseStream;
+            
+            // Start reading stderr in background
+            _ = ReadStdErrAsync(_process);
+            
+            _logger.LogInformation("ffmpeg process started. PID: {Pid}", _process.Id);
         }
         catch (Exception ex)
         {
@@ -69,6 +74,22 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         await Task.CompletedTask;
     }
 
+    private async Task ReadStdErrAsync(Process process)
+    {
+        try
+        {
+            var stderr = process.StandardError;
+            while (true)
+            {
+                var line = await stderr.ReadLineAsync();
+                if (line == null) break;
+
+                _logger.LogTrace("ffmpeg stderr: {Line}", line);
+            }
+        }
+        catch { }
+    }
+
     private static string BuildFfmpegArguments(EncoderOptions options)
     {
         // Input: raw BGRA frames via stdin.
@@ -76,8 +97,13 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         var bitrate = options.TargetBitrateKbps > 0 ? options.TargetBitrateKbps : 2000;
         var fps = options.TargetFps > 0 ? options.TargetFps : 30;
 
+        // -preset ultrafast (instead of veryfast) for maximum speed
+        // -threads 0 to let ffmpeg use all cores
+        // Add scaling filter to reduce resolution and improve encoding speed on weak hardware
+        // Scale to width 1024, keeping aspect ratio (height=-2 ensures even height)
         return $"-f rawvideo -pix_fmt bgra -s {options.Width}x{options.Height} -r {fps} -i - " +
-               $"-c:v libx264 -preset veryfast -tune zerolatency -b:v {bitrate}k -g {fps * 2} -keyint_min {fps} " +
+               $"-vf scale=1024:-2 " +
+               $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset ultrafast -tune zerolatency -b:v {bitrate}k -g {fps} -keyint_min {fps} -sc_threshold 0 -threads 0 " +
                "-f h264 -an -";
     }
 
@@ -89,6 +115,7 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         try
         {
             // Assume frame.Format is BGRA32 and matches ffmpeg -pix_fmt bgra.
+            // _logger.LogTrace("Writing {Bytes} bytes to ffmpeg stdin.", frame.Data.Length);
             await _stdin.WriteAsync(frame.Data, 0, frame.Data.Length, cancellationToken);
             await _stdin.FlushAsync(cancellationToken);
         }
@@ -114,96 +141,71 @@ public sealed class WindowsFfmpegVideoEncoder : IVideoEncoder
         }
     }
 
-    private static async Task ReadEncodedOutputAsync(Process process, Channel<EncodedFrame>? channel, CancellationToken cancellationToken)
+    private async Task ReadEncodedOutputAsync(Process process, Channel<EncodedFrame>? channel, CancellationToken cancellationToken)
     {
-        if (channel == null)
-            return;
+        if (channel == null) return;
 
         var stdout = process.StandardOutput.BaseStream;
-        var buffer = new byte[4096];
-        var nalBuffer = new List<byte>(64 * 1024);
+        var buffer = new byte[1024 * 128]; // 128 KB bufora
+        int bufferLen = 0;
 
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                var read = await stdout.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
-                if (read == 0)
-                    break;
+                int read = await stdout.ReadAsync(buffer.AsMemory(bufferLen, buffer.Length - bufferLen), cancellationToken);
+                if (read == 0) break;
 
-                for (var i = 0; i < read; i++)
+                bufferLen += read;
+                int i = 0;
+
+                while (i < bufferLen - 3)
                 {
-                    nalBuffer.Add(buffer[i]);
+                    // Wyszukiwanie sekwencji startowych Annex B
+                    int startCodeLen = 0;
+                    if (buffer[i] == 0 && buffer[i + 1] == 0 && buffer[i + 2] == 1)
+                        startCodeLen = 3;
+                    else if (buffer[i] == 0 && buffer[i + 1] == 0 && buffer[i + 2] == 0 && buffer[i + 3] == 1)
+                        startCodeLen = 4;
 
-                    // Simple Annex B start-code based splitting: look for 0x000001
-                    if (nalBuffer.Count >= 4 &&
-                        nalBuffer[^4] == 0x00 &&
-                        nalBuffer[^3] == 0x00 &&
-                        nalBuffer[^2] == 0x00 &&
-                        nalBuffer[^1] == 0x01)
+                    if (startCodeLen > 0)
                     {
-                        // When a new start code begins, previous bytes (except the 4-byte start code) form a NAL unit.
-                        if (nalBuffer.Count > 4)
+                        if (i > 0)
                         {
-                            var nalUnit = nalBuffer.GetRange(0, nalBuffer.Count - 4).ToArray();
-                            if (nalUnit.Length > 0)
-                            {
-                                var isKeyFrame = IsIdrNal(nalUnit);
-                                var frame = new EncodedFrame(nalUnit, isKeyFrame, DateTime.UtcNow);
-                                if (!channel.Writer.TryWrite(frame))
-                                {
-                                    // Drop oldest when full; bounded channel configured for DropOldest in caller.
-                                }
-                            }
+                            var nalUnit = new byte[i];
+                            Buffer.BlockCopy(buffer, 0, nalUnit, 0, i);
+
+                            var isKeyFrame = IsIdrNal(nalUnit);
+                            var frame = new EncodedFrame(nalUnit, isKeyFrame, DateTime.UtcNow);
+                            channel.Writer.TryWrite(frame);
                         }
 
-                        nalBuffer.Clear();
-                        nalBuffer.Add(0x00);
-                        nalBuffer.Add(0x00);
-                        nalBuffer.Add(0x00);
-                        nalBuffer.Add(0x01);
+                        // Usuwamy NAL i sekwencjê startow¹ z bufora, przesuwaj¹c resztê danych na pocz¹tek
+                        int consume = i + startCodeLen;
+                        bufferLen -= consume;
+                        Buffer.BlockCopy(buffer, consume, buffer, 0, bufferLen);
+                        i = 0; // Resetujemy indeks, szukamy dalej
+                    }
+                    else
+                    {
+                        i++;
                     }
                 }
             }
-
-            if (nalBuffer.Count > 0)
-            {
-                var nalUnit = nalBuffer.ToArray();
-                var isKeyFrame = IsIdrNal(nalUnit);
-                var frame = new EncodedFrame(nalUnit, isKeyFrame, DateTime.UtcNow);
-                channel.Writer.TryWrite(frame);
-            }
         }
-        catch (OperationCanceledException)
-        {
-            // Normal on shutdown.
-        }
-        catch
-        {
-            // If ffmpeg exits or stream errors, just stop reading.
-        }
-        finally
-        {
-            channel.Writer.TryComplete();
-        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { _logger.LogWarning(ex, "B³¹d podczas odczytu z FFmpeg."); }
+        finally { channel.Writer.TryComplete(); }
     }
 
     private static bool IsIdrNal(byte[] nalUnit)
     {
-        // Very basic NALU header parsing: NAL type is lower 5 bits of first byte after start code.
-        // We expect nalUnit to include start code; find first non-zero sequence after it.
-        var index = 0;
-        // Skip leading zero bytes.
-        while (index < nalUnit.Length && nalUnit[index] == 0x00)
-            index++;
-        // Skip single 0x01 if present.
-        if (index < nalUnit.Length && nalUnit[index] == 0x01)
-            index++;
-        if (index >= nalUnit.Length)
-            return false;
-
-        var nalHeader = nalUnit[index];
+        // Check NAL unit type from the first byte (since start codes are stripped)
+        if (nalUnit == null || nalUnit.Length == 0) return false;
+        
+        var nalHeader = nalUnit[0];
         var nalType = nalHeader & 0x1F;
+        
         // IDR slice = 5 in H.264.
         return nalType == 5;
     }

@@ -83,7 +83,11 @@ export function RemoteControlModal({
               console.log("[RemoteDesktop] Track received", event.streams);
               const video = videoRef.current;
               if (video && event.streams[0]) {
+                console.log("[RemoteDesktop] Setting video srcObject");
                 video.srcObject = event.streams[0];
+                video.muted = true; // Ensure autoplay works
+                video.playsInline = true; // For iOS/Mobile
+                video.autoplay = true;
 
                 video.play().catch((e) => {
                   if (e.name === "AbortError") {
