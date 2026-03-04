@@ -134,6 +134,7 @@ if (app.Environment.IsDevelopment())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
         dbContext.Database.Migrate();
+        await DataSeeder.SeedAsync(dbContext); //DATA SEEDER FOR DEVELOPMENT PURPOSES ONLY
     }
 }
 
