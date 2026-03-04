@@ -11,7 +11,7 @@ echo Base Folder: %SCRIPT_DIR%
 echo ===================================================
 
 :: Windows 1 – server (docker + dotnet)
-start "LabSync Server" cmd /k "cd /d "%SCRIPT_DIR%" && docker compose down && timeout /t 10 /nobreak && docker compose up -d && timeout /t 20 /nobreak && dotnet run --project src/LabSync.Server"
+start "LabSync Server" cmd /k "cd /d "%SCRIPT_DIR%" && docker compose down && timeout /t 5 /nobreak && docker compose up -d && timeout /t 5 /nobreak && dotnet run --project src/LabSync.Server"
 
 timeout /t 1 /nobreak >nul
 
