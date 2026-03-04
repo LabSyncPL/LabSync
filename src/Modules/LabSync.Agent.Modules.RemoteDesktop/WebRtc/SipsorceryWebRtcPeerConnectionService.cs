@@ -36,11 +36,32 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         _onConnectionClosed = onConnectionClosed;
     }
 
-    public async Task CreateOfferAsync(CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        var iceServers = new List<RTCIceServer>
+        {
+            new RTCIceServer { urls = StunUrl },
+            
+            new RTCIceServer { 
+                urls = "turn:global.relay.metered.ca:80",
+                username = "aeed81555c66a425b8afe100",
+                credential = "dNYLQS6x2lC7MGS3",
+            },
+            new RTCIceServer { 
+                urls = "turn:global.relay.metered.ca:443",
+                username = "aeed81555c66a425b8afe100",
+                credential = "dNYLQS6x2lC7MGS3",
+            },
+            new RTCIceServer { 
+                urls = "turns:global.relay.metered.ca:443?transport=tcp",
+                username = "aeed81555c66a425b8afe100",
+                credential = "dNYLQS6x2lC7MGS3",
+            }
+        };
+
         var config = new RTCConfiguration
         {
-            iceServers = new List<RTCIceServer> { new RTCIceServer { urls = StunUrl } }
+            iceServers = iceServers
         };
         _pc = new RTCPeerConnection(config);
 
@@ -80,9 +101,17 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
                 _onConnectionClosed?.Invoke();
         };
 
+        await Task.CompletedTask;
+    }
+
+    public async Task CreateOfferAsync(CancellationToken cancellationToken = default)
+    {
+        if (_pc == null) throw new InvalidOperationException("Peer connection not initialized.");
         var offer = _pc.createOffer(null);
         await _pc.setLocalDescription(offer);
     }
+
+    private readonly Queue<RTCIceCandidateInit> _pendingCandidates = new();
 
     public Task SetRemoteAnswerAsync(string sdpType, string sdp, CancellationToken cancellationToken = default)
     {
@@ -101,6 +130,22 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
             _logger.LogWarning("setRemoteDescription failed: {Result}. SDP: {Sdp}", result, sdp);
             throw new InvalidOperationException($"setRemoteDescription failed: {result}");
         }
+
+        lock (_pendingCandidates)
+        {
+            while (_pendingCandidates.Count > 0)
+            {
+                var cand = _pendingCandidates.Dequeue();
+                try 
+                {
+                    pc.addIceCandidate(cand);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to add queued ICE candidate.");
+                }
+            }
+        }
         return Task.CompletedTask;
     }
 
@@ -116,7 +161,20 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
             sdpMid = sdpMid ?? "",
             sdpMLineIndex = (ushort)(sdpMLineIndex ?? 0)
         };
-        pc.addIceCandidate(init);
+
+        // Queue candidates if remote description is not yet set
+        if (pc.remoteDescription == null)
+        {
+            lock (_pendingCandidates)
+            {
+                _pendingCandidates.Enqueue(init);
+            }
+        }
+        else
+        {
+            pc.addIceCandidate(init);
+        }
+
         return Task.CompletedTask;
     }
 

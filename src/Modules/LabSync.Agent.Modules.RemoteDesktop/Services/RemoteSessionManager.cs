@@ -71,6 +71,11 @@ public class RemoteSessionManager : IRemoteSessionManager
                     _ = SafeAddIceCandidate(peer, c, cts.Token);
             });
 
+            await peer.InitializeAsync(cts.Token);
+
+            // Create Data Channel BEFORE Offer so it's included in SDP
+            var dataChannelStream = await peer.OpenDataChannelAsync("input", cts.Token);
+
             await peer.CreateOfferAsync(cts.Token);
             var offer = new RemoteDesktopOfferDto(sessionId, request.DeviceId, "offer", peer.GetLocalSdpOffer());
             await _signalingService.SendOfferAsync(offer, cts.Token);
@@ -86,7 +91,7 @@ public class RemoteSessionManager : IRemoteSessionManager
             await peer.SetRemoteAnswerAsync(answer.SdpType, answer.Sdp, cts.Token);
 
             input = _inputFactory.Create();
-            var dataChannelStream = await peer.OpenDataChannelAsync("input", cts.Token);
+            // Data channel already created
 
             var captureChannel = Channel.CreateBounded<CaptureFrame>(new BoundedChannelOptions(_options.CaptureChannelCapacity)
             {
@@ -95,9 +100,9 @@ public class RemoteSessionManager : IRemoteSessionManager
                 FullMode = BoundedChannelFullMode.Wait
             });
 
+            var streamTask = peer.AddVideoTrackFromEncodedStreamAsync(encoder.GetEncodedStreamAsync(cts.Token), cts.Token);
             var captureTask = RunCaptureLoopAsync(capture, captureChannel.Writer, cts.Token);
             var encodeTask = RunEncodingLoopAsync(captureChannel.Reader, encoder, cts.Token);
-            var streamTask = peer.AddVideoTrackFromEncodedStreamAsync(encoder.GetEncodedStreamAsync(cts.Token), cts.Token);
             var inputTask = RunInputLoopAsync(dataChannelStream, input, cts.Token);
 
             var ctx = new RemoteSessionContext(sessionId, capture, encoder, peer, input, _signalingService, lifecycleCts)
@@ -170,21 +175,24 @@ public class RemoteSessionManager : IRemoteSessionManager
         return new PlaceholderVideoEncoder(_logger, _options.EncodedChannelCapacity);
     }
 
-    private static async Task RunCaptureLoopAsync(
+    private async Task RunCaptureLoopAsync(
         IScreenCaptureService capture,
         ChannelWriter<CaptureFrame> writer,
         CancellationToken cancellationToken)
     {
+        int frameCount = 0;
         try
         {
             await foreach (var frame in capture.EnumerateFramesAsync(cancellationToken))
             {
+                if (frameCount++ % 30 == 0) _logger.LogDebug("Captured frame {Count}. Size: {Width}x{Height}", frameCount, frame.Width, frame.Height);
                 await writer.WriteAsync(frame, cancellationToken);
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Capture loop error.");
             throw;
         }
         finally
@@ -193,7 +201,7 @@ public class RemoteSessionManager : IRemoteSessionManager
         }
     }
 
-    private static async Task RunEncodingLoopAsync(
+    private async Task RunEncodingLoopAsync(
         ChannelReader<CaptureFrame> reader,
         IVideoEncoder encoder,
         CancellationToken cancellationToken)
@@ -206,8 +214,9 @@ public class RemoteSessionManager : IRemoteSessionManager
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Encoding loop error.");
             throw;
         }
     }

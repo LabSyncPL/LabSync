@@ -32,8 +32,10 @@ export function RemoteControlModal({
 
   useEffect(() => {
     let mounted = true;
-
+    let isInitializing = false;
     const startSession = async () => {
+      if (isInitializing) return;
+      isInitializing = true;
       try {
         setStatus("connecting");
         const token = getToken();
@@ -79,11 +81,19 @@ export function RemoteControlModal({
 
             pc.ontrack = (event) => {
               console.log("[RemoteDesktop] Track received", event.streams);
-              if (videoRef.current) {
-                videoRef.current.srcObject = event.streams[0];
-                videoRef.current
-                  .play()
-                  .catch((e) => console.error("Error playing video:", e));
+              const video = videoRef.current;
+              if (video && event.streams[0]) {
+                video.srcObject = event.streams[0];
+
+                video.play().catch((e) => {
+                  if (e.name === "AbortError") {
+                    console.warn(
+                      "[RemoteDesktop] Playback interrupted (AbortError), usually harmless during setup.",
+                    );
+                  } else {
+                    console.error("[RemoteDesktop] Playback error:", e);
+                  }
+                });
               }
             };
 
@@ -369,7 +379,7 @@ export function RemoteControlModal({
           autoPlay
           playsInline
           muted
-          className={`max-w-full max-h-full outline-none cursor-none ${status === "connected" ? "block" : "hidden"}`}
+          className={`max-w-full max-h-full outline-none ${status === "connected" ? "opacity-100" : "opacity-0 absolute"}`}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}

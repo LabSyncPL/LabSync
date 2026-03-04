@@ -23,6 +23,11 @@ public class PlaceholderWebRtcPeerConnectionService : IWebRtcPeerConnectionServi
     public event EventHandler<string>? OnIceCandidate;
     public event EventHandler? OnConnectionStateChanged { add { } remove { } }
 
+    public Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
     public Task CreateOfferAsync(CancellationToken cancellationToken = default)
     {
         _localSdp = "v=0\r\n";
