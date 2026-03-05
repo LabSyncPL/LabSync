@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDevices, devicesQueryKey } from "../api/devices";
 import { RemoteViewSelection } from "../components/RemoteViewSelection";
 import { MonitorWall } from "../components/MonitorWall";
-import { useGridMonitor, type MonitorSettings } from "../hooks/useGridMonitor";
+import { useGridMonitor } from "../hooks/useGridMonitor";
+import { useMonitorWallSettings } from "../settings/monitorWallSettings";
 import { RemoteControlModal } from "../components/RemoteControl/RemoteControlModal";
 import type { DeviceDto } from "../types/device";
 
@@ -22,19 +23,12 @@ export function RemoteViewPage() {
     string | null
   >(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [monitorSettings, setMonitorSettings] = useState<MonitorSettings>({
-    width: 400,
-    quality: 60,
-    fps: 1,
-  });
+
+  // Use persisted settings
+  const [monitorSettings, setMonitorSettings] = useMonitorWallSettings();
 
   // 3. Monitor Hook
-  const {
-    subscribe,
-    unsubscribe,
-    configure,
-    images,
-  } = useGridMonitor();
+  const { subscribe, unsubscribe, configure, images } = useGridMonitor();
 
   // 4. Computed
   const selectedDevices = useMemo(() => {

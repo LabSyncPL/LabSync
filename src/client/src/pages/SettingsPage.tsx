@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useSystemMetricsSettings } from "../settings/systemMetricsSettings";
 import { useRemoteDesktopSettings } from "../settings/remoteDesktopSettings";
+import {
+  useMonitorWallSettings,
+  MONITOR_PRESETS,
+} from "../settings/monitorWallSettings";
 
 type LocalMetricsSettings = {
   autoMode: "manual" | "auto" | "background";
@@ -17,10 +21,14 @@ type LocalRemoteDesktopSettings = {
   autoResize: boolean;
 };
 
+type LocalMonitorWallSettings = {
+  preset: string;
+};
+
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<"metrics" | "remoteDesktop">(
-    "remoteDesktop",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "metrics" | "remoteDesktop" | "monitorWall"
+  >("remoteDesktop");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
@@ -45,6 +53,25 @@ export function SettingsPage() {
     autoResize: storedRemote.autoResize,
   });
 
+  // Monitor Wall Settings
+  const [storedMonitor, setStoredMonitor] = useMonitorWallSettings();
+
+  // Find matching preset or default to low
+  const getPresetKey = (settings: typeof storedMonitor) => {
+    return (
+      Object.entries(MONITOR_PRESETS).find(
+        ([_, p]) =>
+          p.width === settings.width &&
+          p.quality === settings.quality &&
+          p.fps === settings.fps,
+      )?.[0] || "low"
+    );
+  };
+
+  const [localMonitor, setLocalMonitor] = useState<LocalMonitorWallSettings>({
+    preset: getPresetKey(storedMonitor),
+  });
+
   const handleMetricsChange = (updates: Partial<LocalMetricsSettings>) => {
     setLocalMetrics((prev) => ({ ...prev, ...updates }));
     setHasChanges(true);
@@ -53,6 +80,12 @@ export function SettingsPage() {
 
   const handleRemoteChange = (updates: Partial<LocalRemoteDesktopSettings>) => {
     setLocalRemote((prev) => ({ ...prev, ...updates }));
+    setHasChanges(true);
+    setSaveStatus("idle");
+  };
+
+  const handleMonitorChange = (updates: Partial<LocalMonitorWallSettings>) => {
+    setLocalMonitor((prev) => ({ ...prev, ...updates }));
     setHasChanges(true);
     setSaveStatus("idle");
   };
@@ -76,6 +109,16 @@ export function SettingsPage() {
       preferredEncoder: localRemote.preferredEncoder,
       autoResize: localRemote.autoResize,
     });
+
+    // Save Monitor Wall
+    const selectedPreset = MONITOR_PRESETS[localMonitor.preset];
+    if (selectedPreset) {
+      setStoredMonitor({
+        width: selectedPreset.width,
+        quality: selectedPreset.quality,
+        fps: selectedPreset.fps,
+      });
+    }
 
     setHasChanges(false);
     setSaveStatus("saved");
@@ -114,20 +157,24 @@ export function SettingsPage() {
             onClick={() => setActiveTab("remoteDesktop")}
             className={`w-full flex items-center px-3 py-2 rounded-md transition-colors text-sm ${activeTab === "remoteDesktop" ? "bg-slate-800 text-white border border-slate-700 shadow-sm" : "text-slate-500 hover:text-white hover:bg-slate-800/50"}`}
           >
-            <svg
-              className={`w-4 h-4 mr-3 ${activeTab === "remoteDesktop" ? "text-primary-500" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              ></path>
-            </svg>
+            <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
             Remote Desktop
+          </button>
+
+          <button
+            onClick={() => setActiveTab("monitorWall")}
+            className={`w-full flex items-center px-3 py-2 rounded-md transition-colors text-sm ${activeTab === "monitorWall" ? "bg-slate-800 text-white border border-slate-700 shadow-sm" : "text-slate-500 hover:text-white hover:bg-slate-800/50"}`}
+          >
+            <span className="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
+            Monitor Wall
+          </button>
+
+          <button
+            onClick={() => setActiveTab("metrics")}
+            className={`w-full flex items-center px-3 py-2 rounded-md transition-colors text-sm ${activeTab === "metrics" ? "bg-slate-800 text-white border border-slate-700 shadow-sm" : "text-slate-500 hover:text-white hover:bg-slate-800/50"}`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
+            Metrics & Logs
           </button>
         </div>
 
@@ -472,6 +519,56 @@ export function SettingsPage() {
                           Managed automatically when Auto-Resize is enabled.
                         </p>
                       )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "monitorWall" && (
+            <div className="space-y-10">
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-medium text-white">
+                      Monitor Wall Defaults
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Set your preferred default settings for the Monitor Wall
+                      (grid view).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800 border border-slate-700 rounded-lg p-5 space-y-6">
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium text-slate-400">
+                        Performance Preset
+                      </label>
+                      <select
+                        value={localMonitor.preset}
+                        onChange={(e) =>
+                          handleMonitorChange({
+                            preset: e.target.value,
+                          })
+                        }
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500"
+                      >
+                        {Object.entries(MONITOR_PRESETS).map(
+                          ([key, preset]) => (
+                            <option key={key} value={key}>
+                              {preset.label} ({preset.width}px, {preset.fps}{" "}
+                              FPS)
+                            </option>
+                          ),
+                        )}
+                      </select>
+                      <p className="text-[10px] text-slate-500">
+                        Select a quality preset for the grid view. Higher
+                        quality requires more bandwidth.
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { DeviceDto } from "../types/device";
 import type { MonitorSettings } from "../hooks/useGridMonitor";
+import { MONITOR_PRESETS } from "../settings/monitorWallSettings";
 import { DeviceMonitorCard } from "./DeviceMonitorCard";
 import {
   ArrowLeft,
@@ -11,13 +12,6 @@ import {
   Grid3X3,
   Grid2X2,
 } from "./Icons";
-
-const PRESETS: Record<string, MonitorSettings & { label: string }> = {
-  low: { width: 400, quality: 50, fps: 1, label: "Low (BW Saver)" },
-  medium: { width: 600, quality: 70, fps: 2, label: "Medium" },
-  high: { width: 800, quality: 80, fps: 5, label: "High" },
-  ultra: { width: 1280, quality: 85, fps: 10, label: "Ultra (High BW)" },
-};
 
 interface MonitorWallProps {
   devices: DeviceDto[];
@@ -44,7 +38,7 @@ export function MonitorWall({
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const currentPresetKey =
-    Object.entries(PRESETS).find(
+    Object.entries(MONITOR_PRESETS).find(
       ([_, p]) =>
         p.width === currentSettings.width &&
         p.quality === currentSettings.quality &&
@@ -52,7 +46,7 @@ export function MonitorWall({
     )?.[0] || "custom";
 
   const handlePresetChange = (key: string) => {
-    const preset = PRESETS[key];
+    const preset = MONITOR_PRESETS[key];
     if (preset) {
       const { label, ...settings } = preset;
       onUpdateSettings(settings);
@@ -163,7 +157,7 @@ export function MonitorWall({
                 value={currentPresetKey}
                 onChange={(e) => handlePresetChange(e.target.value)}
               >
-                {Object.entries(PRESETS).map(([key, preset]) => (
+                {Object.entries(MONITOR_PRESETS).map(([key, preset]) => (
                   <option
                     key={key}
                     value={key}
