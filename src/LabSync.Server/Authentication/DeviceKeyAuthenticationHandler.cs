@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Interfaces;
+using LabSync.Core.Interfaces;
 using LabSync.Core.Types;
 using LabSync.Server.Data;
 using Microsoft.AspNetCore.Authentication;
@@ -32,7 +32,8 @@ public class DeviceKeyAuthenticationHandler(
 
         if (string.IsNullOrEmpty(deviceKey))
         {
-            Logger.LogWarning("Authentication failed: No device key provided in headers or query parameters.");
+            // Do not log warning here as this handler might be part of a chain (e.g. combined with JWT).
+            // If the request is meant for JWT, it won't have a device key.
             return AuthenticateResult.NoResult();
         }
 

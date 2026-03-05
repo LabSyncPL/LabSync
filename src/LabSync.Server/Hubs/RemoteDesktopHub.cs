@@ -10,7 +10,7 @@ namespace LabSync.Server.Hubs;
 /// Hub for viewers (web UI) to receive remote desktop offers from agents
 /// and send back answers and ICE candidates.
 /// </summary>
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme + "," + LabSync.Server.Authentication.DeviceKeyAuthenticationHandler.SchemeName)]
 public class RemoteDesktopHub(
     ConnectionTracker connectionTracker,
     IHubContext<AgentHub> agentHubContext,
@@ -133,6 +133,19 @@ public class RemoteDesktopHub(
                 // We send StartMonitor to agent. The agent should handle idempotency (if already running, do nothing)
                 // This is a "fire and forget" notification to wake up the agent monitor service
                 await agentHubContext.Clients.Client(agentConnectionId).SendAsync("StartMonitor");
+            }
+        }
+    }
+
+    public async Task ConfigureMonitor(List<Guid> deviceIds, int width, int quality, int fps)
+    {
+        foreach (var deviceId in deviceIds)
+        {
+            var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
+            if (agentConnectionId != null)
+            {
+                await agentHubContext.Clients.Client(agentConnectionId)
+                    .SendAsync("ConfigureMonitor", width, quality, fps);
             }
         }
     }

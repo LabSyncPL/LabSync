@@ -108,7 +108,6 @@ export function RemoteViewSelection({
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
-            <Monitor className="w-8 h-8 text-primary-400" />
             Remote View Selection
           </h1>
           <p className="text-slate-400">

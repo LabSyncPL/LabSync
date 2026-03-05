@@ -21,9 +21,9 @@ public class GridMonitorService : IDisposable
     private readonly object _lock = new();
 
     // Configuration
-    private const int TargetWidth = 400; // Small thumbnail width
-    private const int JpegQuality = 60;  // Medium quality for thumbnails
-    private const int TargetFps = 1;     // 1 frame per second
+    private int _targetWidth = 400;
+    private int _jpegQuality = 60;
+    private int _targetFps = 1;
 
     public GridMonitorService(
         IScreenCaptureFactory captureFactory,
@@ -37,6 +37,18 @@ public class GridMonitorService : IDisposable
         // Register SignalR handlers for Start/Stop commands
         _hubInvoker.RegisterHandler("StartMonitor", StartMonitoring);
         _hubInvoker.RegisterHandler("StopMonitor", StopMonitoring);
+        _hubInvoker.RegisterHandler<int, int, int>("ConfigureMonitor", ConfigureMonitor);
+    }
+
+    private void ConfigureMonitor(int width, int quality, int fps)
+    {
+        lock (_lock)
+        {
+            _targetWidth = Math.Clamp(width, 100, 1920);
+            _jpegQuality = Math.Clamp(quality, 10, 100);
+            _targetFps = Math.Clamp(fps, 1, 30);
+            _logger.LogInformation("Grid Monitor reconfigured: Width={Width}, Quality={Quality}, FPS={Fps}", _targetWidth, _jpegQuality, _targetFps);
+        }
     }
 
     private void StartMonitoring()
@@ -88,10 +100,15 @@ public class GridMonitorService : IDisposable
 
             var enumerator = capture.EnumerateFramesAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
-            var jpegEncoder = new JpegEncoder { Quality = JpegQuality };
-
             while (_isMonitoring && !cancellationToken.IsCancellationRequested)
             {
+                // Create encoder with current quality settings for each frame (or only when changed)
+                // Since JpegEncoder properties are init-only, we must instantiate a new one if quality changes.
+                // However, for simplicity and correctness with dynamic quality, let's just create a new one here.
+                // It's a lightweight struct/class usually.
+                var jpegEncoder = new JpegEncoder { Quality = _jpegQuality };
+                var currentFps = _targetFps;
+
                 var startTime = DateTime.UtcNow;
 
                 if (await enumerator.MoveNextAsync())
@@ -108,7 +125,7 @@ public class GridMonitorService : IDisposable
                             
                             // Resize to target width (maintaining aspect ratio)
                             // 0 for height means "calculate automatically"
-                            image.Mutate(x => x.Resize(TargetWidth, 0));
+                            image.Mutate(x => x.Resize(_targetWidth, 0));
 
                             using var ms = new MemoryStream();
                             await image.SaveAsJpegAsync(ms, jpegEncoder, cancellationToken);
@@ -124,9 +141,9 @@ public class GridMonitorService : IDisposable
                     }
                 }
 
-                // Maintain ~1 FPS
+                // Maintain ~Target FPS
                 var elapsed = DateTime.UtcNow - startTime;
-                var delay = TimeSpan.FromSeconds(1.0 / TargetFps) - elapsed;
+                var delay = TimeSpan.FromSeconds(1.0 / currentFps) - elapsed;
                 if (delay > TimeSpan.Zero)
                 {
                     await Task.Delay(delay, cancellationToken);

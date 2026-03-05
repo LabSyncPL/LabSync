@@ -13,6 +13,7 @@ public class AgentHubInvoker : IAgentHubInvoker
     private readonly List<Delegate> _stopRemoteDesktopSessionHandlers = new();
     private readonly List<Delegate> _startMonitorHandlers = new();
     private readonly List<Delegate> _stopMonitorHandlers = new();
+    private readonly List<Delegate> _configureMonitorHandlers = new();
     private readonly object _gate = new();
 
     public void AttachConnection(object hubConnection)
@@ -69,6 +70,14 @@ public class AgentHubInvoker : IAgentHubInvoker
                 foreach (var h in _stopMonitorHandlers) ((Action)h)();
             }
         });
+        _hubConnection.On<int, int, int>("ConfigureMonitor", (width, quality, fps) =>
+        {
+            lock (_gate)
+            {
+                foreach (var h in _configureMonitorHandlers)
+                    ((Action<int, int, int>)h)(width, quality, fps);
+            }
+        });
     }
 
     public Task InvokeAsync(string methodName, object?[] args, CancellationToken cancellationToken = default)
@@ -83,6 +92,10 @@ public class AgentHubInvoker : IAgentHubInvoker
         if (methodName == "RemoteDesktopAnswer")
         {
             lock (_gate) _remoteDesktopAnswerHandlers.Add(handler);
+        }
+        else if (methodName == "ConfigureMonitor")
+        {
+            lock (_gate) _configureMonitorHandlers.Add(handler);
         }
     }
 

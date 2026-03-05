@@ -61,15 +61,18 @@ public class ServerClient : IAsyncDisposable
         if (_hubConnection is not null && _hubConnection.State != HubConnectionState.Disconnected)
             return;
 
-        var hubUrl = new Uri(_httpClient.BaseAddress!, "agenthub");
-        _logger.LogInformation("Connecting to SignalR Hub at {HubUrl}", hubUrl);
+        var serverUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/');
+        if (string.IsNullOrEmpty(serverUrl)) throw new InvalidOperationException("Server URL not configured.");
 
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(hubUrl, options =>
-            {
+            .WithUrl($"{serverUrl}/agentHub", options => {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(token);
+                // Increase max message size for client as well
+                options.ApplicationMaxBufferSize = 10 * 1024 * 1024; // 10 MB
+                options.TransportMaxBufferSize = 10 * 1024 * 1024; // 10 MB
             })
             .WithAutomaticReconnect()
+            .AddMessagePackProtocol()
             .Build();
 
         _hubConnection.On<Guid, string, string, string?>("ReceiveJob", (jobId, command, arguments, scriptPayload) =>

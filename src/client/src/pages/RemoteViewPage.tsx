@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDevices, devicesQueryKey } from "../api/devices";
 import { RemoteViewSelection } from "../components/RemoteViewSelection";
 import { MonitorWall } from "../components/MonitorWall";
-import { useGridMonitor } from "../hooks/useGridMonitor";
+import { useGridMonitor, type MonitorSettings } from "../hooks/useGridMonitor";
 import { RemoteControlModal } from "../components/RemoteControl/RemoteControlModal";
 import type { DeviceDto } from "../types/device";
 
@@ -22,11 +22,17 @@ export function RemoteViewPage() {
     string | null
   >(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [monitorSettings, setMonitorSettings] = useState<MonitorSettings>({
+    width: 400,
+    quality: 60,
+    fps: 1,
+  });
 
   // 3. Monitor Hook
   const {
     subscribe,
     unsubscribe,
+    configure,
     images,
   } = useGridMonitor();
 
@@ -41,7 +47,9 @@ export function RemoteViewPage() {
   // Handle Subscription
   useEffect(() => {
     if (viewMode === "wall" && selectedDeviceIds.length > 0 && !isPaused) {
-      subscribe(selectedDeviceIds).catch(console.error);
+      subscribe(selectedDeviceIds)
+        .then(() => configure(selectedDeviceIds, monitorSettings))
+        .catch(console.error);
     }
 
     return () => {
@@ -51,6 +59,13 @@ export function RemoteViewPage() {
       }
     };
   }, [viewMode, selectedDeviceIds, isPaused, subscribe, unsubscribe]);
+
+  // Handle Settings Change
+  useEffect(() => {
+    if (viewMode === "wall" && selectedDeviceIds.length > 0 && !isPaused) {
+      configure(selectedDeviceIds, monitorSettings).catch(console.error);
+    }
+  }, [monitorSettings, configure]); // selectedDeviceIds/viewMode/isPaused are stable or handled by other effect logic
 
   // 6. Handlers
   const handleStartMonitoring = (ids: string[]) => {
@@ -89,6 +104,8 @@ export function RemoteViewPage() {
           isPaused={isPaused}
           togglePause={() => setIsPaused((prev) => !prev)}
           images={images}
+          currentSettings={monitorSettings}
+          onUpdateSettings={setMonitorSettings}
         />
       )}
 

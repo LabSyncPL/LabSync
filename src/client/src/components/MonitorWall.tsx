@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { DeviceDto } from "../types/device";
+import type { MonitorSettings } from "../hooks/useGridMonitor";
 import { DeviceMonitorCard } from "./DeviceMonitorCard";
 import {
   ArrowLeft,
@@ -11,6 +12,13 @@ import {
   Grid2X2,
 } from "./Icons";
 
+const PRESETS: Record<string, MonitorSettings & { label: string }> = {
+  low: { width: 400, quality: 50, fps: 1, label: "Low (BW Saver)" },
+  medium: { width: 600, quality: 70, fps: 2, label: "Medium" },
+  high: { width: 800, quality: 80, fps: 5, label: "High" },
+  ultra: { width: 1280, quality: 85, fps: 10, label: "Ultra (High BW)" },
+};
+
 interface MonitorWallProps {
   devices: DeviceDto[];
   onBack: () => void;
@@ -18,6 +26,8 @@ interface MonitorWallProps {
   isPaused: boolean;
   togglePause: () => void;
   images: Record<string, string>; // Base64 images from the hook
+  currentSettings: MonitorSettings;
+  onUpdateSettings: (settings: MonitorSettings) => void;
 }
 
 export function MonitorWall({
@@ -27,11 +37,27 @@ export function MonitorWall({
   isPaused,
   togglePause,
   images,
+  currentSettings,
+  onUpdateSettings,
 }: MonitorWallProps) {
   const [gridSize, setGridSize] = useState(3); // Columns
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Handle browser fullscreen
+  const currentPresetKey =
+    Object.entries(PRESETS).find(
+      ([_, p]) =>
+        p.width === currentSettings.width &&
+        p.quality === currentSettings.quality &&
+        p.fps === currentSettings.fps,
+    )?.[0] || "custom";
+
+  const handlePresetChange = (key: string) => {
+    const preset = PRESETS[key];
+    if (preset) {
+      const { label, ...settings } = preset;
+      onUpdateSettings(settings);
+    }
+  };
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -101,6 +127,29 @@ export function MonitorWall({
             >
               <Grid3X3 className="w-4 h-4" />
             </button>
+          </div>
+
+          <div className="h-6 w-px bg-slate-700" />
+
+          {/* Quality Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+              Quality
+            </span>
+            <select
+              className="bg-slate-800 text-xs text-slate-300 border border-slate-700 rounded px-2 py-1.5 focus:outline-none focus:border-primary-500 transition-colors cursor-pointer"
+              value={currentPresetKey}
+              onChange={(e) => handlePresetChange(e.target.value)}
+            >
+              {Object.entries(PRESETS).map(([key, preset]) => (
+                <option key={key} value={key}>
+                  {preset.label}
+                </option>
+              ))}
+              {currentPresetKey === "custom" && (
+                <option value="custom">Custom</option>
+              )}
+            </select>
           </div>
 
           <div className="h-6 w-px bg-slate-700" />
