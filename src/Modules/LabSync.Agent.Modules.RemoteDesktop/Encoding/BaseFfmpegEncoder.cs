@@ -197,7 +197,19 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
                 }
 
                 int read = await stdout.ReadAsync(buffer.AsMemory(bufferLen, availableSpace), cancellationToken);
-                if (read == 0) break; // EOF
+                if (read == 0) 
+                {
+                    // EOF reached. Check if process exited with error.
+                    if (process.HasExited && process.ExitCode != 0)
+                    {
+                        Logger.LogError("FFmpeg process exited unexpectedly with code {ExitCode}.", process.ExitCode);
+                    }
+                    else if (process.HasExited)
+                    {
+                        Logger.LogInformation("FFmpeg process exited normally.");
+                    }
+                    break; 
+                }
 
                 bufferLen += read;
 
@@ -221,7 +233,14 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
                             var nalUnit = new byte[searchIndex];
                             Buffer.BlockCopy(buffer, 0, nalUnit, 0, searchIndex);
 
-                            var isKeyFrame = IsIdrNal(nalUnit);
+                            var nalType = nalUnit[0] & 0x1F;
+                            // Log key NAL types for debugging
+                            if (nalType == 7) Logger.LogDebug("Sending SPS NAL ({Size} bytes)", nalUnit.Length);
+                            else if (nalType == 8) Logger.LogDebug("Sending PPS NAL ({Size} bytes)", nalUnit.Length);
+                            else if (nalType == 5) Logger.LogDebug("Sending IDR NAL ({Size} bytes)", nalUnit.Length);
+                            // else if (nalType == 1) Logger.LogTrace("Sending P/B Slice NAL ({Size} bytes)", nalUnit.Length);
+
+                            var isKeyFrame = nalType == 5;
                             var frame = new EncodedFrame(nalUnit, isKeyFrame, DateTime.UtcNow);
 
                             await channel.Writer.WriteAsync(frame, cancellationToken);
@@ -262,10 +281,19 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
                 var line = await stderr.ReadLineAsync();
                 if (line == null) break;
                 
-                if (line.Contains("error", StringComparison.OrdinalIgnoreCase) || line.Contains("warning", StringComparison.OrdinalIgnoreCase))
+                // Always log stderr for diagnostics on Linux when things go wrong
+                if (line.Contains("error", StringComparison.OrdinalIgnoreCase) || 
+                    line.Contains("warning", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("fail", StringComparison.OrdinalIgnoreCase) ||
+                    line.Contains("panic", StringComparison.OrdinalIgnoreCase))
+                {
                     Logger.LogWarning("ffmpeg stderr: {Line}", line);
+                }
                 else
-                    Logger.LogTrace("ffmpeg stderr: {Line}", line);
+                {
+                    // Log everything else as Debug so we can see initialization params
+                    Logger.LogDebug("ffmpeg stderr: {Line}", line);
+                }
             }
         }
         catch { }
@@ -274,9 +302,8 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
     protected static bool IsIdrNal(byte[] nalUnit)
     {
         if (nalUnit == null || nalUnit.Length == 0) return false;
-        // NAL header is the first byte. Type is lower 5 bits.
         var nalType = nalUnit[0] & 0x1F;
-        return nalType == 5; // IDR picture
+        return nalType == 5;
     }
 
     public virtual async ValueTask DisposeAsync()

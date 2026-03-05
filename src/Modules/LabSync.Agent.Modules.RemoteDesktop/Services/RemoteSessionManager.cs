@@ -80,9 +80,12 @@ public class RemoteSessionManager : IRemoteSessionManager
                 }
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                (sourceWidth, sourceHeight) = await LinuxDisplayHelper.GetScreenResolutionAsync(cts.Token);
-            }
+             {
+                 var sessionType = Environment.GetEnvironmentVariable("XDG_SESSION_TYPE");
+                 _logger.LogInformation("Linux Session Type: {SessionType}", sessionType ?? "Unknown");
+                 
+                 (sourceWidth, sourceHeight) = await LinuxDisplayHelper.GetScreenResolutionAsync(cts.Token);
+             }
             
             _logger.LogInformation("Detected screen resolution: {Width}x{Height}", sourceWidth, sourceHeight);
 
