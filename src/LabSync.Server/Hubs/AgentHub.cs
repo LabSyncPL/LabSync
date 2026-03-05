@@ -110,7 +110,21 @@ public class AgentHub(
             .SendAsync("ReceiveRemoteDesktopIceCandidate", sessionId, candidate, sdpMid, sdpMLineIndex);
     }
 
+    // Grid Monitor Methods
+
+    public async Task SendGridFrame(byte[] frameData)
+    {
+        var deviceId = GetDeviceIdFromContext();
+        if (deviceId == Guid.Empty) return;
+
+        var groupName = $"Monitor_{deviceId:N}";
+        
+        // Use the injected context for RemoteDesktopHub to send to viewers
+        await remoteDesktopHubContext.Clients.Group(groupName).SendAsync("GridFrameReceived", deviceId, frameData);
+    }
+
     public async Task UploadJobResult(JobResultDto result)
+
     {
         var deviceId = GetDeviceIdFromContext();
         if (deviceId == Guid.Empty)

@@ -11,6 +11,8 @@ public class AgentHubInvoker : IAgentHubInvoker
     private readonly List<Delegate> _remoteDesktopIceCandidateHandlers = new();
     private readonly List<Delegate> _startRemoteDesktopSessionHandlers = new();
     private readonly List<Delegate> _stopRemoteDesktopSessionHandlers = new();
+    private readonly List<Delegate> _startMonitorHandlers = new();
+    private readonly List<Delegate> _stopMonitorHandlers = new();
     private readonly object _gate = new();
 
     public void AttachConnection(object hubConnection)
@@ -49,6 +51,22 @@ public class AgentHubInvoker : IAgentHubInvoker
             {
                 foreach (var h in _stopRemoteDesktopSessionHandlers)
                     ((Action<Guid>)h)(sessionId);
+            }
+        });
+
+        // Grid Monitor Commands
+        _hubConnection.On("StartMonitor", () =>
+        {
+            lock (_gate)
+            {
+                foreach (var h in _startMonitorHandlers) ((Action)h)();
+            }
+        });
+        _hubConnection.On("StopMonitor", () =>
+        {
+            lock (_gate)
+            {
+                foreach (var h in _stopMonitorHandlers) ((Action)h)();
             }
         });
     }
@@ -98,6 +116,13 @@ public class AgentHubInvoker : IAgentHubInvoker
 
     public void RegisterHandler(string methodName, Action handler)
     {
-        // No implementation needed for now as we don't have parameterless handlers yet
+        if (methodName == "StartMonitor")
+        {
+            lock (_gate) _startMonitorHandlers.Add(handler);
+        }
+        else if (methodName == "StopMonitor")
+        {
+            lock (_gate) _stopMonitorHandlers.Add(handler);
+        }
     }
 }

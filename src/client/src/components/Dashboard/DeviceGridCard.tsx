@@ -7,24 +7,47 @@ interface DeviceGridCardProps {
   device: DeviceDto;
   onApprove: (e: React.MouseEvent, device: DeviceDto) => void;
   isApproving: boolean;
+  monitorImageSrc?: string;
+  onDoubleClick?: (device: DeviceDto) => void;
 }
 
 export function DeviceGridCard({
   device,
   onApprove,
   isApproving,
+  monitorImageSrc,
+  onDoubleClick,
 }: DeviceGridCardProps) {
   const navigate = useNavigate();
 
   return (
     <div
       onClick={() => navigate(`/devices/${device.id}`)}
+      onDoubleClick={(e) => {
+        if (onDoubleClick) {
+          e.stopPropagation();
+          onDoubleClick(device);
+        }
+      }}
       className={`group bg-slate-800 rounded-2xl border p-5 flex flex-col h-full shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-hidden ${
         !device.isApproved
           ? "border-warning/30 hover:border-warning/50 bg-gradient-to-b from-slate-800 to-warning/5"
           : "border-slate-700 hover:border-primary-500/50 hover:translate-y-[-2px]"
       }`}
     >
+      {monitorImageSrc && (
+        <div className="absolute inset-0 z-10 bg-slate-900">
+          <img 
+            src={monitorImageSrc} 
+            alt={`Monitor ${device.hostname}`} 
+            className="w-full h-full object-contain"
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1 px-2 truncate">
+             {device.hostname}
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-slate-700/50 flex items-center justify-center text-slate-400 border border-slate-600/30 group-hover:bg-slate-700 group-hover:text-white transition-colors">

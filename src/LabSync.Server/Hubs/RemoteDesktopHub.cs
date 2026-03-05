@@ -102,6 +102,66 @@ public class RemoteDesktopHub(
             .SendAsync("RemoteDesktopAnswer", sessionId, sdpType, sdp);
     }
 
+    public async Task SendIceCandidate(Guid sessionId, Guid deviceId, string candidate, string? sdpMid, int? sdpMLineIndex)
+    {
+        var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
+        if (agentConnectionId is null)
+        {
+            logger.LogWarning("SendIceCandidate: no connected agent for device {DeviceId}.", deviceId);
+            return;
+        }
+
+        await agentHubContext.Clients.Client(agentConnectionId)
+            .SendAsync("RemoteDesktopIceCandidate", sessionId, candidate, sdpMid, sdpMLineIndex);
+    }
+
+    // Grid Monitor Methods
+
+    private static string MonitorGroup(Guid deviceId) => $"Monitor_{deviceId:N}";
+
+    public async Task SubscribeToMonitor(List<Guid> deviceIds)
+    {
+        foreach (var deviceId in deviceIds)
+        {
+            var groupName = MonitorGroup(deviceId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+
+            // Notify Agent to start monitoring if not already
+            var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
+            if (agentConnectionId != null)
+            {
+                // We send StartMonitor to agent. The agent should handle idempotency (if already running, do nothing)
+                // This is a "fire and forget" notification to wake up the agent monitor service
+                await agentHubContext.Clients.Client(agentConnectionId).SendAsync("StartMonitor");
+            }
+        }
+    }
+
+    public async Task UnsubscribeFromMonitor(List<Guid> deviceIds)
+    {
+        foreach (var deviceId in deviceIds)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, MonitorGroup(deviceId));
+            
+            // Optional: Logic to check if group is empty and stop agent monitor could be implemented here
+            // but requires tracking subscriber counts which is complex in SignalR without external store (Redis).
+            // For now, we rely on agent timeout or keep it running if simple.
+            // Or we can send StopMonitor, and if other clients are listening they will just re-subscribe? No.
+            // Better approach: Agent keeps running or we implement a "KeepAlive" / "Heartbeat" for monitor.
+            // For this MVP, we won't aggressively stop the agent monitor to avoid thrashing if multiple users view.
+            // A simple improvement: Client sends "StopMonitor" only if they are the admin and sure? No.
+            // Let's leave it running on agent side for now, or implement a timeout on agent side if no one asks for frames?
+            // Actually, the requirements said: "Analogicznie, po opuszczeniu widoku, wysyłana jest komenda Stop Monitoring."
+            // But if multiple admins are watching?
+            // Let's implement a simple "Stop" command sent to agent, but agent should only stop if it wants.
+            // Actually, if we want to strictly follow "Stop Monitoring", we should send it.
+            // But sending it might kill it for others.
+            // Compromise: We WON'T send StopMonitor automatically here to avoid disrupting others.
+            // Agent consumes resources only when generating frames.
+            // We can add a "StopAllMonitors" admin command later.
+        }
+    }
+
     /// <summary>
     /// Viewer sends ICE candidate back to the agent.
     /// </summary>

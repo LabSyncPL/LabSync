@@ -19,6 +19,7 @@ public class RemoteDesktopModule : IRemoteDesktopModule
     public string Version => "1.0.0";
 
     private IRemoteSessionManager? _sessionManager;
+    private GridMonitorService? _gridMonitorService;
     private ILogger? _logger;
 
     public Task InitializeAsync(IServiceProvider serviceProvider)
@@ -60,6 +61,12 @@ public class RemoteDesktopModule : IRemoteDesktopModule
             ? loggerFactory.CreateLogger<GpuDiscoveryService>()
             : Microsoft.Extensions.Logging.Abstractions.NullLogger<GpuDiscoveryService>.Instance;
         IGpuDiscoveryService gpuDiscovery = new GpuDiscoveryService(gpuLogger);
+
+        // Initialize Grid Monitor Service
+        var gridLogger = loggerFactory != null
+            ? loggerFactory.CreateLogger<GridMonitorService>()
+            : Microsoft.Extensions.Logging.Abstractions.NullLogger<GridMonitorService>.Instance;
+        _gridMonitorService = new GridMonitorService(captureFactory, hubInvoker, gridLogger);
 
         _sessionManager = new RemoteSessionManager(
             signalingService,

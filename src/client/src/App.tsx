@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { getToken } from './auth/authStore';
-import { getSystemStatus } from './api/system';
-import { Layout } from './components/Layout/Layout';
-import { Login } from './components/Login';
-import { SetupWizard } from './components/SetupWizard';
-import { Dashboard } from './pages/Dashboard';
-import { DeviceDetails } from './pages/DeviceDetails';
-import { TasksPage } from './pages/TasksPage';
-import { PlaceholderPage } from './pages/PlaceholderPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { useState, useEffect, useCallback } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { getToken } from "./auth/authStore";
+import { getSystemStatus } from "./api/system";
+import { Layout } from "./components/Layout/Layout";
+import { Login } from "./components/Login";
+import { SetupWizard } from "./components/SetupWizard";
+import { Dashboard } from "./pages/Dashboard";
+import { DeviceDetails } from "./pages/DeviceDetails";
+import { TasksPage } from "./pages/TasksPage";
+import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { RemoteViewPage } from "./pages/RemoteViewPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 function App() {
   const [token, setTokenState] = useState<string | null>(() => getToken());
@@ -33,8 +34,8 @@ function App() {
 
   useEffect(() => {
     const handleAuthChange = () => setTokenState(getToken());
-    window.addEventListener('auth-change', handleAuthChange);
-    return () => window.removeEventListener('auth-change', handleAuthChange);
+    window.addEventListener("auth-change", handleAuthChange);
+    return () => window.removeEventListener("auth-change", handleAuthChange);
   }, []);
 
   if (statusLoading) {
@@ -86,20 +87,20 @@ function App() {
         />
         <Route
           path="/*"
-          element={
-            token ? (
-              <Layout />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+          element={token ? <Layout /> : <Navigate to="/login" replace />}
         >
           <Route index element={<Dashboard />} />
           <Route path="devices/:id" element={<DeviceDetails />} />
           <Route path="tasks" element={<TasksPage />} />
-          <Route path="vnc" element={<PlaceholderPage title="Remote View" />} />
-          <Route path="scripts" element={<PlaceholderPage title="Task Runner" />} />
-          <Route path="repository" element={<PlaceholderPage title="Repository" />} />
+          <Route path="vnc" element={<RemoteViewPage />} />
+          <Route
+            path="scripts"
+            element={<PlaceholderPage title="Task Runner" />}
+          />
+          <Route
+            path="repository"
+            element={<PlaceholderPage title="Repository" />}
+          />
           <Route path="audit" element={<PlaceholderPage title="Audit Log" />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
