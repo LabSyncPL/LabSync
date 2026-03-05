@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using System.Text.Json.Serialization;
 using LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 using LabSync.Agent.Modules.RemoteDesktop.Capture;
 using LabSync.Agent.Modules.RemoteDesktop.Encoding;
+using LabSync.Agent.Modules.RemoteDesktop.Infrastructure;
 using LabSync.Agent.Modules.RemoteDesktop.Input;
 using LabSync.Agent.Modules.RemoteDesktop.Models;
 using LabSync.Agent.Modules.RemoteDesktop.WebRtc;
@@ -56,21 +58,30 @@ public class RemoteSessionManager : IRemoteSessionManager
             lifecycleCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cts = lifecycleCts;
 
-            // 1. Initialize Capture
-            capture = _captureFactory.Create();
-            await capture.StartCaptureAsync(cts.Token);
-            
-            // Detect Source Resolution (Temporary: Get one frame)
-            var enumerator = capture.EnumerateFramesAsync(cts.Token).GetAsyncEnumerator(cts.Token);
+            // 1. Initialize Capture (Windows) or Detect Resolution (Linux)
             int sourceWidth = 1920;
             int sourceHeight = 1080;
             CaptureFrame? firstFrame = null;
-            
-            if (await enumerator.MoveNextAsync())
+            IAsyncEnumerator<CaptureFrame>? enumerator = null;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                firstFrame = enumerator.Current;
-                sourceWidth = firstFrame.Width;
-                sourceHeight = firstFrame.Height;
+                capture = _captureFactory.Create();
+                await capture.StartCaptureAsync(cts.Token);
+                
+                // Detect Source Resolution (Temporary: Get one frame)
+                enumerator = capture.EnumerateFramesAsync(cts.Token).GetAsyncEnumerator(cts.Token);
+                
+                if (await enumerator.MoveNextAsync())
+                {
+                    firstFrame = enumerator.Current;
+                    sourceWidth = firstFrame.Width;
+                    sourceHeight = firstFrame.Height;
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                (sourceWidth, sourceHeight) = await LinuxDisplayHelper.GetScreenResolutionAsync(cts.Token);
             }
             
             _logger.LogInformation("Detected screen resolution: {Width}x{Height}", sourceWidth, sourceHeight);
@@ -162,16 +173,27 @@ public class RemoteSessionManager : IRemoteSessionManager
 
             input = _inputFactory.Create();
 
-            var captureChannel = Channel.CreateBounded<CaptureFrame>(new BoundedChannelOptions(_options.CaptureChannelCapacity)
-            {
-                SingleReader = true,
-                SingleWriter = true,
-                FullMode = BoundedChannelFullMode.Wait
-            });
-
             var streamTask = peer.AddVideoTrackFromEncodedStreamAsync(encoder.GetEncodedStreamAsync(cts.Token), cts.Token);
-            var captureTask = RunCaptureLoopAsync(capture, enumerator, firstFrame, captureChannel.Writer, cts.Token);
-            var encodeTask = RunEncodingLoopAsync(captureChannel.Reader, encoder, cts.Token);
+            
+            Task captureTask = Task.CompletedTask;
+            Task encodeTask = Task.CompletedTask;
+
+            if (!encoder.HandlesCapture)
+            {
+                var captureChannel = Channel.CreateBounded<CaptureFrame>(new BoundedChannelOptions(_options.CaptureChannelCapacity)
+                {
+                    SingleReader = true,
+                    SingleWriter = true,
+                    FullMode = BoundedChannelFullMode.Wait
+                });
+
+                if (capture != null && enumerator != null)
+                {
+                    captureTask = RunCaptureLoopAsync(capture, enumerator, firstFrame, captureChannel.Writer, cts.Token);
+                }
+                encodeTask = RunEncodingLoopAsync(captureChannel.Reader, encoder, cts.Token);
+            }
+            
             // Pass encoder and options to Input Loop for dynamic updates
             var inputTask = RunInputLoopAsync(dataChannelStream, input, encoder, encoderOptions, cts.Token);
 
@@ -235,9 +257,13 @@ public class RemoteSessionManager : IRemoteSessionManager
 
     private IVideoEncoder CreateEncoder()
     {
-        if (OperatingSystem.IsWindows())
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             return new WindowsFfmpegVideoEncoder(_logger, _options.EncodedChannelCapacity);
+        }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return new LinuxFfmpegVideoEncoder(_logger, _options.EncodedChannelCapacity);
         }
         return new PlaceholderVideoEncoder(_logger, _options.EncodedChannelCapacity);
     }

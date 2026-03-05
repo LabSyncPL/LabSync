@@ -5,7 +5,7 @@ namespace LabSync.Agent.Modules.RemoteDesktop.Models;
 internal sealed class RemoteSessionContext
 {
     public Guid SessionId { get; }
-    public IScreenCaptureService Capture { get; }
+    public IScreenCaptureService? Capture { get; }
     public IVideoEncoder Encoder { get; }
     public IWebRtcPeerConnectionService Peer { get; }
     public IInputInjectionService Input { get; }
@@ -21,7 +21,7 @@ internal sealed class RemoteSessionContext
 
     public RemoteSessionContext(
         Guid sessionId,
-        IScreenCaptureService capture,
+        IScreenCaptureService? capture,
         IVideoEncoder encoder,
         IWebRtcPeerConnectionService peer,
         IInputInjectionService input,

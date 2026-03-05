@@ -11,6 +11,8 @@ public class PlaceholderVideoEncoder : IVideoEncoder
     private Channel<EncodedFrame>? _channel;
     private EncoderOptions? _options;
 
+    public bool HandlesCapture => false;
+
     public PlaceholderVideoEncoder(ILogger logger, int channelCapacity)
     {
         _logger = logger;

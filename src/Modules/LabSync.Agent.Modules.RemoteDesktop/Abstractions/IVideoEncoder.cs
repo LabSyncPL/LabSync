@@ -2,6 +2,7 @@ namespace LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 
 public interface IVideoEncoder : IAsyncDisposable
 {
+    bool HandlesCapture { get; }
     Task InitializeAsync(EncoderOptions options, CancellationToken cancellationToken = default);
     Task EncodeAsync(CaptureFrame frame, CancellationToken cancellationToken = default);
     IAsyncEnumerable<EncodedFrame> GetEncodedStreamAsync(CancellationToken cancellationToken = default);
