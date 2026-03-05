@@ -58,7 +58,6 @@ public class RemoteSessionManager : IRemoteSessionManager
             lifecycleCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cts = lifecycleCts;
 
-            // 1. Initialize Capture (Windows) or Detect Resolution (Linux)
             int sourceWidth = 1920;
             int sourceHeight = 1080;
             CaptureFrame? firstFrame = null;
@@ -69,9 +68,7 @@ public class RemoteSessionManager : IRemoteSessionManager
                 capture = _captureFactory.Create();
                 await capture.StartCaptureAsync(cts.Token);
                 
-                // Detect Source Resolution (Temporary: Get one frame)
                 enumerator = capture.EnumerateFramesAsync(cts.Token).GetAsyncEnumerator(cts.Token);
-                
                 if (await enumerator.MoveNextAsync())
                 {
                     firstFrame = enumerator.Current;
@@ -89,7 +86,6 @@ public class RemoteSessionManager : IRemoteSessionManager
             
             _logger.LogInformation("Detected screen resolution: {Width}x{Height}", sourceWidth, sourceHeight);
 
-            // 2. Determine Encoder Settings
             var availableEncoders = await _gpuDiscovery.GetAvailableEncodersAsync(cts.Token);
             var preferredEncoderType = VideoEncoderType.Software;
             if (Enum.TryParse<VideoEncoderType>(request.Preferences?.PreferredEncoder, true, out var parsed))
@@ -97,10 +93,8 @@ public class RemoteSessionManager : IRemoteSessionManager
                 preferredEncoderType = parsed;
             }
 
-            // Fallback if preferred is not available
             if (!availableEncoders.Contains(preferredEncoderType))
             {
-                // Prioritize hardware: Nvidia -> AMD -> Intel -> Software
                 if (availableEncoders.Contains(VideoEncoderType.NvidiaNvenc)) preferredEncoderType = VideoEncoderType.NvidiaNvenc;
                 else if (availableEncoders.Contains(VideoEncoderType.AmdAmf)) preferredEncoderType = VideoEncoderType.AmdAmf;
                 else if (availableEncoders.Contains(VideoEncoderType.IntelQsv)) preferredEncoderType = VideoEncoderType.IntelQsv;
@@ -109,16 +103,11 @@ public class RemoteSessionManager : IRemoteSessionManager
                 _logger.LogWarning("Preferred encoder not available. Falling back to {Encoder}", preferredEncoderType);
             }
 
-            // Report available encoders to the client (optional, could be sent via a separate message or included in offer)
-            // For now, we just log them. In a real scenario, we might want to send this back.
-            _logger.LogInformation("Available encoders: {Encoders}", string.Join(", ", availableEncoders));
-
             int targetWidth = request.Preferences?.InitialWidth ?? sourceWidth;
             int targetHeight = request.Preferences?.InitialHeight ?? sourceHeight;
             int fps = request.Preferences?.InitialFps ?? 30;
             int bitrate = request.Preferences?.InitialBitrateKbps ?? 2000;
 
-            // Ensure even dimensions for encoding
             if (targetWidth % 2 != 0) targetWidth--;
             if (targetHeight % 2 != 0) targetHeight--;
 
@@ -135,7 +124,6 @@ public class RemoteSessionManager : IRemoteSessionManager
             encoder = CreateEncoder();
             await encoder.InitializeAsync(encoderOptions, cts.Token);
 
-            // 3. Initialize Peer Connection
             peer = _peerFactory.Create(sessionId);
             peer.OnIceCandidate += (_, candidate) =>
             {
@@ -151,10 +139,7 @@ public class RemoteSessionManager : IRemoteSessionManager
 
             await peer.InitializeAsync(cts.Token);
 
-            // Create Data Channel BEFORE Offer
             var dataChannelStream = await peer.OpenDataChannelAsync("input", cts.Token);
-
-            // 5. Send Offer
             await peer.CreateOfferAsync(cts.Token);
             var offer = new RemoteDesktopOfferDto(
                 sessionId,
@@ -197,9 +182,7 @@ public class RemoteSessionManager : IRemoteSessionManager
                 encodeTask = RunEncodingLoopAsync(captureChannel.Reader, encoder, cts.Token);
             }
             
-            // Pass encoder and options to Input Loop for dynamic updates
             var inputTask = RunInputLoopAsync(dataChannelStream, input, encoder, encoderOptions, cts.Token);
-
             var ctx = new RemoteSessionContext(sessionId, capture, encoder, peer, input, _signalingService, lifecycleCts, encoderOptions)
             {
                 State = SessionState.Connected,
@@ -290,15 +273,11 @@ public class RemoteSessionManager : IRemoteSessionManager
             while (await enumerator.MoveNextAsync())
             {
                 var frame = enumerator.Current;
-                if (frameCount++ % 60 == 0) // Log less frequently
-                {
-                    // _logger.LogDebug(...) 
-                }
                 await writer.WriteAsync(frame, cancellationToken);
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception) { /* Capture loop error */ }
+        catch (Exception) {  }
         finally
         {
             await enumerator.DisposeAsync();
@@ -354,6 +333,14 @@ public class RemoteSessionManager : IRemoteSessionManager
                 {
                     if (message.Type.Equals("configure", StringComparison.OrdinalIgnoreCase))
                     {
+                        // Temporary fix: Block reconfiguration on Linux to prevent instability and "green screen" artifacts
+                        // caused by switching to hardware encoders that might be misconfigured.
+                        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                        {
+                            _logger.LogWarning("Ignoring 'configure' message on Linux to maintain stability. Reconfiguration disabled.");
+                            continue;
+                        }
+
                         // Handle Configuration
                         int newWidth = message.Width ?? currentOptions.OutputWidth;
                         int newHeight = message.Height ?? currentOptions.OutputHeight;

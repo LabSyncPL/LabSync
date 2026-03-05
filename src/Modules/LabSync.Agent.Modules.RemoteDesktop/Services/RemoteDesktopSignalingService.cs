@@ -27,7 +27,6 @@ public class RemoteDesktopSignalingService : IRemoteDesktopSignalingService
         _hubInvoker.RegisterHandler<Guid, string, string?, int?>("RemoteDesktopIceCandidate", (sessionId, candidate, sdpMid, sdpMLineIndex) =>
             OnRemoteIceCandidate(new IceCandidateDto(sessionId, candidate, sdpMid, sdpMLineIndex)));
         
-        // Try to handle both signatures if possible, or assume updated protocol
         _hubInvoker.RegisterHandler<Guid, RemoteDesktopPreferencesDto?>("StartRemoteDesktopSession", (sessionId, prefs) =>
             OnStartSessionRequested(sessionId, prefs));
             

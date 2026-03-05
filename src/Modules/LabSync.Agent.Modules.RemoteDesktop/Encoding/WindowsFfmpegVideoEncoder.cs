@@ -21,18 +21,14 @@ public sealed class WindowsFfmpegVideoEncoder : BaseFfmpegEncoder
         var bitrate = options.TargetBitrateKbps > 0 ? options.TargetBitrateKbps : 1500;
         var fps = options.TargetFps > 0 ? options.TargetFps : 30;
         
-        // Input options: raw frames from stdin
         var args = $"-f rawvideo -pix_fmt bgra -s {options.SourceWidth}x{options.SourceHeight} -r {fps} -i - ";
 
-        // Scaling logic
         string scaleFilter = "";
         if (options.OutputWidth != options.SourceWidth || options.OutputHeight != options.SourceHeight)
         {
-            // Use -2 to keep aspect ratio if one dimension is provided, or explicit size
             scaleFilter = $"-vf scale={options.OutputWidth}:{options.OutputHeight}";
         }
 
-        // Encoder selection
         string encoderArgs = options.EncoderType switch
         {
             VideoEncoderType.NvidiaNvenc => $"-c:v h264_nvenc -preset p1 -rc:v cbr -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -zerolatency 1",
@@ -41,7 +37,6 @@ public sealed class WindowsFfmpegVideoEncoder : BaseFfmpegEncoder
             _ => $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset fast -tune zerolatency -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -keyint_min {fps} -sc_threshold 0 -bf 0 -slices 1 -threads 0"
         };
 
-        // Combine
         return $"{args} {scaleFilter} {encoderArgs} -f h264 -an -";
     }
 }

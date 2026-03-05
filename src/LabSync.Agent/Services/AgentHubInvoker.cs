@@ -55,7 +55,6 @@ public class AgentHubInvoker : IAgentHubInvoker
             }
         });
 
-        // Grid Monitor Commands
         _hubConnection.On("StartMonitor", () =>
         {
             lock (_gate)

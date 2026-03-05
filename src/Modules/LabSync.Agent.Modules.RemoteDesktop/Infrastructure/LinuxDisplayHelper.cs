@@ -25,7 +25,6 @@ public static class LinuxDisplayHelper
                 var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
                 await process.WaitForExitAsync(cancellationToken);
 
-                // Look for "current 1920 x 1080"
                 var match = Regex.Match(output, @"current\s+(\d+)\s+x\s+(\d+)");
                 if (match.Success)
                 {
@@ -55,7 +54,6 @@ public static class LinuxDisplayHelper
                 var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
                 await process.WaitForExitAsync(cancellationToken);
 
-                // Look for "dimensions:    1920x1080 pixels"
                 var match = Regex.Match(output, @"dimensions:\s+(\d+)x(\d+)\s+pixels");
                 if (match.Success)
                 {
@@ -68,7 +66,6 @@ public static class LinuxDisplayHelper
         }
         catch { /* Ignore */ }
 
-        // Fallback
         return (1920, 1080);
     }
 }

@@ -67,9 +67,8 @@ public class ServerClient : IAsyncDisposable
         _hubConnection = new HubConnectionBuilder()
             .WithUrl($"{serverUrl}/agentHub", options => {
                 options.AccessTokenProvider = () => Task.FromResult<string?>(token);
-                // Increase max message size for client as well
-                options.ApplicationMaxBufferSize = 10 * 1024 * 1024; // 10 MB
-                options.TransportMaxBufferSize = 10 * 1024 * 1024; // 10 MB
+                options.ApplicationMaxBufferSize = 10 * 1024 * 1024; 
+                options.TransportMaxBufferSize = 10 * 1024 * 1024; 
             })
             .WithAutomaticReconnect()
             .AddMessagePackProtocol()

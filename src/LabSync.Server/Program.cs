@@ -91,14 +91,6 @@ builder.Services.AddAuthentication(options => {
                 {
                     context.Token = accessToken;
                 }
-                // Try to authenticate devices connecting to RemoteDesktopHub via x-device-key
-                // This is needed because RemoteDesktopHub has [Authorize] which defaults to JWT
-                // but we also want to allow devices to connect/send frames using their key.
-                // However, DeviceKeyAuthenticationHandler is a separate scheme.
-                // The current setup: 
-                // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)] on RemoteDesktopHub
-                // prevents DeviceKey auth from working there unless we add it.
-                // We should update RemoteDesktopHub attribute.
                 return Task.CompletedTask;
             }
         };

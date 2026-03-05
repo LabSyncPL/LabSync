@@ -32,7 +32,7 @@ public class GpuDiscoveryService : IGpuDiscoveryService
                 Arguments = "-hide_banner -encoders",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true, // Sometimes ffmpeg writes to stderr even for help/list commands
+                RedirectStandardError = true,
                 CreateNoWindow = true
             };
 
@@ -43,15 +43,13 @@ public class GpuDiscoveryService : IGpuDiscoveryService
                 return available;
             }
 
-            // Read output
             var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-            // Some ffmpeg versions might output to stderr
-            var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+            var errorTask  = process.StandardError.ReadToEndAsync(cancellationToken);
 
             await process.WaitForExitAsync(cancellationToken);
             
             var output = await outputTask;
-            var error = await errorTask;
+            var error  = await errorTask;
             var combined = output + Environment.NewLine + error;
 
             if (combined.Contains("h264_nvenc"))

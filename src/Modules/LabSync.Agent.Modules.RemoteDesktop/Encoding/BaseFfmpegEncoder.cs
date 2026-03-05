@@ -53,12 +53,8 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
 
             Logger.LogInformation("Reconfiguring encoder: {@Options}", options);
             
-            // Stop current process
             await StopFfmpegProcessAsync();
-
             Options = options;
-
-            // Start new process
             await StartFfmpegProcessAsync(cancellationToken);
         }
         finally
@@ -92,7 +88,6 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
                 Stdin = Process.StandardInput.BaseStream;
             }
 
-            // Start reading stderr in background
             _ = ReadStdErrAsync(Process);
 
             Logger.LogInformation("ffmpeg process started. PID: {Pid}", Process.Id);
@@ -111,7 +106,6 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
 
     protected virtual async Task StopFfmpegProcessAsync()
     {
-        // Cancel the reader task
         ReaderCts?.Cancel();
         
         if (ReaderTask != null)
@@ -155,7 +149,7 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
         }
         catch (Exception)
         {
-            // Ignore write errors (process might be restarting)
+            
         }
     }
 
@@ -175,7 +169,7 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
         if (channel == null) return;
 
         var stdout = process.StandardOutput.BaseStream;
-        // Use a larger buffer to minimize fragmentation
+        
         var buffer = new byte[1024 * 1024 * 4]; 
         int bufferLen = 0;
         int searchIndex = 0;
@@ -234,11 +228,10 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
                             Buffer.BlockCopy(buffer, 0, nalUnit, 0, searchIndex);
 
                             var nalType = nalUnit[0] & 0x1F;
-                            // Log key NAL types for debugging
+                            
                             if (nalType == 7) Logger.LogDebug("Sending SPS NAL ({Size} bytes)", nalUnit.Length);
                             else if (nalType == 8) Logger.LogDebug("Sending PPS NAL ({Size} bytes)", nalUnit.Length);
                             else if (nalType == 5) Logger.LogDebug("Sending IDR NAL ({Size} bytes)", nalUnit.Length);
-                            // else if (nalType == 1) Logger.LogTrace("Sending P/B Slice NAL ({Size} bytes)", nalUnit.Length);
 
                             var isKeyFrame = nalType == 5;
                             var frame = new EncodedFrame(nalUnit, isKeyFrame, DateTime.UtcNow);
@@ -281,7 +274,6 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
                 var line = await stderr.ReadLineAsync();
                 if (line == null) break;
                 
-                // Always log stderr for diagnostics on Linux when things go wrong
                 if (line.Contains("error", StringComparison.OrdinalIgnoreCase) || 
                     line.Contains("warning", StringComparison.OrdinalIgnoreCase) ||
                     line.Contains("fail", StringComparison.OrdinalIgnoreCase) ||
@@ -291,7 +283,6 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
                 }
                 else
                 {
-                    // Log everything else as Debug so we can see initialization params
                     Logger.LogDebug("ffmpeg stderr: {Line}", line);
                 }
             }

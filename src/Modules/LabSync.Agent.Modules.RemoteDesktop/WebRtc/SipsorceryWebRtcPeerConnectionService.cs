@@ -19,7 +19,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
     private MediaStreamTrack? _videoTrack;
     private uint _videoSsrc;
     private int _videoPayloadType = 96;
-    private uint _videoTimestamp = 0;
     private readonly object _gate = new();
     private bool _disposed;
 
@@ -85,20 +84,14 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         
         _pc.addTrack(videoTrack);
         _videoTrack = videoTrack;
-        // _videoSsrc = videoTrack.Ssrc; // Don't rely on track SSRC property immediately?
-
-        // Force a specific SSRC for sending?
-        // Or just retrieve it from the track.
         _videoSsrc = videoTrack.Ssrc;
 
         _pc.onicecandidate += (candidate) =>
         {
             if (candidate == null) return;
-            // Manual JSON serialization to ensure all fields are present and compatible with frontend
+
             var candidateDict = new Dictionary<string, object>
             {
-                // Ensure candidate string starts with "candidate:" prefix if missing, though SIPSorcery usually includes it.
-                // The browser expects "candidate:..." string.
                 { "candidate", candidate.candidate }, 
                 { "sdpMid", candidate.sdpMid ?? "" },
                 { "sdpMLineIndex", candidate.sdpMLineIndex }
@@ -176,7 +169,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
             sdpMLineIndex = (ushort)(sdpMLineIndex ?? 0)
         };
 
-        // Queue candidates if remote description is not yet set
         if (pc.remoteDescription == null)
         {
             lock (_pendingCandidates)
@@ -206,7 +198,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
 
             if (pc.connectionState == RTCPeerConnectionState.connected)
             {
-                // Zmiana czasu TYLKO na progu nowej klatki obrazu
                 if (_isNewFrame)
                 {
                     long currentTicks = DateTime.UtcNow.Ticks;
@@ -215,7 +206,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
                     _isNewFrame = false;
                 }
 
-                // Aplikacja SPS/PPS przy klatce kluczowej
                 if (nalType == 5)
                 {
                     if (_lastSps != null) pc.SendRtpRaw(SDPMediaTypesEnum.video, _lastSps, _currentRtpTimestamp, 0, _videoPayloadType);
@@ -232,7 +222,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
                     pc.SendRtpRaw(SDPMediaTypesEnum.video, frame.Data, _currentRtpTimestamp, markerBit, _videoPayloadType);
                 }
 
-                // Koniec klatki = ustawiamy flag�
                 if (nalType == 1 || nalType == 5)
                 {
                     _isNewFrame = true;
@@ -274,8 +263,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
             isFirst = false;
 
             packetsSent++;
-            // Pacing (ograniczenie tempa wysy�ania UDP). 
-            // 30 pakiet�w to kompromis: karta sieciowa si� nie d�awi, a klatka przesy�ana jest bardzo szybko.
             if (packetsSent % 30 == 0)
             {
                 await Task.Yield();

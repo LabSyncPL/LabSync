@@ -62,7 +62,6 @@ public class RemoteDesktopModule : IRemoteDesktopModule
             : Microsoft.Extensions.Logging.Abstractions.NullLogger<GpuDiscoveryService>.Instance;
         IGpuDiscoveryService gpuDiscovery = new GpuDiscoveryService(gpuLogger);
 
-        // Initialize Grid Monitor Service
         var gridLogger = loggerFactory != null
             ? loggerFactory.CreateLogger<GridMonitorService>()
             : Microsoft.Extensions.Logging.Abstractions.NullLogger<GridMonitorService>.Instance;

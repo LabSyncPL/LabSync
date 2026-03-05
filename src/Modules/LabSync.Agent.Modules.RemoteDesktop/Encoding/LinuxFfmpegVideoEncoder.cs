@@ -35,28 +35,19 @@ public sealed class LinuxFfmpegVideoEncoder : BaseFfmpegEncoder
         // -s: capture size (must match actual screen size for x11grab usually, unless we want cropping/scaling at capture time)
         // -framerate: capture framerate (preferred over -r for input device)
         // -i: input device (display)
-        // Note: x11grab is very picky about resolution. If options.SourceWidth/Height doesn't match the X screen, it will fail.
         var args = $"-f x11grab -draw_mouse 1 -framerate {fps} -s {options.SourceWidth}x{options.SourceHeight} -i {display} ";
 
-        // Scaling logic
         string scaleFilter = "";
         if (options.OutputWidth != options.SourceWidth || options.OutputHeight != options.SourceHeight)
         {
-            // Use -2 to keep aspect ratio if one dimension is provided, or explicit size
             scaleFilter = $"-vf scale={options.OutputWidth}:{options.OutputHeight}";
         }
 
-        // Encoder settings: libx264 with ultrafast/zerolatency for real-time
-        // Force IDR frame every second (GOP = fps) to recover from packet loss/artifacts.
-        // User requested -g 30 -keyint_min 30 specifically.
-        int gopSize = fps; 
-        
+        int gopSize = fps;   
         string encoderArgs = $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset ultrafast -tune zerolatency " +
                              $"-b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k " +
                              $"-g {gopSize} -keyint_min {gopSize} -sc_threshold 0 -bf 0 -slices 1 -threads 0";
 
-        // Combine
-        // Ensure scale filter enforces yuv420p output if not already handled
         return $"{args} {scaleFilter} {encoderArgs} -f h264 -an -";
     }
 }
