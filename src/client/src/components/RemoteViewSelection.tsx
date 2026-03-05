@@ -1,14 +1,6 @@
 import { useState, useMemo } from "react";
 import type { DeviceDto } from "../types/device";
-import {
-  Monitor,
-  Grid,
-  CheckSquare,
-  Users,
-  Server,
-  Play,
-  Search,
-} from "./Icons";
+import { Grid, CheckSquare, Users, Server, Play, Search } from "./Icons";
 
 interface RemoteViewSelectionProps {
   devices: DeviceDto[];
