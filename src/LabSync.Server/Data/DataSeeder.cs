@@ -18,8 +18,8 @@ public static class DataSeeder
         // -------------------------
         // ADMIN
         // -------------------------
-        var admin = new AdminUser("admin", "DEMO_HASH");
-        context.AdminUsers.Add(admin);
+        //var admin = new AdminUser("admin", "DEMO_HASH");
+        //context.AdminUsers.Add(admin);
 
         // -------------------------
         // DEVICE GROUPS
