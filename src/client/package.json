@@ -10,8 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@microsoft/signalr": "^8.0.0",
+    "@microsoft/signalr-protocol-msgpack": "^8.0.0",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.2",
+    "lucide-react": "^0.577.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0"

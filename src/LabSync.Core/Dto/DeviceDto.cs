@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Types;
+using LabSync.Core.Types;
 using System;
 
 namespace LabSync.Core.Dto;

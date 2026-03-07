@@ -4,10 +4,7 @@ using System.Runtime.Loader;
 
 namespace LabSync.Agent.Services
 {
-    /// <summary>
-    /// Manages loading and lifecycle of agent plugin modules.
-    /// Uses AssemblyLoadContext for proper plugin isolation and unloading.
-    /// </summary>
+
     public class ModuleLoader
     {
         private readonly ILogger<ModuleLoader> _logger;
@@ -20,14 +17,8 @@ namespace LabSync.Agent.Services
             _serviceProvider = serviceProvider;
         }
 
-        /// <summary>
-        /// Gets all currently loaded modules.
-        /// </summary>
         public IReadOnlyList<LoadedModule> LoadedModules => _loadedModules.AsReadOnly();
 
-        /// <summary>
-        /// Loads all plugin DLLs from the Modules directory.
-        /// </summary>
         public async Task LoadPluginsAsync()
         {
             string pluginsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Modules");
@@ -44,7 +35,7 @@ namespace LabSync.Agent.Services
 
             if (dllFiles.Length == 0)
             {
-                _logger.LogInformation("No modules found. Place plugin DLLs in: {Path}", pluginsPath);
+                _logger.LogInformation("No modules found.");
                 return;
             }
 
@@ -67,25 +58,21 @@ namespace LabSync.Agent.Services
         private async Task LoadPluginFromDllAsync(string path)
         {
             var fileName = Path.GetFileName(path);
-            _logger.LogDebug("Attempting to load plugin: {File}", fileName);
+            var loadContext = new PluginLoadContext(path);
 
             try
             {
-                // Use AssemblyLoadContext for better plugin isolation
-                // This allows for potential unloading in the future
-                var loadContext = new AssemblyLoadContext($"Plugin_{Path.GetFileNameWithoutExtension(fileName)}", isCollectible: false);
                 var assembly = loadContext.LoadFromAssemblyPath(path);
 
                 var moduleTypes = assembly.GetTypes()
                     .Where(t => typeof(IAgentModule).IsAssignableFrom(t) 
                              && !t.IsInterface 
                              && !t.IsAbstract
-                             && t.GetConstructor(Type.EmptyTypes) != null) // Must have parameterless constructor
+                             && t.GetConstructor(Type.EmptyTypes) != null) 
                     .ToList();
 
                 if (moduleTypes.Count == 0)
                 {
-                    _logger.LogWarning("No IAgentModule implementations found in {File}.", fileName);
                     loadContext.Unload();
                     return;
                 }
@@ -95,11 +82,8 @@ namespace LabSync.Agent.Services
                     try
                     {
                         var module = (IAgentModule)Activator.CreateInstance(type)!;
-                        
-                        // Initialize the module
                         await module.InitializeAsync(_serviceProvider);
 
-                        // Validate module properties
                         if (string.IsNullOrWhiteSpace(module.Name))
                         {
                             _logger.LogError("Module from {File} has empty Name. Skipping.", fileName);
@@ -111,7 +95,6 @@ namespace LabSync.Agent.Services
                             _logger.LogWarning("Module {Name} from {File} has empty Version.", module.Name, fileName);
                         }
 
-                        // Check for duplicate module names
                         if (_loadedModules.Any(m => m.Module.Name.Equals(module.Name, StringComparison.OrdinalIgnoreCase)))
                         {
                             _logger.LogWarning("Module {Name} from {File} conflicts with already loaded module. Skipping.", 
@@ -127,7 +110,7 @@ namespace LabSync.Agent.Services
                             LoadedAt = DateTime.UtcNow
                         });
 
-                        _logger.LogInformation("✓ Plugin Loaded: {Name} v{Version} from {File}", 
+                        _logger.LogInformation("Plugin Loaded: {Name} v{Version} from {File}", 
                             module.Name, module.Version, fileName);
                     }
                     catch (Exception ex)
@@ -137,21 +120,13 @@ namespace LabSync.Agent.Services
                     }
                 }
             }
-            catch (BadImageFormatException ex)
+            catch (Exception ex)
             {
-                _logger.LogError(ex, "Invalid assembly format for {File}. Ensure it's a valid .NET assembly.", fileName);
-                throw;
-            }
-            catch (FileLoadException ex)
-            {
-                _logger.LogError(ex, "Failed to load assembly {File}. Check dependencies and file permissions.", fileName);
-                throw;
+                _logger.LogDebug("Could not inspect {File} as a plugin. ({Message})", fileName, ex.Message);
+                loadContext.Unload();
             }
         }
 
-        /// <summary>
-        /// Finds a module that can handle the specified job type.
-        /// </summary>
         public IAgentModule? FindModuleForJob(string jobType)
         {
             if (string.IsNullOrWhiteSpace(jobType))
@@ -173,9 +148,6 @@ namespace LabSync.Agent.Services
             return module;
         }
 
-        /// <summary>
-        /// Gets information about a loaded module.
-        /// </summary>
         public LoadedModule? GetModuleInfo(string moduleName)
         {
             return _loadedModules.FirstOrDefault(m => 
@@ -183,9 +155,46 @@ namespace LabSync.Agent.Services
         }
     }
 
-    /// <summary>
-    /// Represents a loaded module with its metadata.
-    /// </summary>
+
+    internal class PluginLoadContext : AssemblyLoadContext
+    {
+        private readonly AssemblyDependencyResolver _resolver;
+
+        public PluginLoadContext(string pluginPath) : base(isCollectible: true)
+        {
+            _resolver = new AssemblyDependencyResolver(pluginPath);
+        }
+
+        protected override Assembly? Load(AssemblyName assemblyName)
+        {
+            var hostAssembly = AssemblyLoadContext.Default.Assemblies
+                .FirstOrDefault(a => a.GetName().Name == assemblyName.Name);
+
+            if (hostAssembly != null)
+            {
+                return null;
+            }
+
+            string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
+            if (assemblyPath != null)
+            {
+                return LoadFromAssemblyPath(assemblyPath);
+            }
+
+            return null;
+        }
+
+        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+        {
+            string? libraryPath = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+            if (libraryPath != null)
+            {
+                return LoadUnmanagedDllFromPath(libraryPath);
+            }
+
+            return IntPtr.Zero;
+        }
+    }
     public class LoadedModule
     {
         public required IAgentModule Module { get; init; }
