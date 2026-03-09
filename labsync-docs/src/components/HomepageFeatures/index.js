@@ -21,7 +21,7 @@ const FeatureList = [
       <>
         Leverage a persistent SignalR connection for instant command execution
         and live monitoring. High-bandwidth tasks seamlessly shift to a
-        dedicated WebSocket <b>Data Plane</b> for max performance.
+        dedicated WebRTC <b>Data Plane</b> for max performance.
       </>
     ),
   },

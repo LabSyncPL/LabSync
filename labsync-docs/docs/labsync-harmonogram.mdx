@@ -31,7 +31,7 @@ The goal of the first stage is to create a stable system skeleton and ensure sec
 This month is dedicated to the most complex system component: the remote desktop implementation.
 
 - **Screen Capture:** Develop an efficient, system-level screen capture mechanism within the agent.
-- **Data Transmission:** Implement the dedicated **Data Plane** using raw **WebSockets** for high-performance, low-latency desktop streaming. The **Control Plane** (SignalR) will be used to initiate and manage the connection state.
+- **Data Transmission:** Implement the dedicated **Data Plane** using **WebRTC** for high-performance, low-latency desktop streaming. The **Control Plane** (SignalR) will be used to initiate and manage the connection state.
 - **Input Forwarding:** Develop mechanisms to send input device events (mouse, keyboard) from the web interface to the remote system.
 - **Optimization:** Implement data compression to reduce network bandwidth consumption.
 
@@ -78,7 +78,7 @@ The following phases define the functional priorities and success criteria for t
 
 - **Functional Scope**:
   - Support for **Windows 10/11** and **Linux** on the Agent side.
-  - Real-time, bidirectional communication via **SignalR** for the **Control Plane** (Online/Offline status, commands, logs). The VNC video stream will use a separate, high-performance **WebSocket** channel (**Data Plane**).
+  - Real-time, bidirectional communication via **SignalR** for the **Control Plane** (Online/Offline status, commands, logs). The VNC video stream will use a separate, high-performance **WebRTC** channel (**Data Plane**).
   - An execution module (`SoftwareExecutionModule`) to interpret tasks and select the correct engine (PowerShell/Bash/Nix).
   - An application repository that abstracts the OS (e.g., `winget install` for Windows vs. `nix-env` for Linux under a single definition).
 - **Expected Outcome**:
