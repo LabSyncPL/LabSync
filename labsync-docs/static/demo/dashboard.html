@@ -11,8 +11,8 @@
                 extend: {
                     colors: {
                         slate: { 850: '#1e293b', 900: '#0f172a', 950: '#020617' },
-                        primary: { 500: '#6366f1', 600: '#4f46e5' },
-                        success: '#10b981',
+                        primary: { 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5' },
+                        success: '#22c55e',
                         danger: '#ef4444',
                         warning: '#f59e0b'
                     },
@@ -73,127 +73,232 @@
         </div>
     </aside>
 
-    <main class="flex-1 flex flex-col bg-slate-900">
-        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900">
-            <h1 class="text-xl font-semibold text-white">Overview</h1>
-            <div class="flex items-center space-x-4">
-                <div class="relative">
-                    <span class="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-slate-900 bg-red-500"></span>
-                    <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+    <main class="flex-1 flex flex-col h-full bg-slate-900">
+        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900 shrink-0">
+            <div class="flex items-center gap-8">
+                <h1 class="text-xl font-semibold text-white">Overview</h1>
+
+                <div class="hidden lg:flex items-center gap-6 border-l border-slate-800 pl-6 h-8">
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="text-slate-400">Devices</span>
+                        <span class="text-white font-semibold bg-slate-800 px-2 py-0.5 rounded border border-slate-700">42</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="text-slate-400">Online</span>
+                        <span class="text-success font-semibold bg-success/10 px-2 py-0.5 rounded border border-success/20">38</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm animate-pulse">
+                        <span class="text-warning">Pending</span>
+                        <span class="text-warning font-semibold bg-warning/10 px-2 py-0.5 rounded border border-warning/20">2</span>
+                    </div>
                 </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <button type="button" class="text-primary-400 hover:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-primary-500/20 bg-primary-500/5 hover:bg-primary-500/10 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Create Group
+                </button>
+                <div class="h-6 w-px bg-slate-800"></div>
+                <button type="button" class="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-sm transition-colors">
+                    Log out
+                </button>
             </div>
         </header>
 
-        <div class="flex-1 p-8 overflow-y-auto">
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-slate-400 text-xs font-medium uppercase">Total Devices</p>
-                            <h3 class="text-3xl font-bold text-white mt-1">42</h3>
+        <div class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900 p-8">
+            <div class="max-w-[1600px] mx-auto space-y-6">
+                
+                <!-- Filter Controls -->
+                <div class="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm mb-6">
+                    <div class="flex flex-1 gap-3 w-full md:w-auto flex-wrap">
+                        <div class="relative flex-1 min-w-[200px] md:max-w-xs">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                            <input type="text" placeholder="Search devices..." class="pl-10 pr-4 py-2 w-full bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors">
                         </div>
-                        <div class="p-2 bg-slate-700 rounded-lg"><svg class="w-6 h-6 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></div>
-                    </div>
-                </div>
-                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-slate-400 text-xs font-medium uppercase">Online Now</p>
-                            <h3 class="text-3xl font-bold text-success mt-1">38</h3>
-                        </div>
-                        <div class="p-2 bg-slate-700 rounded-lg"><svg class="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></div>
-                    </div>
-                </div>
-                <div class="bg-slate-800 p-6 rounded-xl border border-warning/20">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-warning text-xs font-medium uppercase">Pending Approval</p>
-                            <h3 class="text-3xl font-bold text-white mt-1">2</h3>
-                        </div>
-                        <div class="p-2 bg-warning/10 rounded-lg"><svg class="w-6 h-6 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
-                    <h2 class="font-semibold text-white">Registered Devices</h2>
-                    <input type="text" placeholder="Search hostname..." class="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-md px-3 py-2 outline-none focus:border-primary-500">
+                        <select class="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block p-2 px-3 min-w-[120px]">
+                            <option value="all">All Status</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                            <option value="pending">Pending</option>
+                        </select>
+
+                        <select class="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block p-2 px-3 min-w-[120px]">
+                            <option value="all">All Groups</option>
+                            <option value="no-group">No Group</option>
+                            <option value="lab-101">Lab Room 101</option>
+                            <option value="office">Office Reception</option>
+                        </select>
+
+                        <select class="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block p-2 px-3 hidden sm:block">
+                            <option value="all">All Platforms</option>
+                            <option value="0">Windows</option>
+                            <option value="1">Linux</option>
+                            <option value="2">macOS</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+                        <div class="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
+                            <button class="p-1.5 rounded transition-colors bg-slate-700 text-white shadow-sm" title="Grid View">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                            </button>
+                            <button class="p-1.5 rounded transition-colors text-slate-500 hover:text-slate-300" title="List View">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                            </button>
+                        </div>
+
+                        <div class="h-6 w-px bg-slate-700 mx-1"></div>
+
+                        <button class="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            <span class="hidden sm:inline">Refresh</span>
+                        </button>
+                    </div>
                 </div>
-                <table class="w-full text-left">
-                    <thead class="bg-slate-700/50 text-slate-400 text-xs uppercase">
-                        <tr>
-                            <th class="px-6 py-3 font-medium">Status</th>
-                            <th class="px-6 py-3 font-medium">Hostname</th>
-                            <th class="px-6 py-3 font-medium">OS</th>
-                            <th class="px-6 py-3 font-medium">IP Address</th>
-                            <th class="px-6 py-3 font-medium">Last Seen</th>
-                            <th class="px-6 py-3 font-medium text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-700">
-                        <tr onclick="window.location.href='details.html'" class="hover:bg-slate-700/30 transition-colors group cursor-pointer">
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
-                                    <span class="w-1.5 h-1.5 bg-success rounded-full mr-1.5"></span> Online
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 font-medium text-white">LAB-WIN-04</td>
-                            <td class="px-6 py-4 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-                                <span class="text-slate-300">Win 11 Pro</span>
-                            </td>
-                            <td class="px-6 py-4 text-slate-400 font-mono text-xs">192.168.1.105</td>
-                            <td class="px-6 py-4 text-slate-400">Just now</td>
-                            <td class="px-6 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    <button class="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors">Details</button>
-                                    <a href="vnc-detail.html" onclick="event.stopPropagation()" class="text-primary-500 hover:text-primary-400 font-medium px-2 py-1 rounded transition-colors">VNC</a>
-                                </div>
-                            </td>
-                        </tr>
+
+                <!-- Grid View -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     
-                        <tr onclick="window.location.href='details.html'" class="hover:bg-slate-700/30 transition-colors group cursor-pointer">
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
-                                    <span class="w-1.5 h-1.5 bg-success rounded-full mr-1.5"></span> Online
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 font-medium text-white">DEV-LINUX-01</td>
-                            <td class="px-6 py-4 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-yellow-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z"/></svg>
-                                <span class="text-slate-300">Ubuntu 22.04</span>
-                            </td>
-                            <td class="px-6 py-4 text-slate-400 font-mono text-xs">192.168.1.112</td>
-                            <td class="px-6 py-4 text-slate-400">1 min ago</td>
-                            <td class="px-6 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    <button class="text-slate-400 hover:text-white px-2 py-1 rounded transition-colors">Details</button>
-                                    <a href="vnc-detail.html" onclick="event.stopPropagation()" class="text-primary-500 hover:text-primary-400 font-medium px-2 py-1 rounded transition-colors">VNC</a>
+                    <!-- Device Card 1 -->
+                    <div onclick="window.location.href='details.html'" class="group bg-slate-800 rounded-2xl border border-slate-700 hover:border-primary-500/50 hover:translate-y-[-2px] p-5 flex flex-col h-full shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-slate-700/50 flex items-center justify-center text-slate-400 border border-slate-600/30 group-hover:bg-slate-700 group-hover:text-white transition-colors">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
                                 </div>
-                            </td>
-                        </tr>
-                    
-                        <tr onclick="window.location.href='details.html'" class="bg-warning/5 hover:bg-warning/10 transition-colors cursor-pointer">
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
-                                    <span class="w-1.5 h-1.5 bg-warning rounded-full mr-1.5 animate-pulse"></span> Pending
+                                <div class="overflow-hidden">
+                                    <h3 class="font-bold text-white text-sm truncate max-w-[140px] group-hover:text-primary-400 transition-colors">LAB-WIN-04</h3>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-[10px] font-bold uppercase bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600 truncate max-w-[80px]">Lab Room 101</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-2.5 h-2.5 bg-success rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" title="Online"></div>
+                        </div>
+
+                        <div class="space-y-2 mb-4 flex-1">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">Platform</span>
+                                <span class="text-slate-300 font-medium">Windows</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">IP Address</span>
+                                <span class="text-slate-300 font-mono bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">192.168.1.105</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">Last Seen</span>
+                                <span class="text-success">Just now</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-700/50 flex items-center justify-between gap-2 mt-auto">
+                            <div class="flex items-center gap-1.5">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-success/10 text-success border-success/20">Active</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button class="p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors" onclick="event.stopPropagation()" title="Manage Group">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Device Card 2 -->
+                    <div onclick="window.location.href='details.html'" class="group bg-slate-800 rounded-2xl border border-slate-700 hover:border-primary-500/50 hover:translate-y-[-2px] p-5 flex flex-col h-full shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-slate-700/50 flex items-center justify-center text-slate-400 border border-slate-600/30 group-hover:bg-slate-700 group-hover:text-white transition-colors">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.333 3.667c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm-8.667 0c.736 0 1.333.597 1.333 1.333 0 .736-.597 1.333-1.333 1.333-.736 0-1.333-.597-1.333-1.333 0-.736.597-1.333 1.333-1.333zm9.056 12.333h-1.333v2.667h-2.667v-2.667h-1.333v2.667h-2.667v-2.667h-1.389v-4h10.778v4z"/></svg>
+                                </div>
+                                <div class="overflow-hidden">
+                                    <h3 class="font-bold text-white text-sm truncate max-w-[140px] group-hover:text-primary-400 transition-colors">DEV-LINUX-01</h3>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-[10px] font-bold uppercase bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600 truncate max-w-[80px]">Office Reception</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-2.5 h-2.5 bg-success rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" title="Online"></div>
+                        </div>
+
+                        <div class="space-y-2 mb-4 flex-1">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">Platform</span>
+                                <span class="text-slate-300 font-medium">Linux</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">IP Address</span>
+                                <span class="text-slate-300 font-mono bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">192.168.1.112</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">Last Seen</span>
+                                <span class="text-success">1 min ago</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-700/50 flex items-center justify-between gap-2 mt-auto">
+                            <div class="flex items-center gap-1.5">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-success/10 text-success border-success/20">Active</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button class="p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors" onclick="event.stopPropagation()" title="Manage Group">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Device Card 3 (Pending) -->
+                    <div class="group bg-gradient-to-b from-slate-800 to-warning/5 rounded-2xl border border-warning/30 hover:border-warning/50 p-5 flex flex-col h-full shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-slate-700/50 flex items-center justify-center text-slate-400 border border-slate-600/30 group-hover:bg-slate-700 group-hover:text-white transition-colors">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                                </div>
+                                <div class="overflow-hidden">
+                                    <h3 class="font-bold text-white text-sm truncate max-w-[140px] group-hover:text-primary-400 transition-colors">NEW-LAPTOP-09</h3>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-[10px] font-medium text-slate-600 uppercase border border-dashed border-slate-700 px-1.5 py-0.5 rounded">No Group</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-2.5 h-2.5 bg-slate-600 rounded-full border border-slate-500" title="Offline"></div>
+                        </div>
+
+                        <div class="space-y-2 mb-4 flex-1">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">Platform</span>
+                                <span class="text-slate-300 font-medium">Windows</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">IP Address</span>
+                                <span class="text-slate-300 font-mono bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">192.168.1.200</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">Last Seen</span>
+                                <span class="text-slate-400">—</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-700/50 flex items-center justify-between gap-2 mt-auto">
+                            <div class="flex items-center justify-between w-full">
+                                <span class="text-xs font-bold text-warning uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></span>
+                                    Pending
                                 </span>
-                            </td>
-                            <td class="px-6 py-4 font-medium text-white">NEW-LAPTOP-09</td>
-                            <td class="px-6 py-4 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-                                <span class="text-slate-300">Win 10 Ent</span>
-                            </td>
-                            <td class="px-6 py-4 text-slate-400 font-mono text-xs">192.168.1.200</td>
-                            <td class="px-6 py-4 text-slate-400">-</td>
-                            <td class="px-6 py-4 text-right">
-                                <button onclick="event.stopPropagation()" class="bg-primary-600 hover:bg-primary-500 text-white px-3 py-1 rounded text-xs font-medium shadow-lg shadow-primary-500/20">Approve</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                                <button class="bg-warning hover:bg-warning-600 text-slate-900 px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-warning/20 transition-all active:scale-95">
+                                    Approve
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
     </main>
