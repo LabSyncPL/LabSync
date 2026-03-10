@@ -22,10 +22,21 @@ export async function getJob(deviceId: string, jobId: string): Promise<JobDto> {
 /** Command name for the SystemInfo module (CollectMetrics). */
 export const COLLECT_METRICS_COMMAND = 'CollectMetrics';
 
+/** Command name for getting detailed hardware specs. */
+export const GET_HARDWARE_SPECS_COMMAND = 'Get-HardwareSpecs';
+
 /** Creates a job that runs the SystemInfo module to collect CPU, memory, disk and system info. */
 export async function createCollectMetricsJob(deviceId: string): Promise<JobDto> {
   return createJob(deviceId, {
     command: COLLECT_METRICS_COMMAND,
+    arguments: '',
+  });
+}
+
+/** Creates a job that runs the SystemInfo module to collect hardware specs. */
+export async function createGetHardwareSpecsJob(deviceId: string): Promise<JobDto> {
+  return createJob(deviceId, {
+    command: GET_HARDWARE_SPECS_COMMAND,
     arguments: '',
   });
 }

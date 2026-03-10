@@ -94,6 +94,7 @@ public class Worker(
         }
 
         var parameters = ParseArguments(arguments);
+        parameters["__Command"] = command;
         if (!string.IsNullOrWhiteSpace(scriptPayload))
         {
             parameters["ScriptPayload"] = scriptPayload;
