@@ -1,42 +1,36 @@
-using LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using LabSync.Agent.Modules.RemoteDesktop.Configuration;
+using LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 
 namespace LabSync.Agent.Modules.RemoteDesktop.Encoding;
 
-/// <summary>
-/// Windows-only H.264 encoder using an external ffmpeg process.
-/// Expects raw BGRA frames and produces Annex B H.264 NAL units.
-/// </summary>
-public sealed class WindowsFfmpegVideoEncoder : BaseFfmpegEncoder
+public class WindowsFfmpegVideoEncoder : BaseFfmpegEncoder
 {
+    private readonly RemoteDesktopConfiguration _config;
+
     public override bool HandlesCapture => false;
 
-    public WindowsFfmpegVideoEncoder(ILogger logger, int channelCapacity, string ffmpegPath = "ffmpeg")
-        : base(logger, channelCapacity, ffmpegPath)
+    public WindowsFfmpegVideoEncoder(
+        ILogger<WindowsFfmpegVideoEncoder> logger,
+        IOptions<RemoteDesktopConfiguration> options,
+        int channelCapacity) 
+        : base(logger, channelCapacity, options.Value.Encoding.FfmpegPath)
     {
+        _config = options.Value;
     }
 
     protected override string BuildFfmpegArguments(EncoderOptions options)
     {
-        var bitrate = options.TargetBitrateKbps > 0 ? options.TargetBitrateKbps : 1500;
-        var fps = options.TargetFps > 0 ? options.TargetFps : 30;
+        var settings = _config.Encoding.WindowsNvidia; // Default to Nvidia for now
         
-        var args = $"-f rawvideo -pix_fmt bgra -s {options.SourceWidth}x{options.SourceHeight} -r {fps} -i - ";
+        string preset = settings.Preset ?? "p1";
+        string rc = settings.Rc ?? "cbr";
+        int bitrate = options.TargetBitrateKbps > 0 ? options.TargetBitrateKbps : _config.Encoding.DefaultBitrateKbps;
+        if (bitrate <= 0) bitrate = 2000;
 
-        string scaleFilter = "";
-        if (options.OutputWidth != options.SourceWidth || options.OutputHeight != options.SourceHeight)
-        {
-            scaleFilter = $"-vf scale={options.OutputWidth}:{options.OutputHeight}";
-        }
-
-        string encoderArgs = options.EncoderType switch
-        {
-            VideoEncoderType.NvidiaNvenc => $"-c:v h264_nvenc -preset p1 -rc:v cbr -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -zerolatency 1",
-            VideoEncoderType.AmdAmf => $"-c:v h264_amf -usage ultra_low_latency -rc cbr -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps}",
-            VideoEncoderType.IntelQsv => $"-c:v h264_qsv -preset veryfast -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -async_depth 1",
-            _ => $"-c:v libx264 -pix_fmt yuv420p -profile:v baseline -preset fast -tune zerolatency -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k -g {fps} -keyint_min {fps} -sc_threshold 0 -bf 0 -slices 1 -threads 0"
-        };
-
-        return $"{args} {scaleFilter} {encoderArgs} -f h264 -an -";
+        return $"-f rawvideo -pix_fmt bgra -s {options.SourceWidth}x{options.SourceHeight} -r {options.TargetFps} -i - " +
+               $"-c:v h264_nvenc -preset {preset} -rc {rc} -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k " +
+               $"-zerolatency 1 -f h264 -";
     }
 }

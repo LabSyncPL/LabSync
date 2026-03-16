@@ -6,22 +6,35 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.Versioning;
 
+using LabSync.Agent.Modules.RemoteDesktop.Configuration;
+using Microsoft.Extensions.Options;
+
 namespace LabSync.Agent.Modules.RemoteDesktop.Infrastructure;
 
-public static class ScreenCaptureFactory
+public class ScreenCaptureFactorySelector : IScreenCaptureFactory
 {
-    public static IScreenCaptureFactory Create(IServiceProvider serviceProvider)
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger _logger;
+    private readonly IOptions<RemoteDesktopConfiguration> _options;
+
+    public ScreenCaptureFactorySelector(
+        IServiceProvider serviceProvider, 
+        ILogger<ScreenCaptureFactorySelector> logger,
+        IOptions<RemoteDesktopConfiguration> options)
     {
-        var logger = serviceProvider.GetService(typeof(ILoggerFactory)) is ILoggerFactory factory
-            ? factory.CreateLogger<PlaceholderScreenCaptureService>()
-            : null;
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+        _options = options;
+    }
 
+    public IScreenCaptureService Create()
+    {
         if (OperatingSystem.IsWindows())
-            return new WindowsScreenCaptureFactory(logger);
+            return new WindowsScreenCaptureFactory(_logger, _options).Create();
         if (OperatingSystem.IsLinux())
-            return new LinuxScreenCaptureFactory(logger);
+            return new LinuxScreenCaptureFactory(_logger).Create();
 
-        return new PlaceholderScreenCaptureFactory(logger);
+        return new PlaceholderScreenCaptureFactory(_logger, _options).Create();
     }
 }
 
@@ -29,10 +42,15 @@ public static class ScreenCaptureFactory
 internal sealed class WindowsScreenCaptureFactory : IScreenCaptureFactory
 {
     private readonly ILogger? _logger;
+    private readonly IOptions<RemoteDesktopConfiguration> _options;
 
-    public WindowsScreenCaptureFactory(ILogger? logger) => _logger = logger;
+    public WindowsScreenCaptureFactory(ILogger? logger, IOptions<RemoteDesktopConfiguration> options)
+    {
+        _logger = logger;
+        _options = options;
+    }
 
-    public IScreenCaptureService Create() => new WindowsScreenCaptureService(_logger);
+    public IScreenCaptureService Create() => new WindowsScreenCaptureService(_logger, _options);
 }
 
 internal sealed class LinuxScreenCaptureFactory : IScreenCaptureFactory
@@ -41,32 +59,43 @@ internal sealed class LinuxScreenCaptureFactory : IScreenCaptureFactory
 
     public LinuxScreenCaptureFactory(ILogger? logger) => _logger = logger;
 
-    public IScreenCaptureService Create() => new PlaceholderScreenCaptureService(_logger);
+    public IScreenCaptureService Create() => new PlaceholderScreenCaptureService(_logger, null);
 }
 
 internal sealed class PlaceholderScreenCaptureFactory : IScreenCaptureFactory
 {
     private readonly ILogger? _logger;
+    private readonly IOptions<RemoteDesktopConfiguration> _options;
 
-    public PlaceholderScreenCaptureFactory(ILogger? logger) => _logger = logger;
+    public PlaceholderScreenCaptureFactory(ILogger? logger, IOptions<RemoteDesktopConfiguration> options)
+    {
+        _logger = logger;
+        _options = options;
+    }
 
-    public IScreenCaptureService Create() => new PlaceholderScreenCaptureService(_logger);
+    public IScreenCaptureService Create() => new PlaceholderScreenCaptureService(_logger, _options);
 }
 
 internal sealed class PlaceholderScreenCaptureService : IScreenCaptureService
 {
     private readonly ILogger? _logger;
+    private readonly RemoteDesktopConfiguration _config;
 
-    public PlaceholderScreenCaptureService(ILogger? logger) => _logger = logger;
+    public PlaceholderScreenCaptureService(ILogger? logger, IOptions<RemoteDesktopConfiguration>? options)
+    {
+        _logger = logger;
+        _config = options?.Value ?? new RemoteDesktopConfiguration();
+    }
 
     public Task StartCaptureAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task StopCaptureAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     public async IAsyncEnumerable<CaptureFrame> EnumerateFramesAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        int delay = _config.Capture.PlaceholderDelayMs;
         while (!cancellationToken.IsCancellationRequested)
         {
-            await Task.Delay(33, cancellationToken);
+            await Task.Delay(delay, cancellationToken);
             yield return new CaptureFrame(Array.Empty<byte>(), 1920, 1080, 7680, Abstractions.PixelFormat.Bgra32, DateTime.UtcNow);
         }
     }
@@ -78,11 +107,13 @@ internal sealed class PlaceholderScreenCaptureService : IScreenCaptureService
 internal sealed class WindowsScreenCaptureService : IScreenCaptureService
 {
     private readonly ILogger? _logger;
+    private readonly RemoteDesktopConfiguration _config;
     private bool _disposed;
 
-    public WindowsScreenCaptureService(ILogger? logger)
+    public WindowsScreenCaptureService(ILogger? logger, IOptions<RemoteDesktopConfiguration> options)
     {
         _logger = logger;
+        _config = options.Value;
     }
 
     public Task StartCaptureAsync(CancellationToken cancellationToken = default)
@@ -97,7 +128,9 @@ internal sealed class WindowsScreenCaptureService : IScreenCaptureService
 
     public async IAsyncEnumerable<CaptureFrame> EnumerateFramesAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        const int targetFps = 20;
+        int targetFps = _config.Capture.TargetFps;
+        if (targetFps <= 0) targetFps = 20;
+        
         var frameDelay = TimeSpan.FromMilliseconds(1000.0 / targetFps);
 
         while (!cancellationToken.IsCancellationRequested && !_disposed)

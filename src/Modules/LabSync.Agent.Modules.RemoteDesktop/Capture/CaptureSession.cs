@@ -5,16 +5,20 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using LabSync.Agent.Modules.RemoteDesktop.Configuration;
 
 namespace LabSync.Agent.Modules.RemoteDesktop.Capture;
 
 public class CaptureSession : ICaptureSession
 {
     private readonly ILogger<CaptureSession> _logger;
+    private readonly RemoteDesktopConfiguration _config;
 
-    public CaptureSession(ILogger<CaptureSession> logger)
+    public CaptureSession(ILogger<CaptureSession> logger, IOptions<RemoteDesktopConfiguration> options)
     {
         _logger = logger;
+        _config = options.Value;
     }
 
     public (Task CaptureTask, Task EncodeTask) Start(
@@ -22,7 +26,6 @@ public class CaptureSession : ICaptureSession
         IAsyncEnumerator<CaptureFrame>? enumerator,
         CaptureFrame? firstFrame,
         IVideoEncoder encoder,
-        int captureChannelCapacity,
         CancellationToken cancellationToken)
     {
         if (encoder.HandlesCapture)
@@ -30,7 +33,10 @@ public class CaptureSession : ICaptureSession
             return (Task.CompletedTask, Task.CompletedTask);
         }
 
-        var captureChannel = Channel.CreateBounded<CaptureFrame>(new BoundedChannelOptions(captureChannelCapacity)
+        int capacity = _config.Capture.ChannelCapacity;
+        if (capacity <= 0) capacity = 3;
+
+        var captureChannel = Channel.CreateBounded<CaptureFrame>(new BoundedChannelOptions(capacity)
         {
             SingleReader = true,
             SingleWriter = true,

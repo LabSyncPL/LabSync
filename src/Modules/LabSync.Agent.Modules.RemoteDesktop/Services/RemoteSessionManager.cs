@@ -11,6 +11,8 @@ using LabSync.Agent.Modules.RemoteDesktop.Models;
 using LabSync.Agent.Modules.RemoteDesktop.WebRtc;
 using LabSync.Core.Dto;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using LabSync.Agent.Modules.RemoteDesktop.Configuration;
 
 namespace LabSync.Agent.Modules.RemoteDesktop.Services;
 
@@ -25,7 +27,7 @@ public class RemoteSessionManager : IRemoteSessionManager
     private readonly ISessionInputHandler _inputHandler;
     private readonly ICaptureSession _captureSession;
     private readonly ILogger<RemoteSessionManager> _logger;
-    private readonly SessionOptions _options;
+    private readonly RemoteDesktopConfiguration _config;
     private readonly ConcurrentDictionary<string, RemoteSessionContext> _sessions = new();
 
     public RemoteSessionManager(
@@ -38,7 +40,7 @@ public class RemoteSessionManager : IRemoteSessionManager
         ISessionInputHandler inputHandler,
         ICaptureSession captureSession,
         ILogger<RemoteSessionManager> logger,
-        SessionOptions? options = null)
+        IOptions<RemoteDesktopConfiguration> options)
     {
         _signalingService = signalingService;
         _captureFactory = captureFactory;
@@ -49,7 +51,7 @@ public class RemoteSessionManager : IRemoteSessionManager
         _inputHandler = inputHandler;
         _captureSession = captureSession;
         _logger = logger;
-        _options = options ?? SessionOptions.Default;
+        _config = options.Value;
     }
 
     public async Task<RemoteSessionResult> StartSessionAsync(StartSessionRequest request, CancellationToken cancellationToken = default)
@@ -114,8 +116,8 @@ public class RemoteSessionManager : IRemoteSessionManager
 
             int targetWidth = request.Preferences?.InitialWidth ?? sourceWidth;
             int targetHeight = request.Preferences?.InitialHeight ?? sourceHeight;
-            int fps = request.Preferences?.InitialFps ?? 30;
-            int bitrate = request.Preferences?.InitialBitrateKbps ?? 2000;
+            int fps = request.Preferences?.InitialFps ?? _config.Encoding.DefaultFps;
+            int bitrate = request.Preferences?.InitialBitrateKbps ?? _config.Encoding.DefaultBitrateKbps;
 
             if (targetWidth % 2 != 0) targetWidth--;
             if (targetHeight % 2 != 0) targetHeight--;
@@ -130,7 +132,7 @@ public class RemoteSessionManager : IRemoteSessionManager
                 EncoderType: preferredEncoderType
             );
 
-            encoder = _encoderFactory.Create(_options.EncodedChannelCapacity);
+            encoder = _encoderFactory.Create();
             await encoder.InitializeAsync(encoderOptions, cts.Token);
 
             peer = _peerFactory.Create(sessionId);
@@ -160,10 +162,10 @@ public class RemoteSessionManager : IRemoteSessionManager
 
             _logger.LogInformation("Sent SDP Offer for session {SessionId}.", sessionId);
 
-            var answer = await _signalingService.WaitForAnswerAsync(sessionId, _options.OfferTimeout, cts.Token);
+            var answer = await _signalingService.WaitForAnswerAsync(sessionId, _config.Session.OfferTimeout, cts.Token);
             if (answer == null)
             {
-                throw new TimeoutException($"No answer received within {_options.OfferTimeout.TotalSeconds}s.");
+                throw new TimeoutException($"No answer received within {_config.Session.OfferTimeout.TotalSeconds}s.");
             }
 
             await peer.SetRemoteAnswerAsync(answer.SdpType, answer.Sdp, cts.Token);
@@ -177,7 +179,6 @@ public class RemoteSessionManager : IRemoteSessionManager
                 enumerator,
                 firstFrame,
                 encoder,
-                _options.CaptureChannelCapacity,
                 cts.Token);
             
             var inputTask = _inputHandler.RunInputLoopAsync(
@@ -228,7 +229,7 @@ public class RemoteSessionManager : IRemoteSessionManager
 
         try
         {
-            await Task.Delay(_options.StopGracePeriod, cancellationToken);
+            await Task.Delay(_config.Session.StopGracePeriod, cancellationToken);
         }
         catch (OperationCanceledException) { }
 

@@ -12,6 +12,7 @@ using LabSync.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using LabSync.Agent.Modules.RemoteDesktop.Configuration;
 
 namespace LabSync.Agent.Modules.RemoteDesktop;
 
@@ -63,14 +64,13 @@ public class RemoteDesktopModule : IRemoteDesktopModule
 
         // Module specific services
         services.AddSingleton<IRemoteDesktopSignalingService, RemoteDesktopSignalingService>();
-        services.AddSingleton<IScreenCaptureFactory>(sp => ScreenCaptureFactory.Create(sp));
+        services.AddSingleton<IScreenCaptureFactory, ScreenCaptureFactorySelector>();
         services.AddSingleton<IInputInjectionFactory>(sp => InputInjectionFactory.Create(sp));
         services.AddSingleton<IWebRtcPeerConnectionFactory, SipsorceryWebRtcPeerConnectionFactory>();
         services.AddSingleton<IGpuDiscoveryService, GpuDiscoveryService>();
         services.AddSingleton<IVideoEncoderFactory, VideoEncoderFactory>();
         services.AddSingleton<ISessionInputHandler, SessionInputHandler>();
         services.AddSingleton<ICaptureSession, CaptureSession>();
-        services.AddSingleton(SessionOptions.Default);
         services.AddSingleton<IRemoteSessionManager, RemoteSessionManager>();
         services.AddSingleton<GridMonitorService>();
 

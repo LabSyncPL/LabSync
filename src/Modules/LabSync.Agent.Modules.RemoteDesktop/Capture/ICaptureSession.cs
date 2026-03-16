@@ -10,6 +10,5 @@ public interface ICaptureSession
         IAsyncEnumerator<CaptureFrame>? enumerator,
         CaptureFrame? firstFrame,
         IVideoEncoder encoder,
-        int captureChannelCapacity,
         CancellationToken cancellationToken);
 }
