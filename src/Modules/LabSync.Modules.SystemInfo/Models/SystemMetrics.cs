@@ -6,11 +6,11 @@ namespace LabSync.Modules.SystemInfo.Models
     public sealed class SystemMetrics
     {
         public DateTime Timestamp { get; set; }
-        public double CpuLoad { get; set; }
-        public MemoryInfo MemoryInfo { get; set; } = new();
-        public DiskInfo DiskInfo { get; set; } = new();
-        public SystemDetails SystemInfo { get; set; } = new();
-        public NetworkInfo NetworkInfo { get; set; } = new();
+        public double? CpuLoad { get; set; }
+        public MemoryInfo? MemoryInfo { get; set; }
+        public DiskInfo? DiskInfo { get; set; }
+        public SystemDetails? SystemInfo { get; set; }
+        public NetworkInfo? NetworkInfo { get; set; }
     }
 
     public sealed class MemoryInfo

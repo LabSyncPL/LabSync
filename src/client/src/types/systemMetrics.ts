@@ -4,11 +4,11 @@
  */
 export interface SystemMetricsDto {
   timestamp: string;
-  cpuLoad: number;
-  memoryInfo: MemoryInfoDto;
-  diskInfo: DiskInfoDto;
-  systemInfo: SystemDetailsDto;
-  networkInfo: NetworkInfoDto;
+  cpuLoad?: number;
+  memoryInfo?: MemoryInfoDto;
+  diskInfo?: DiskInfoDto;
+  systemInfo?: SystemDetailsDto;
+  networkInfo?: NetworkInfoDto;
 }
 
 export interface MemoryInfoDto {
@@ -80,6 +80,9 @@ export function parseSystemMetricsFromJson(
 ): SystemMetricsDto | null {
   try {
     const raw = JSON.parse(json) as Record<string, unknown>;
+    const ts = raw.Timestamp ?? raw.timestamp;
+
+    // Check for sections (PascalCase or camelCase)
     const m = (raw.MemoryInfo ?? raw.memoryInfo) as
       | Record<string, unknown>
       | undefined;
@@ -92,47 +95,57 @@ export function parseSystemMetricsFromJson(
     const n = (raw.NetworkInfo ?? raw.networkInfo) as
       | Record<string, unknown>
       | undefined;
-    if (!m || !d || !s) return null;
 
-    const ts = raw.Timestamp ?? raw.timestamp;
-    const cpu = typeof raw.CpuLoad === "number" ? raw.CpuLoad : raw.cpuLoad;
+    // Parse CPU load
+    const cpu =
+      typeof raw.CpuLoad === "number"
+        ? raw.CpuLoad
+        : typeof raw.cpuLoad === "number"
+          ? raw.cpuLoad
+          : undefined;
 
     return {
       timestamp: typeof ts === "string" ? ts : new Date().toISOString(),
-      cpuLoad: typeof cpu === "number" ? cpu : 0,
-      memoryInfo: {
-        totalMB: getNum(m, "TotalMB", "totalMB"),
-        availableMB: getNum(m, "AvailableMB", "availableMB"),
-        usedMB: getNum(m, "UsedMB", "usedMB"),
-        usagePercent: getNum(m, "UsagePercent", "usagePercent"),
-      },
-      diskInfo: {
-        totalGB: getNum(d, "TotalGB", "totalGB"),
-        freeGB: getNum(d, "FreeGB", "freeGB"),
-        usedGB: getNum(d, "UsedGB", "usedGB"),
-        usagePercent: getNum(d, "UsagePercent", "usagePercent"),
-        driveName: getStr(d, "DriveName", "driveName"),
-        volumes: parseVolumes(d),
-      },
-      systemInfo: {
-        oSPlatform: getStr(s, "OSPlatform", "oSPlatform"),
-        oSDescription: getStr(s, "OSDescription", "oSDescription"),
-        oSArchitecture: getStr(s, "OSArchitecture", "oSArchitecture"),
-        processArchitecture: getStr(
-          s,
-          "ProcessArchitecture",
-          "processArchitecture",
-        ),
-        frameworkDescription: getStr(
-          s,
-          "FrameworkDescription",
-          "frameworkDescription",
-        ),
-        machineName: getStr(s, "MachineName", "machineName"),
-        processorCount: getNum(s, "ProcessorCount", "processorCount"),
-        uptime: getStr(s, "Uptime", "uptime"),
-      },
-      networkInfo: parseNetworkInfo(n),
+      cpuLoad: cpu,
+      memoryInfo: m
+        ? {
+            totalMB: getNum(m, "TotalMB", "totalMB"),
+            availableMB: getNum(m, "AvailableMB", "availableMB"),
+            usedMB: getNum(m, "UsedMB", "usedMB"),
+            usagePercent: getNum(m, "UsagePercent", "usagePercent"),
+          }
+        : undefined,
+      diskInfo: d
+        ? {
+            totalGB: getNum(d, "TotalGB", "totalGB"),
+            freeGB: getNum(d, "FreeGB", "freeGB"),
+            usedGB: getNum(d, "UsedGB", "usedGB"),
+            usagePercent: getNum(d, "UsagePercent", "usagePercent"),
+            driveName: getStr(d, "DriveName", "driveName"),
+            volumes: parseVolumes(d),
+          }
+        : undefined,
+      systemInfo: s
+        ? {
+            oSPlatform: getStr(s, "OSPlatform", "oSPlatform"),
+            oSDescription: getStr(s, "OSDescription", "oSDescription"),
+            oSArchitecture: getStr(s, "OSArchitecture", "oSArchitecture"),
+            processArchitecture: getStr(
+              s,
+              "ProcessArchitecture",
+              "processArchitecture",
+            ),
+            frameworkDescription: getStr(
+              s,
+              "FrameworkDescription",
+              "frameworkDescription",
+            ),
+            machineName: getStr(s, "MachineName", "machineName"),
+            processorCount: getNum(s, "ProcessorCount", "processorCount"),
+            uptime: getStr(s, "Uptime", "uptime"),
+          }
+        : undefined,
+      networkInfo: n ? parseNetworkInfo(n) : undefined,
     };
   } catch {
     return null;

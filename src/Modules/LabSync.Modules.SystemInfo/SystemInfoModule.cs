@@ -70,12 +70,17 @@ namespace LabSync.Modules.SystemInfo
                 // Default to metrics collection
                 _logger?.LogInformation("Collecting system metrics...");
 
-                var metrics = await CollectSystemMetricsAsync(cancellationToken);
+                var options = ParseOptions(parameters);
+                var metrics = await CollectSystemMetricsAsync(options, cancellationToken);
 
-                _logger?.LogDebug("Successfully collected system metrics. CPU: {Cpu}%, Memory: {Memory}%, Disk: {Disk}%, Network RX: {NetworkRx}",
-                    metrics.CpuLoad, metrics.MemoryInfo.UsagePercent, metrics.DiskInfo.UsagePercent, metrics.NetworkInfo.TotalBytesReceivedPerSecond);
+                _logger?.LogDebug("Successfully collected system metrics.");
 
                 return ModuleResult.Success(metrics);
+            }
+            catch (ArgumentException argEx)
+            {
+                _logger?.LogWarning(argEx, "Invalid arguments provided.");
+                return ModuleResult.Failure(argEx.Message);
             }
             catch (OperationCanceledException)
             {
@@ -115,7 +120,93 @@ namespace LabSync.Modules.SystemInfo
             }, cancellationToken);
         }
 
-        private async Task<SystemMetrics> CollectSystemMetricsAsync(CancellationToken cancellationToken)
+        private MetricsOptions ParseOptions(IDictionary<string, string> parameters)
+        {
+            // If no parameters or only command, return default (All)
+            if (parameters.Count <= 1 && parameters.ContainsKey("__Command"))
+            {
+                return MetricsOptions.All;
+            }          
+            
+            var options = new MetricsOptions();
+            bool specificFlagFound = false;
+
+            // Helper to check for flag presence
+            bool HasFlag(string shortFlag, string longFlag)
+            {
+                return parameters.ContainsKey(shortFlag) || parameters.ContainsKey(longFlag);
+            }
+
+            // Validate if there are any unknown flags starting with '-'
+            foreach (var key in parameters.Keys)
+            {
+                if (key.StartsWith("-") && key != "__Command")
+                {
+                    if (key != "-a" && key != "--all" &&
+                        key != "-c" && key != "--cpu" &&
+                        key != "-m" && key != "--memory" &&
+                        key != "-d" && key != "--disks" &&
+                        key != "-n" && key != "--network" &&
+                        key != "-p" && key != "--processes" &&
+                        key != "-s" && key != "--system")
+                    {
+                        throw new ArgumentException($"Unknown flag: {key}");
+                    }
+                }
+            }
+
+            if (HasFlag("-a", "--all"))
+            {
+                return MetricsOptions.All;
+            }
+
+            if (HasFlag("-c", "--cpu"))
+            {
+                options.CollectCpu = true;
+                specificFlagFound = true;
+            }
+
+            if (HasFlag("-m", "--memory"))
+            {
+                options.CollectMemory = true;
+                specificFlagFound = true;
+            }
+
+            if (HasFlag("-d", "--disks"))
+            {
+                options.CollectDisks = true;
+                specificFlagFound = true;
+            }
+
+            if (HasFlag("-n", "--network"))
+            {
+                options.CollectNetwork = true;
+                specificFlagFound = true;
+            }
+            
+            if (HasFlag("-s", "--system"))
+            {
+                options.CollectSystemInfo = true;
+                specificFlagFound = true;
+            }
+            
+            // Processes not yet implemented in interfaces but requested in requirements
+            if (HasFlag("-p", "--processes"))
+            {
+                options.CollectProcesses = true;
+                specificFlagFound = true;
+            }
+
+            // If no specific flags were found, default to All (backward compatibility)
+            if (!specificFlagFound)
+            {
+                return MetricsOptions.All;
+            }
+
+            return options;
+        }
+
+        private async Task<SystemMetrics> CollectSystemMetricsAsync(MetricsOptions options, CancellationToken cancellationToken)
         {
             if (_cpuInfoService == null ||
                 _memoryInfoService == null ||
@@ -126,20 +217,53 @@ namespace LabSync.Modules.SystemInfo
                 throw new InvalidOperationException("SystemInfoModule has not been initialized.");
             }
 
-            var cpuTask = Task.Run(_cpuInfoService.GetCpuUsage, cancellationToken);
-            var memoryTask = Task.Run(_memoryInfoService.GetMemoryInfo, cancellationToken);
-            var diskTask = Task.Run(_diskInfoService.GetDiskInfo, cancellationToken);
-            var networkTask = Task.Run(_networkInfoService.GetNetworkInfo, cancellationToken);
+            var tasks = new List<Task>();
+            Task<double>? cpuTask = null;
+            Task<MemoryInfo>? memoryTask = null;
+            Task<DiskInfo>? diskTask = null;
+            Task<NetworkInfo>? networkTask = null;
+            Task<SystemDetails>? systemTask = null;
 
-            await Task.WhenAll(cpuTask, memoryTask, diskTask, networkTask);
+            if (options.CollectCpu)
+            {
+                cpuTask = Task.Run(_cpuInfoService.GetCpuUsage, cancellationToken);
+                tasks.Add(cpuTask);
+            }
+
+            if (options.CollectMemory)
+            {
+                memoryTask = Task.Run(_memoryInfoService.GetMemoryInfo, cancellationToken);
+                tasks.Add(memoryTask);
+            }
+
+            if (options.CollectDisks)
+            {
+                diskTask = Task.Run(_diskInfoService.GetDiskInfo, cancellationToken);
+                tasks.Add(diskTask);
+            }
+
+            if (options.CollectNetwork)
+            {
+                networkTask = Task.Run(_networkInfoService.GetNetworkInfo, cancellationToken);
+                tasks.Add(networkTask);
+            }
+
+            if (options.CollectSystemInfo)
+            {
+                systemTask = Task.Run(_systemInfoService.GetSystemDetails, cancellationToken);
+                tasks.Add(systemTask);
+            }
+
+            await Task.WhenAll(tasks);
 
             return new SystemMetrics
             {
                 Timestamp = DateTime.UtcNow,
-                CpuLoad = cpuTask.Result,
-                MemoryInfo = memoryTask.Result,
-                DiskInfo = diskTask.Result,
-                NetworkInfo = networkTask.Result
+                CpuLoad = cpuTask?.Result,
+                MemoryInfo = memoryTask?.Result,
+                DiskInfo = diskTask?.Result,
+                NetworkInfo = networkTask?.Result,
+                SystemInfo = systemTask?.Result
             };
         }
     }
