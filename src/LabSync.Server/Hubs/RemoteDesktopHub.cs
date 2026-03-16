@@ -13,6 +13,7 @@ namespace LabSync.Server.Hubs;
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme + "," + LabSync.Server.Authentication.DeviceKeyAuthenticationHandler.SchemeName)]
 public class RemoteDesktopHub(
     ConnectionTracker connectionTracker,
+    GridMonitorTracker gridMonitorTracker,
     IHubContext<AgentHub> agentHubContext,
     ILogger<RemoteDesktopHub> logger)
     : Hub
@@ -98,6 +99,22 @@ public class RemoteDesktopHub(
             .SendAsync("RemoteDesktopIceCandidate", sessionId, candidate, sdpMid, sdpMLineIndex);
     }
 
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        var devicesToStop = gridMonitorTracker.RemoveAllSubscriptions(Context.ConnectionId);
+        foreach (var deviceId in devicesToStop)
+        {
+            var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
+            if (agentConnectionId != null)
+            {
+                logger.LogInformation("Last viewer disconnected from monitor. Stopping monitor on agent for device {DeviceId}.", deviceId);
+                await agentHubContext.Clients.Client(agentConnectionId).SendAsync("StopMonitor");
+            }
+        }
+
+        await base.OnDisconnectedAsync(exception);
+    }
+
     private static string MonitorGroup(Guid deviceId) => $"Monitor_{deviceId:N}";
 
     public async Task SubscribeToMonitor(List<Guid> deviceIds)
@@ -107,10 +124,14 @@ public class RemoteDesktopHub(
             var groupName = MonitorGroup(deviceId);
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
 
-            var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
-            if (agentConnectionId != null)
+            if (gridMonitorTracker.AddSubscription(Context.ConnectionId, deviceId))
             {
-                await agentHubContext.Clients.Client(agentConnectionId).SendAsync("StartMonitor");
+                var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
+                if (agentConnectionId != null)
+                {
+                    logger.LogInformation("First viewer subscribed to monitor. Starting monitor on agent for device {DeviceId}.", deviceId);
+                    await agentHubContext.Clients.Client(agentConnectionId).SendAsync("StartMonitor");
+                }
             }
         }
     }
@@ -133,6 +154,16 @@ public class RemoteDesktopHub(
         foreach (var deviceId in deviceIds)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, MonitorGroup(deviceId));
+
+            if (gridMonitorTracker.RemoveSubscription(Context.ConnectionId, deviceId))
+            {
+                var agentConnectionId = connectionTracker.GetConnectionId(deviceId);
+                if (agentConnectionId != null)
+                {
+                    logger.LogInformation("Last viewer unsubscribed from monitor. Stopping monitor on agent for device {DeviceId}.", deviceId);
+                    await agentHubContext.Clients.Client(agentConnectionId).SendAsync("StopMonitor");
+                }
+            }
         }
     }
 

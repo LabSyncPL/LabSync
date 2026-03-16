@@ -103,8 +103,12 @@ public class GridMonitorService : IDisposable
                             using var ms = new MemoryStream();
                             await image.SaveAsJpegAsync(ms, jpegEncoder, cancellationToken);
                             
-                            var payload = ms.ToArray();
-                            await _hubInvoker.InvokeAsync("SendGridFrame", new object[] { payload }, cancellationToken);
+                            // Get the buffer directly if possible, or fall back to ToArray
+                            var payload = ms.TryGetBuffer(out var buffer) 
+                                ? buffer.Array![..buffer.Count]
+                                : ms.ToArray();
+
+                            await _hubInvoker.InvokeAsync("PushMonitorFrame", new object[] { payload }, cancellationToken);
                         }
                     }
                     catch (Exception ex)

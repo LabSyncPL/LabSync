@@ -61,6 +61,7 @@ builder.Services.AddScoped<ICryptoService, CryptoService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<JobDispatchService>();
 builder.Services.AddSingleton<ConnectionTracker>();
+builder.Services.AddSingleton<GridMonitorTracker>();
 
 builder.Services.AddAuthentication(options => {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

@@ -16,6 +16,7 @@ namespace LabSync.Server.Hubs;
 public class AgentHub(
     LabSyncDbContext dbContext,
     ConnectionTracker _connectionTracker,
+    GridMonitorTracker _gridMonitorTracker,
     IHubContext<RemoteDesktopHub> remoteDesktopHubContext,
     ILogger<AgentHub> logger)
     : Hub<IAgentClient>
@@ -50,6 +51,13 @@ public class AgentHub(
 
         await dbContext.SaveChangesAsync();
         await base.OnConnectedAsync();
+
+        // If there are active viewers, start the grid monitor automatically
+        if (_gridMonitorTracker.HasViewers(deviceId))
+        {
+            logger.LogInformation("Agent {DeviceId} connected and has active monitor viewers. Starting monitor.", deviceId);
+            await Clients.Caller.StartMonitor();
+        }
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -112,7 +120,7 @@ public class AgentHub(
 
     // Grid Monitor Methods
 
-    public async Task SendGridFrame(byte[] frameData)
+    public async Task PushMonitorFrame(byte[] frameData)
     {
         var deviceId = GetDeviceIdFromContext();
         if (deviceId == Guid.Empty) return;
