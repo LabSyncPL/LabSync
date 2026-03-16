@@ -23,6 +23,7 @@ public class RemoteSessionManager : IRemoteSessionManager
     private readonly IGpuDiscoveryService _gpuDiscovery;
     private readonly IVideoEncoderFactory _encoderFactory;
     private readonly ISessionInputHandler _inputHandler;
+    private readonly ICaptureSession _captureSession;
     private readonly ILogger<RemoteSessionManager> _logger;
     private readonly SessionOptions _options;
     private readonly ConcurrentDictionary<string, RemoteSessionContext> _sessions = new();
@@ -35,6 +36,7 @@ public class RemoteSessionManager : IRemoteSessionManager
         IGpuDiscoveryService gpuDiscovery,
         IVideoEncoderFactory encoderFactory,
         ISessionInputHandler inputHandler,
+        ICaptureSession captureSession,
         ILogger<RemoteSessionManager> logger,
         SessionOptions? options = null)
     {
@@ -45,6 +47,7 @@ public class RemoteSessionManager : IRemoteSessionManager
         _gpuDiscovery = gpuDiscovery;
         _encoderFactory = encoderFactory;
         _inputHandler = inputHandler;
+        _captureSession = captureSession;
         _logger = logger;
         _options = options ?? SessionOptions.Default;
     }
@@ -169,24 +172,13 @@ public class RemoteSessionManager : IRemoteSessionManager
 
             var streamTask = peer.AddVideoTrackFromEncodedStreamAsync(encoder.GetEncodedStreamAsync(cts.Token), cts.Token);
             
-            Task captureTask = Task.CompletedTask;
-            Task encodeTask = Task.CompletedTask;
-
-            if (!encoder.HandlesCapture)
-            {
-                var captureChannel = Channel.CreateBounded<CaptureFrame>(new BoundedChannelOptions(_options.CaptureChannelCapacity)
-                {
-                    SingleReader = true,
-                    SingleWriter = true,
-                    FullMode = BoundedChannelFullMode.Wait
-                });
-
-                if (capture != null && enumerator != null)
-                {
-                    captureTask = RunCaptureLoopAsync(capture, enumerator, firstFrame, captureChannel.Writer, cts.Token);
-                }
-                encodeTask = RunEncodingLoopAsync(captureChannel.Reader, encoder, cts.Token);
-            }
+            var (captureTask, encodeTask) = _captureSession.Start(
+                capture,
+                enumerator,
+                firstFrame,
+                encoder,
+                _options.CaptureChannelCapacity,
+                cts.Token);
             
             var inputTask = _inputHandler.RunInputLoopAsync(
                 dataChannelStream, 
@@ -254,52 +246,7 @@ public class RemoteSessionManager : IRemoteSessionManager
 
 
 
-    private async Task RunCaptureLoopAsync(
-        IScreenCaptureService capture,
-        IAsyncEnumerator<CaptureFrame> enumerator,
-        CaptureFrame? firstFrame,
-        ChannelWriter<CaptureFrame> writer,
-        CancellationToken cancellationToken)
-    {
-        int frameCount = 0;
-        try
-        {
-            if (firstFrame != null)
-            {
-                frameCount++;
-                await writer.WriteAsync(firstFrame, cancellationToken);
-            }
 
-            while (await enumerator.MoveNextAsync())
-            {
-                var frame = enumerator.Current;
-                await writer.WriteAsync(frame, cancellationToken);
-            }
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception) {  }
-        finally
-        {
-            await enumerator.DisposeAsync();
-            writer.Complete();
-        }
-    }
-
-    private async Task RunEncodingLoopAsync(
-        ChannelReader<CaptureFrame> reader,
-        IVideoEncoder encoder,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await foreach (var frame in reader.ReadAllAsync(cancellationToken))
-            {
-                await encoder.EncodeAsync(frame, cancellationToken);
-            }
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception) { /* Encoding loop error */ }
-    }
 
 
 

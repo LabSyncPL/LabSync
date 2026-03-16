@@ -10,6 +10,7 @@ using LabSync.Agent.Modules.RemoteDesktop.Services;
 using LabSync.Agent.Modules.RemoteDesktop.WebRtc;
 using LabSync.Core.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LabSync.Agent.Modules.RemoteDesktop;
 
@@ -21,84 +22,62 @@ public class RemoteDesktopModule : IRemoteDesktopModule
     private IRemoteSessionManager? _sessionManager;
     private GridMonitorService? _gridMonitorService;
     private ILogger? _logger;
+    private IServiceProvider? _moduleServiceProvider;
 
     public Task InitializeAsync(IServiceProvider serviceProvider)
     {
-        _logger = serviceProvider.GetService(typeof(ILoggerFactory)) is ILoggerFactory factory
-            ? factory.CreateLogger<RemoteDesktopModule>()
-            : null;
+        _logger = serviceProvider.GetService<ILoggerFactory>()?.CreateLogger<RemoteDesktopModule>();
 
-        var hubInvoker = serviceProvider.GetService(typeof(LabSync.Core.Interfaces.IAgentHubInvoker)) as LabSync.Core.Interfaces.IAgentHubInvoker;
+        var hubInvoker = serviceProvider.GetService<IAgentHubInvoker>();
         if (hubInvoker == null)
         {
             _logger?.LogWarning("IAgentHubInvoker not registered. Remote desktop signaling will be unavailable.");
-        }
-
-        var loggerFactory = serviceProvider.GetService(typeof(ILoggerFactory)) as ILoggerFactory;
-        var agentContext = serviceProvider.GetService(typeof(LabSync.Core.Interfaces.IAgentContext)) as LabSync.Core.Interfaces.IAgentContext;
-
-        if (hubInvoker == null)
-        {
             return Task.CompletedTask;
         }
 
-        var signalingService = new RemoteDesktopSignalingService(
-            hubInvoker,
-            loggerFactory != null
-                ? loggerFactory.CreateLogger<RemoteDesktopSignalingService>()
-                : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteDesktopSignalingService>.Instance);
+        var services = new ServiceCollection();
 
-        var captureFactory = ScreenCaptureFactory.Create(serviceProvider);
-        var inputFactory = InputInjectionFactory.Create(serviceProvider);
+        // Host services
+        services.AddSingleton(hubInvoker);
+        var loggerFactory = serviceProvider.GetService<ILoggerFactory>() ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
+        services.AddSingleton(loggerFactory);
+        services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
 
-        var sipsLogger = loggerFactory != null
-            ? loggerFactory.CreateLogger<SipsorceryWebRtcPeerConnectionService>()
-            : Microsoft.Extensions.Logging.Abstractions.NullLogger<SipsorceryWebRtcPeerConnectionService>.Instance;
-        IWebRtcPeerConnectionFactory peerFactory = new SipsorceryWebRtcPeerConnectionFactory(sipsLogger);
-        _logger?.LogInformation("RemoteDesktop module configured to use SIPSorcery WebRTC peer connection. STUN server: stun:stun.l.google.com:19302.");
+        if (serviceProvider.GetService<IAgentContext>() is { } agentContext)
+        {
+            services.AddSingleton(agentContext);
+        }
 
-        var gpuLogger = loggerFactory != null
-            ? loggerFactory.CreateLogger<GpuDiscoveryService>()
-            : Microsoft.Extensions.Logging.Abstractions.NullLogger<GpuDiscoveryService>.Instance;
-        IGpuDiscoveryService gpuDiscovery = new GpuDiscoveryService(gpuLogger);
+        // Module specific services
+        services.AddSingleton<IRemoteDesktopSignalingService, RemoteDesktopSignalingService>();
+        services.AddSingleton<IScreenCaptureFactory>(sp => ScreenCaptureFactory.Create(sp));
+        services.AddSingleton<IInputInjectionFactory>(sp => InputInjectionFactory.Create(sp));
+        services.AddSingleton<IWebRtcPeerConnectionFactory, SipsorceryWebRtcPeerConnectionFactory>();
+        services.AddSingleton<IGpuDiscoveryService, GpuDiscoveryService>();
+        services.AddSingleton<IVideoEncoderFactory, VideoEncoderFactory>();
+        services.AddSingleton<ISessionInputHandler, SessionInputHandler>();
+        services.AddSingleton<ICaptureSession, CaptureSession>();
+        services.AddSingleton(SessionOptions.Default);
+        services.AddSingleton<IRemoteSessionManager, RemoteSessionManager>();
+        services.AddSingleton<GridMonitorService>();
 
-        var gridLogger = loggerFactory != null
-            ? loggerFactory.CreateLogger<GridMonitorService>()
-            : Microsoft.Extensions.Logging.Abstractions.NullLogger<GridMonitorService>.Instance;
-        _gridMonitorService = new GridMonitorService(captureFactory, hubInvoker, gridLogger);
+        _moduleServiceProvider = services.BuildServiceProvider();
 
-        var encoderFactoryLogger = loggerFactory != null
-            ? loggerFactory.CreateLogger<VideoEncoderFactory>()
-            : Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoEncoderFactory>.Instance;
-        var encoderFactory = new VideoEncoderFactory(encoderFactoryLogger, loggerFactory ?? new Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory());
+        _gridMonitorService = _moduleServiceProvider.GetRequiredService<GridMonitorService>();
+        _sessionManager = _moduleServiceProvider.GetRequiredService<IRemoteSessionManager>();
 
-        var inputHandlerLogger = loggerFactory != null
-            ? loggerFactory.CreateLogger<SessionInputHandler>()
-            : Microsoft.Extensions.Logging.Abstractions.NullLogger<SessionInputHandler>.Instance;
-        var inputHandler = new SessionInputHandler(inputHandlerLogger);
-
-        _sessionManager = new RemoteSessionManager(
-            signalingService,
-            captureFactory,
-            inputFactory,
-            peerFactory,
-            gpuDiscovery,
-            encoderFactory,
-            inputHandler,
-            loggerFactory != null
-                ? loggerFactory.CreateLogger<RemoteSessionManager>()
-                : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteSessionManager>.Instance,
-            SessionOptions.Default);
+        var signalingService = _moduleServiceProvider.GetRequiredService<IRemoteDesktopSignalingService>();
+        var resolvedAgentContext = _moduleServiceProvider.GetService<IAgentContext>();
 
         signalingService.OnStartSessionRequested += (sessionId, prefs) =>
         {
-            if (agentContext != null)
+            if (resolvedAgentContext != null)
             {
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        var deviceId = agentContext.DeviceId;
+                        var deviceId = resolvedAgentContext.DeviceId;
                         if (deviceId == Guid.Empty)
                         {
                             _logger?.LogWarning("AgentContext returned empty DeviceId for session {SessionId}. Aborting session start.", sessionId);

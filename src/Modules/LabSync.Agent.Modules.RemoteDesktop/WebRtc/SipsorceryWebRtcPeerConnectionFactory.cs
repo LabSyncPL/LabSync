@@ -5,9 +5,9 @@ namespace LabSync.Agent.Modules.RemoteDesktop.WebRtc;
 
 public sealed class SipsorceryWebRtcPeerConnectionFactory : IWebRtcPeerConnectionFactory
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<SipsorceryWebRtcPeerConnectionService> _logger;
 
-    public SipsorceryWebRtcPeerConnectionFactory(ILogger logger)
+    public SipsorceryWebRtcPeerConnectionFactory(ILogger<SipsorceryWebRtcPeerConnectionService> logger)
     {
         _logger = logger;
     }
