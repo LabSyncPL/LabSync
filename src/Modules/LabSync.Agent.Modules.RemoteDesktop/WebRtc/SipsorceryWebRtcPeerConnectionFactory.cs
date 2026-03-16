@@ -14,7 +14,7 @@ public sealed class SipsorceryWebRtcPeerConnectionFactory : IWebRtcPeerConnectio
 
     public IWebRtcPeerConnectionService Create(Guid sessionId)
     {
-        return new SipsorceryWebRtcPeerConnectionService(sessionId, _logger);
+        return new SipsorceryWebRtcPeerConnectionService(sessionId, _logger, new H264RtpPacketizer());
     }
 }
 

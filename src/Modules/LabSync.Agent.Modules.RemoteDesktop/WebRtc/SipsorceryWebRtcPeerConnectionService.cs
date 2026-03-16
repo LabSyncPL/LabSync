@@ -11,6 +11,7 @@ namespace LabSync.Agent.Modules.RemoteDesktop.WebRtc;
 
 public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectionService
 {
+    private readonly IRtpPacketizer _packetizer;
     private readonly Guid _sessionId;
     private readonly ILogger _logger;
     private readonly Action? _onConnectionClosed;
@@ -22,13 +23,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
     private readonly object _gate = new();
     private bool _disposed;
 
-    private long _startTimestamp = 0;
-    private uint _currentRtpTimestamp = 0;
-    private bool _isNewFrame = true;
-
-    private byte[]? _lastSps;
-    private byte[]? _lastPps;
-
     private const string StunUrl = "stun:stun.l.google.com:19302";
 
     public event EventHandler<string>? OnIceCandidate;
@@ -37,10 +31,12 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
     public SipsorceryWebRtcPeerConnectionService(
         Guid sessionId,
         ILogger logger,
+        IRtpPacketizer packetizer,
         Action? onConnectionClosed = null)
     {
         _sessionId = sessionId;
         _logger = logger;
+        _packetizer = packetizer;
         _onConnectionClosed = onConnectionClosed;
     }
 
@@ -76,8 +72,6 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         var videoTrack = new MediaStreamTrack(SDPMediaTypesEnum.video, false, 
             new List<SDPAudioVideoMediaFormat> 
             { 
-                // Using 0 for channels (5th argument) as required by SIPSorcery constructor
-                // FFmpeg is outputting High Profile (42e01f) by default now that we removed -profile:v baseline
                 new SDPAudioVideoMediaFormat(SDPMediaTypesEnum.video, _videoPayloadType, "H264", 90000, 0, "packetization-mode=1;profile-level-id=42e01f") 
             }, 
             MediaStreamStatusEnum.SendRecv);
@@ -189,83 +183,23 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         var pc = _pc;
         if (pc == null || _videoTrack == null) return;
 
-        await foreach (var frame in stream.WithCancellation(cancellationToken))
-        {
-            int nalType = frame.Data[0] & 0x1F;
-
-            if (nalType == 7) _lastSps = frame.Data;
-            if (nalType == 8) _lastPps = frame.Data;
-
-            if (pc.connectionState == RTCPeerConnectionState.connected)
-            {
-                if (_isNewFrame)
-                {
-                    long currentTicks = DateTime.UtcNow.Ticks;
-                    if (_startTimestamp == 0) _startTimestamp = currentTicks;
-                    _currentRtpTimestamp = (uint)((currentTicks - _startTimestamp) * 90000 / 10000000);
-                    _isNewFrame = false;
-                }
-
-                if (nalType == 5)
-                {
-                    if (_lastSps != null) pc.SendRtpRaw(SDPMediaTypesEnum.video, _lastSps, _currentRtpTimestamp, 0, _videoPayloadType);
-                    if (_lastPps != null) pc.SendRtpRaw(SDPMediaTypesEnum.video, _lastPps, _currentRtpTimestamp, 0, _videoPayloadType);
-                }
-
-                if (frame.Data.Length > 1200)
-                {
-                    await SendFragmentedH264Async(pc, _videoSsrc, _currentRtpTimestamp, frame.Data, nalType);
-                }
-                else
-                {
-                    int markerBit = (nalType == 1 || nalType == 5) ? 1 : 0;
-                    pc.SendRtpRaw(SDPMediaTypesEnum.video, frame.Data, _currentRtpTimestamp, markerBit, _videoPayloadType);
-                }
-
-                if (nalType == 1 || nalType == 5)
-                {
-                    _isNewFrame = true;
-                }
-            }
-        }
-    }
-
-    private async Task SendFragmentedH264Async(RTCPeerConnection pc, uint ssrc, uint timestamp, byte[] nalUnit, int originalNalType)
-    {
-        const int MTU = 1200;
-        byte nalHeader = nalUnit[0];
-        int nalType = nalHeader & 0x1F;
-        int nri = nalHeader & 0x60;
-        int offset = 1;
-        int remaining = nalUnit.Length - 1;
-        bool isFirst = true;
         int packetsSent = 0;
 
-        while (remaining > 0)
+        await foreach (var frame in stream.WithCancellation(cancellationToken))
         {
-            int len = Math.Min(remaining, MTU);
-            bool isLast = (remaining - len) == 0;
-
-            byte fuIndicator = (byte)(nri | 28);
-            byte fuHeader = (byte)((isFirst ? 0x80 : 0x00) | (isLast ? 0x40 : 0x00) | nalType);
-
-            var payload = new byte[2 + len];
-            payload[0] = fuIndicator;
-            payload[1] = fuHeader;
-            Buffer.BlockCopy(nalUnit, offset, payload, 2, len);
-
-            int markerBit = (isLast && (originalNalType == 1 || originalNalType == 5)) ? 1 : 0;
-
-            pc.SendRtpRaw(SDPMediaTypesEnum.video, payload, timestamp, markerBit, _videoPayloadType);
-
-            offset += len;
-            remaining -= len;
-            isFirst = false;
-
-            packetsSent++;
-            if (packetsSent % 30 == 0)
+            if (pc.connectionState == RTCPeerConnectionState.connected)
             {
-                await Task.Yield();
+                long currentTicks = DateTime.UtcNow.Ticks;
+                foreach (var packet in _packetizer.Packetize(frame.Data, currentTicks))
+                {
+                    pc.SendRtpRaw(SDPMediaTypesEnum.video, packet.Payload, packet.Timestamp, packet.MarkerBit, _videoPayloadType);
+
+                    packetsSent++;
+                    if (packetsSent % 30 == 0)
+                    {
+                        await Task.Yield();
+                    }
+                }
             }
         }
     }
