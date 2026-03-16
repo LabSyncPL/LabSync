@@ -11,6 +11,7 @@ using LabSync.Agent.Modules.RemoteDesktop.WebRtc;
 using LabSync.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 namespace LabSync.Agent.Modules.RemoteDesktop;
 
@@ -46,6 +47,18 @@ public class RemoteDesktopModule : IRemoteDesktopModule
         if (serviceProvider.GetService<IAgentContext>() is { } agentContext)
         {
             services.AddSingleton(agentContext);
+        }
+
+        // Configuration
+        var configuration = serviceProvider.GetService<IConfiguration>();
+        if (configuration != null)
+        {
+            services.Configure<WebRtcConfiguration>(options => configuration.GetSection(WebRtcConfiguration.SectionName).Bind(options));
+        }
+        else
+        {
+            _logger?.LogWarning("IConfiguration not available. Using default WebRTC settings.");
+            services.Configure<WebRtcConfiguration>(options => { });
         }
 
         // Module specific services

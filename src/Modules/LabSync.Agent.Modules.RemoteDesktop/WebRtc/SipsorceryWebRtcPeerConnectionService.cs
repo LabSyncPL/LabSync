@@ -4,6 +4,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using LabSync.Agent.Modules.RemoteDesktop.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using LabSync.Agent.Modules.RemoteDesktop.Models;
 using SIPSorcery.Net;
 using SIPSorceryMedia.Abstractions;
 
@@ -14,6 +16,7 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
     private readonly IRtpPacketizer _packetizer;
     private readonly Guid _sessionId;
     private readonly ILogger _logger;
+    private readonly WebRtcConfiguration _config;
     private readonly Action? _onConnectionClosed;
     private RTCPeerConnection? _pc;
     private RTCDataChannel? _dataChannel;
@@ -32,36 +35,40 @@ public sealed class SipsorceryWebRtcPeerConnectionService : IWebRtcPeerConnectio
         Guid sessionId,
         ILogger logger,
         IRtpPacketizer packetizer,
+        IOptions<WebRtcConfiguration> options,
         Action? onConnectionClosed = null)
     {
         _sessionId = sessionId;
         _logger = logger;
         _packetizer = packetizer;
+        _config = options.Value;
         _onConnectionClosed = onConnectionClosed;
     }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        var iceServers = new List<RTCIceServer>
+        var iceServers = new List<RTCIceServer>();
+
+        if (_config.IceServers != null && _config.IceServers.Count > 0)
         {
-            new RTCIceServer { urls = StunUrl },
-            
-            new RTCIceServer { 
-                urls = "turn:global.relay.metered.ca:80",
-                username = "aeed81555c66a425b8afe100",
-                credential = "dNYLQS6x2lC7MGS3",
-            },
-            new RTCIceServer { 
-                urls = "turn:global.relay.metered.ca:443",
-                username = "aeed81555c66a425b8afe100",
-                credential = "dNYLQS6x2lC7MGS3",
-            },
-            new RTCIceServer { 
-                urls = "turns:global.relay.metered.ca:443?transport=tcp",
-                username = "aeed81555c66a425b8afe100",
-                credential = "dNYLQS6x2lC7MGS3",
+            foreach (var server in _config.IceServers)
+            {
+                if (!string.IsNullOrWhiteSpace(server.Urls))
+                {
+                    iceServers.Add(new RTCIceServer
+                    {
+                        urls = server.Urls,
+                        username = server.Username,
+                        credential = server.Credential
+                    });
+                }
             }
-        };
+        }
+        else
+        {
+            _logger.LogWarning("No ICE servers configured. Using default Google STUN server.");
+            iceServers.Add(new RTCIceServer { urls = StunUrl });
+        }
 
         var config = new RTCConfiguration
         {
