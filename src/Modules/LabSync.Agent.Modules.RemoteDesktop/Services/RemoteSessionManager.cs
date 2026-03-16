@@ -21,6 +21,8 @@ public class RemoteSessionManager : IRemoteSessionManager
     private readonly IInputInjectionFactory _inputFactory;
     private readonly IWebRtcPeerConnectionFactory _peerFactory;
     private readonly IGpuDiscoveryService _gpuDiscovery;
+    private readonly IVideoEncoderFactory _encoderFactory;
+    private readonly ISessionInputHandler _inputHandler;
     private readonly ILogger<RemoteSessionManager> _logger;
     private readonly SessionOptions _options;
     private readonly ConcurrentDictionary<string, RemoteSessionContext> _sessions = new();
@@ -31,6 +33,8 @@ public class RemoteSessionManager : IRemoteSessionManager
         IInputInjectionFactory inputFactory,
         IWebRtcPeerConnectionFactory peerFactory,
         IGpuDiscoveryService gpuDiscovery,
+        IVideoEncoderFactory encoderFactory,
+        ISessionInputHandler inputHandler,
         ILogger<RemoteSessionManager> logger,
         SessionOptions? options = null)
     {
@@ -39,6 +43,8 @@ public class RemoteSessionManager : IRemoteSessionManager
         _inputFactory = inputFactory;
         _peerFactory = peerFactory;
         _gpuDiscovery = gpuDiscovery;
+        _encoderFactory = encoderFactory;
+        _inputHandler = inputHandler;
         _logger = logger;
         _options = options ?? SessionOptions.Default;
     }
@@ -121,7 +127,7 @@ public class RemoteSessionManager : IRemoteSessionManager
                 EncoderType: preferredEncoderType
             );
 
-            encoder = CreateEncoder();
+            encoder = _encoderFactory.Create(_options.EncodedChannelCapacity);
             await encoder.InitializeAsync(encoderOptions, cts.Token);
 
             peer = _peerFactory.Create(sessionId);
@@ -182,7 +188,12 @@ public class RemoteSessionManager : IRemoteSessionManager
                 encodeTask = RunEncodingLoopAsync(captureChannel.Reader, encoder, cts.Token);
             }
             
-            var inputTask = RunInputLoopAsync(dataChannelStream, input, encoder, encoderOptions, cts.Token);
+            var inputTask = _inputHandler.RunInputLoopAsync(
+                dataChannelStream, 
+                input, 
+                async (opts) => await encoder.UpdateSettingsAsync(opts, cts.Token), 
+                encoderOptions, 
+                cts.Token);
             var ctx = new RemoteSessionContext(sessionId, capture, encoder, peer, input, _signalingService, lifecycleCts, encoderOptions)
             {
                 State = SessionState.Connected,
@@ -241,18 +252,7 @@ public class RemoteSessionManager : IRemoteSessionManager
         return _sessions.ContainsKey(sessionId.ToString("N"));
     }
 
-    private IVideoEncoder CreateEncoder()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return new WindowsFfmpegVideoEncoder(_logger, _options.EncodedChannelCapacity);
-        }
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            return new LinuxFfmpegVideoEncoder(_logger, _options.EncodedChannelCapacity);
-        }
-        return new PlaceholderVideoEncoder(_logger, _options.EncodedChannelCapacity);
-    }
+
 
     private async Task RunCaptureLoopAsync(
         IScreenCaptureService capture,
@@ -301,126 +301,11 @@ public class RemoteSessionManager : IRemoteSessionManager
         catch (Exception) { /* Encoding loop error */ }
     }
 
-    private async Task RunInputLoopAsync(
-        Stream dataChannelStream,
-        IInputInjectionService input,
-        IVideoEncoder encoder,
-        EncoderOptions initialOptions,
-        CancellationToken cancellationToken)
-    {
-        var buffer = new byte[4096];
-        var currentOptions = initialOptions;
 
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                var read = await dataChannelStream.ReadAsync(buffer, cancellationToken);
-                if (read == 0) break;
-                
-                // Parse message
-                var json = System.Text.Encoding.UTF8.GetString(buffer, 0, read);
-                ControlMessage? message = null;
-                try
-                {
-                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    options.Converters.Add(new JsonStringEnumConverter());
-                    message = System.Text.Json.JsonSerializer.Deserialize<ControlMessage>(json, options);
-                }
-                catch { /* Ignore malformed JSON */ }
 
-                if (message != null && !string.IsNullOrWhiteSpace(message.Type))
-                {
-                    if (message.Type.Equals("configure", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Temporary fix: Block reconfiguration on Linux to prevent instability and "green screen" artifacts
-                        // caused by switching to hardware encoders that might be misconfigured.
-                        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                        {
-                            _logger.LogWarning("Ignoring 'configure' message on Linux to maintain stability. Reconfiguration disabled.");
-                            continue;
-                        }
 
-                        // Handle Configuration
-                        int newWidth = message.Width ?? currentOptions.OutputWidth;
-                        int newHeight = message.Height ?? currentOptions.OutputHeight;
-                        // Ensure even
-                        if (newWidth % 2 != 0) newWidth--;
-                        if (newHeight % 2 != 0) newHeight--;
 
-                        var newOptions = currentOptions with
-                        {
-                            OutputWidth = newWidth,
-                            OutputHeight = newHeight,
-                            TargetBitrateKbps = message.BitrateKbps ?? currentOptions.TargetBitrateKbps,
-                            TargetFps = message.Fps ?? currentOptions.TargetFps,
-                            EncoderType = message.EncoderType ?? currentOptions.EncoderType
-                        };
 
-                        if (newOptions != currentOptions)
-                        {
-                            await encoder.UpdateSettingsAsync(newOptions, cancellationToken);
-                            currentOptions = newOptions;
-                        }
-                    }
-                    else
-                    {
-                        // Handle Input
-                        await InjectInputAsync(message, input, cancellationToken);
-                    }
-                }
-            }
-        }
-        catch (OperationCanceledException) { }
-    }
-
-    private static async Task InjectInputAsync(ControlMessage message, IInputInjectionService input, CancellationToken cancellationToken)
-    {
-        switch (message.Type)
-        {
-            case "mouseMove" when message.X is not null && message.Y is not null:
-                await input.InjectMouseMoveAsync(message.X.Value, message.Y.Value, cancellationToken);
-                break;
-
-            case "mouseButton" when message.Button is not null && message.Pressed is not null:
-                if (Enum.TryParse<MouseButton>(message.Button, ignoreCase: true, out var button))
-                {
-                    await input.InjectMouseButtonAsync(button, message.Pressed.Value, cancellationToken);
-                }
-                break;
-
-            case "mouseWheel" when message.DeltaX is not null && message.DeltaY is not null:
-                await input.InjectMouseWheelAsync(message.DeltaX.Value, message.DeltaY.Value, cancellationToken);
-                break;
-
-            case "key" when message.KeyCode is not null && message.Pressed is not null:
-                if (message.KeyCode.Value is >= 0 and <= 255)
-                {
-                    await input.InjectKeyAsync(message.KeyCode.Value, message.Pressed.Value, cancellationToken);
-                }
-                break;
-        }
-    }
-
-    private sealed class ControlMessage
-    {
-        public string? Type { get; set; }
-        // Input fields
-        public int? X { get; set; }
-        public int? Y { get; set; }
-        public string? Button { get; set; }
-        public bool? Pressed { get; set; }
-        public int? DeltaX { get; set; }
-        public int? DeltaY { get; set; }
-        public int? KeyCode { get; set; }
-        
-        // Configuration fields
-        public int? Width { get; set; }
-        public int? Height { get; set; }
-        public int? Fps { get; set; }
-        public int? BitrateKbps { get; set; }
-        public VideoEncoderType? EncoderType { get; set; }
-    }
 
     private async Task TrackBackgroundTasks(Guid sessionId, string key, params Task[] tasks)
     {

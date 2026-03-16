@@ -67,12 +67,24 @@ public class RemoteDesktopModule : IRemoteDesktopModule
             : Microsoft.Extensions.Logging.Abstractions.NullLogger<GridMonitorService>.Instance;
         _gridMonitorService = new GridMonitorService(captureFactory, hubInvoker, gridLogger);
 
+        var encoderFactoryLogger = loggerFactory != null
+            ? loggerFactory.CreateLogger<VideoEncoderFactory>()
+            : Microsoft.Extensions.Logging.Abstractions.NullLogger<VideoEncoderFactory>.Instance;
+        var encoderFactory = new VideoEncoderFactory(encoderFactoryLogger, loggerFactory ?? new Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory());
+
+        var inputHandlerLogger = loggerFactory != null
+            ? loggerFactory.CreateLogger<SessionInputHandler>()
+            : Microsoft.Extensions.Logging.Abstractions.NullLogger<SessionInputHandler>.Instance;
+        var inputHandler = new SessionInputHandler(inputHandlerLogger);
+
         _sessionManager = new RemoteSessionManager(
             signalingService,
             captureFactory,
             inputFactory,
             peerFactory,
             gpuDiscovery,
+            encoderFactory,
+            inputHandler,
             loggerFactory != null
                 ? loggerFactory.CreateLogger<RemoteSessionManager>()
                 : Microsoft.Extensions.Logging.Abstractions.NullLogger<RemoteSessionManager>.Instance,
