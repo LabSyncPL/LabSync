@@ -62,6 +62,7 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<JobDispatchService>();
 builder.Services.AddSingleton<ConnectionTracker>();
 builder.Services.AddSingleton<GridMonitorTracker>();
+builder.Services.AddSingleton<SshSessionManager>();
 
 builder.Services.AddAuthentication(options => {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -88,7 +89,7 @@ builder.Services.AddAuthentication(options => {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken) && 
-                    (path.StartsWithSegments("/agentHub") || path.StartsWithSegments("/remoteDesktopHub")))
+                    (path.StartsWithSegments("/agentHub") || path.StartsWithSegments("/remoteDesktopHub") || path.StartsWithSegments("/sshTerminalHub")))
                 {
                     context.Token = accessToken;
                 }
@@ -140,7 +141,7 @@ if (app.Environment.IsDevelopment())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
         dbContext.Database.Migrate();
-        await DataSeeder.SeedAsync(dbContext); //DATA SEEDER FOR DEVELOPMENT PURPOSES ONLY
+        // await DataSeeder.SeedAsync(dbContext); //DATA SEEDER FOR DEVELOPMENT PURPOSES ONLY
     }
 }
 
@@ -153,6 +154,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<AgentHub>("/agentHub");
 app.MapHub<RemoteDesktopHub>("/remoteDesktopHub");
+app.MapHub<SshTerminalHub>("/sshTerminalHub");
 
 var urls = builder.Configuration["ASPNETCORE_URLS"];
 if (!string.IsNullOrEmpty(urls))
