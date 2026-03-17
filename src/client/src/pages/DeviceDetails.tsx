@@ -19,12 +19,16 @@ import { DeviceSystemInfoCard } from "../components/DeviceDetails/DeviceSystemIn
 import { DeviceHardwareInfoCard } from "../components/DeviceDetails/DeviceHardwareInfoCard";
 import { DeviceJobsCard } from "../components/DeviceDetails/DeviceJobsCard";
 import { DeviceAgentLogsCard } from "../components/DeviceDetails/DeviceAgentLogsCard";
+import DeviceTerminal from "../components/DeviceDetails/DeviceTerminal";
+import { SshCredentialsModal } from "../components/DeviceDetails/SshCredentialsModal";
 
 export function DeviceDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showCreateJob, setShowCreateJob] = useState(false);
+  const [showTerminal, setShowTerminal] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [metricsSettings] = useSystemMetricsSettings();
 
   const { data: devices = [] } = useQuery({
@@ -101,8 +105,17 @@ export function DeviceDetails() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-900">
-      <DeviceHeader device={device} />
+    <div className="flex flex-col h-full bg-slate-900 relative">
+      <DeviceHeader
+        device={device}
+        onOpenTerminal={() => {
+          if (!device.hasSshCredentials) {
+            setShowCredentialsModal(true);
+          } else {
+            setShowTerminal(true);
+          }
+        }}
+      />
 
       <div className="flex-1 overflow-y-auto p-8 scrollbar-dark">
         <div className="max-w-[1600px] mx-auto space-y-6">
@@ -151,6 +164,44 @@ export function DeviceDetails() {
             queryClient.invalidateQueries({
               queryKey: deviceJobsQueryKey(device.id),
             });
+          }}
+        />
+      )}
+
+      {showTerminal && device && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-8">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col overflow-hidden relative">
+            <button
+              onClick={() => setShowTerminal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white z-10 p-1 bg-slate-800 rounded-md"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <DeviceTerminal deviceId={device.id} />
+          </div>
+        </div>
+      )}
+
+      {showCredentialsModal && device && (
+        <SshCredentialsModal
+          deviceId={device.id}
+          onClose={() => setShowCredentialsModal(false)}
+          onSuccess={() => {
+            setShowCredentialsModal(false);
+            queryClient.invalidateQueries({ queryKey: devicesQueryKey });
+            setShowTerminal(true); // Open terminal automatically after setting credentials
           }}
         />
       )}

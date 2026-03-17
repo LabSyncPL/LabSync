@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Types;
+using LabSync.Core.Types;
 using System.ComponentModel.DataAnnotations;
 
 namespace LabSync.Core.Entities;
@@ -21,6 +21,8 @@ public class Device
     public DeviceGroup? Group { get; private set; }
 
     public string DeviceKeyHash { get; private set; }
+
+    public DeviceCredentials? Credentials { get; private set; }
 
     private readonly List<Job> _jobs = new();
     public IReadOnlyCollection<Job> Jobs => _jobs.AsReadOnly();

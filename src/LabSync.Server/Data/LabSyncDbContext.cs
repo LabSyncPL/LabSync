@@ -11,6 +11,7 @@ public class LabSyncDbContext : DbContext
     }
 
     public DbSet<Device> Devices { get; set; }
+    public DbSet<DeviceCredentials> DeviceCredentials { get; set; }
     public DbSet<Job> Jobs { get; set; }
     public DbSet<AdminUser> AdminUsers { get; set; }
     

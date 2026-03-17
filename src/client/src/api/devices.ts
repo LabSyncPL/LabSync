@@ -12,3 +12,8 @@ export async function approveDevice(deviceId: string): Promise<ApiResponse> {
   const { data } = await apiClient.post<ApiResponse>(`/api/devices/${deviceId}/approve`);
   return data;
 }
+
+export async function setSshCredentials(deviceId: string, credentials: { username: string; password?: string }): Promise<ApiResponse> {
+  const { data } = await apiClient.post<ApiResponse>(`/api/devices/${deviceId}/credentials`, credentials);
+  return data;
+}

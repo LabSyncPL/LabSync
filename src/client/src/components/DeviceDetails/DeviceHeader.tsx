@@ -7,9 +7,10 @@ import { RemoteControlModal } from "../RemoteControl/RemoteControlModal";
 
 interface DeviceHeaderProps {
   device: DeviceDto;
+  onOpenTerminal?: () => void;
 }
 
-export function DeviceHeader({ device }: DeviceHeaderProps) {
+export function DeviceHeader({ device, onOpenTerminal }: DeviceHeaderProps) {
   const navigate = useNavigate();
   const [showRemoteControl, setShowRemoteControl] = useState(false);
 
@@ -78,6 +79,14 @@ export function DeviceHeader({ device }: DeviceHeaderProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            {onOpenTerminal && (
+              <button
+                onClick={onOpenTerminal}
+                className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium transition-all flex items-center gap-2 hover:text-white"
+              >
+                Open SSH Terminal
+              </button>
+            )}
             <button className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium transition-all flex items-center gap-2 hover:text-white">
               <svg
                 className="w-4 h-4"

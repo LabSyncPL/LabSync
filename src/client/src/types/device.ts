@@ -40,6 +40,7 @@ export interface DeviceDto {
   lastSeenAt: string | null;
   groupId: string | null;
   groupName: string | null;
+  hasSshCredentials?: boolean;
 }
 
 /**

@@ -21,6 +21,7 @@ public class DevicesController(
     {
         var entities = await context.Devices
             .Include(d => d.Group)
+            .Include(d => d.Credentials)
             .OrderByDescending(d => d.RegisteredAt)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -39,7 +40,8 @@ public class DevicesController(
             LastSeenAt   = d.LastSeenAt,
             IsOnline     = d.IsOnline,
             GroupId      = d.GroupId,
-            GroupName    = d.Group?.Name
+            GroupName    = d.Group?.Name,
+            HasSshCredentials = d.Credentials != null
         }).ToList();
 
         return Ok(devices);
@@ -131,4 +133,33 @@ public class DevicesController(
             FinishedAt = job.FinishedAt
         });
     }
+
+    [HttpPost("{id}/credentials")]
+    public async Task<ActionResult<ApiResponse>> SetSshCredentials(Guid id, [FromBody] SetSshCredentialsRequest request, CancellationToken cancellationToken)
+    {
+        var device = await context.Devices
+            .Include(d => d.Credentials)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+            
+        if (device is null)
+            return NotFound(new ApiResponse("Device not found."));
+
+        if (device.Credentials != null)
+        {
+            device.Credentials.SshUsername = request.Username;
+            if (!string.IsNullOrEmpty(request.Password))
+            {
+                device.Credentials.SshPassword = request.Password; // TODO: Encrypt
+            }
+        }
+        else
+        {
+            context.DeviceCredentials.Add(new Core.Entities.DeviceCredentials(id, request.Username, request.Password ?? string.Empty));
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        return Ok(new ApiResponse("SSH Credentials saved successfully."));
+    }
 }
+
+public record SetSshCredentialsRequest(string Username, string? Password);

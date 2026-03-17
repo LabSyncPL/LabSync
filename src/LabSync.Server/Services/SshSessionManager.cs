@@ -3,6 +3,8 @@ using System.Text;
 using Microsoft.AspNetCore.SignalR;
 using LabSync.Server.Hubs;
 using Renci.SshNet;
+using LabSync.Server.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace LabSync.Server.Services;
 
@@ -10,18 +12,30 @@ public class SshSessionManager : IAsyncDisposable
 {
     private readonly ILogger<SshSessionManager> _logger;
     private readonly IHubContext<SshTerminalHub> _hubContext;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ConcurrentDictionary<string, SshSession> _sessions = new();
 
-    public SshSessionManager(ILogger<SshSessionManager> logger, IHubContext<SshTerminalHub> hubContext)
+    public SshSessionManager(ILogger<SshSessionManager> logger, IHubContext<SshTerminalHub> hubContext, IServiceScopeFactory scopeFactory)
     {
         _logger = logger;
         _hubContext = hubContext;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task StartSessionAsync(string connectionId, string deviceId)
     {
-        // Resolve Device Credentials (Mocked)
-        var (host, user, pass) = GetMockCredentials(deviceId);
+        if (!Guid.TryParse(deviceId, out var parsedDeviceId))
+        {
+            throw new ArgumentException("Invalid device ID format.");
+        }
+
+        // Resolve Device Credentials from DB
+        var (host, user, pass) = await GetDeviceCredentialsAsync(parsedDeviceId);
+
+        if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user))
+        {
+            throw new InvalidOperationException("Device credentials or IP address not found.");
+        }
 
         _logger.LogInformation("Starting SSH session for connection {ConnectionId} to {Host}", connectionId, host);
         var session = new SshSession(connectionId, host, user, pass, _hubContext, _logger);   
@@ -80,9 +94,35 @@ public class SshSessionManager : IAsyncDisposable
         _sessions.Clear();
     }
 
-    private (string host, string user, string pass) GetMockCredentials(string deviceId)
+    private async Task<(string host, string user, string pass)> GetDeviceCredentialsAsync(Guid deviceId)
     {
-        return ("192.168.1.100", "admin", "password"); 
+        using var scope = _scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
+
+        var device = await dbContext.Devices
+            .Include(d => d.Credentials)
+            .FirstOrDefaultAsync(d => d.Id == deviceId);
+
+        if (device == null)
+        {
+            _logger.LogWarning("Device {DeviceId} not found when resolving SSH credentials.", deviceId);
+            return (string.Empty, string.Empty, string.Empty);
+        }
+
+        if (string.IsNullOrEmpty(device.IpAddress))
+        {
+            _logger.LogWarning("Device {DeviceId} does not have a known IP address.", deviceId);
+            return (string.Empty, string.Empty, string.Empty);
+        }
+
+        if (device.Credentials == null)
+        {
+            _logger.LogWarning("Device {DeviceId} does not have SSH credentials configured.", deviceId);
+            return (device.IpAddress, string.Empty, string.Empty);
+        }
+
+        // TODO Later ICryptoService to decrypt the password.
+        return (device.IpAddress, device.Credentials.SshUsername, device.Credentials.SshPassword ?? string.Empty);
     }
 
     private class SshSession : IAsyncDisposable
