@@ -115,6 +115,7 @@ export function DeviceDetails() {
             setShowTerminal(true);
           }
         }}
+        onConfigureCredentials={() => setShowCredentialsModal(true)}
       />
 
       <div className="flex-1 overflow-y-auto p-8 scrollbar-dark">
@@ -197,6 +198,7 @@ export function DeviceDetails() {
       {showCredentialsModal && device && (
         <SshCredentialsModal
           deviceId={device.id}
+          initialUseKeyAuth={device.useKeyAuthentication}
           onClose={() => setShowCredentialsModal(false)}
           onSuccess={() => {
             setShowCredentialsModal(false);

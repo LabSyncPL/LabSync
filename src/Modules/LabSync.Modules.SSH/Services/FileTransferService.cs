@@ -11,13 +11,15 @@ namespace LabSync.Modules.SSH.Services;
 public class FileTransferService : IFileTransferService
 {
     private readonly ILogger<FileTransferService> _logger;
+    private readonly IKeyManagementService _keyService;
 
-    public FileTransferService(ILogger<FileTransferService> logger)
+    public FileTransferService(ILogger<FileTransferService> logger, IKeyManagementService keyService)
     {
         _logger = logger;
+        _keyService = keyService;
     }
 
-    public async Task UploadFileAsync(string host, string username, string password, string localFilePath, string remoteFilePath, CancellationToken cancellationToken = default)
+    public async Task UploadFileAsync(string host, string username, PrivateKeyFile keyFile, string localFilePath, string remoteFilePath, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting upload of {LocalPath} to {RemotePath} on {Host}", localFilePath, remoteFilePath, host);
 
@@ -26,7 +28,20 @@ public class FileTransferService : IFileTransferService
             throw new FileNotFoundException("Local file not found.", localFilePath);
         }
 
-        using var client = new SftpClient(host, username, password);
+        using var client = new SftpClient(host, username, keyFile);
+        client.HostKeyReceived += (sender, e) => 
+        {
+            try 
+            {
+                _keyService.ValidateOrAddHostKey(host, e.HostKeyName, e.HostKey);
+                e.CanTrust = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Host key validation failed for {Host}", host);
+                e.CanTrust = false;
+            }
+        };
         
         try
         {
@@ -53,11 +68,24 @@ public class FileTransferService : IFileTransferService
         }
     }
 
-    public async Task DownloadFileAsync(string host, string username, string password, string remoteFilePath, string localFilePath, CancellationToken cancellationToken = default)
+    public async Task DownloadFileAsync(string host, string username, PrivateKeyFile keyFile, string remoteFilePath, string localFilePath, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting download of {RemotePath} from {Host} to {LocalPath}", remoteFilePath, host, localFilePath);
 
-        using var client = new SftpClient(host, username, password);
+        using var client = new SftpClient(host, username, keyFile);
+        client.HostKeyReceived += (sender, e) => 
+        {
+            try 
+            {
+                _keyService.ValidateOrAddHostKey(host, e.HostKeyName, e.HostKey);
+                e.CanTrust = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Host key validation failed for {Host}", host);
+                e.CanTrust = false;
+            }
+        };
 
         try
         {

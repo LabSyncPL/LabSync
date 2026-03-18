@@ -12,10 +12,16 @@ public class DeviceCredentials
     [MaxLength(100)]
     public string SshUsername { get; set; } = string.Empty;
 
-    // TODO: This should be encrypted.
     [MaxLength(500)]
-    public string SshPassword { get; set; } = string.Empty;
+    public string? SshPassword { get; set; }
+    
+    [MaxLength(200)]
+    public string? SshKeyReference { get; set; }
+
+    [Obsolete("Use SshKeyReference instead. Private keys should not be stored in DB.")]
     public string? SshPrivateKey { get; set; }
+    
+    public bool UseKeyAuthentication { get; set; } = true;
 
     public Device? Device { get; set; }
 

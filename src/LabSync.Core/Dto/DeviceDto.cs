@@ -20,5 +20,5 @@ public record DeviceDto
     public Guid? GroupId { get; init; }
     public string? GroupName { get; init; }
     public bool HasSshCredentials { get; init; }
-
+    public bool UseKeyAuthentication { get; init; }
 }

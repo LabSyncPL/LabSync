@@ -31,16 +31,17 @@ export interface DeviceDto {
   hostname: string;
   isApproved: boolean;
   macAddress: string;
-  ipAddress: string | null;
+  ipAddress: string;
   platform: DevicePlatform;
   osVersion: string;
   status: DeviceStatus;
-  isOnline: boolean;
   registeredAt: string;
-  lastSeenAt: string | null;
+  lastSeenAt: string;
+  isOnline: boolean;
   groupId: string | null;
   groupName: string | null;
   hasSshCredentials?: boolean;
+  useKeyAuthentication?: boolean;
 }
 
 /**

@@ -15,7 +15,17 @@ public class DeviceCredentialsConfiguration : IEntityTypeConfiguration<DeviceCre
             .HasMaxLength(100);
 
         builder.Property(dc => dc.SshPassword)
-            .HasMaxLength(500);
+            .HasMaxLength(500)
+            .IsRequired(false);
+
+        builder.Property(dc => dc.SshKeyReference)
+            .HasMaxLength(200)
+            .IsRequired(false);
+
+        builder.Ignore(dc => dc.SshPrivateKey);
+
+        builder.Property(dc => dc.UseKeyAuthentication)
+            .HasDefaultValue(true);
 
         builder.HasOne(dc => dc.Device)
             .WithOne(d => d.Credentials)

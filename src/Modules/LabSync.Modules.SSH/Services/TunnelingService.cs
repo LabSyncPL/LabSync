@@ -11,14 +11,16 @@ namespace LabSync.Modules.SSH.Services;
 public class TunnelingService : ITunnelingService, IDisposable
 {
     private readonly ILogger<TunnelingService> _logger;
+    private readonly IKeyManagementService _keyService;
     private readonly ConcurrentDictionary<string, SshClient> _activeTunnels = new();
 
-    public TunnelingService(ILogger<TunnelingService> logger)
+    public TunnelingService(ILogger<TunnelingService> logger, IKeyManagementService keyService)
     {
         _logger = logger;
+        _keyService = keyService;
     }
 
-    public async Task StartLocalForwardingAsync(string host, string username, string password, string boundHost, uint boundPort, string remoteHost, uint remotePort, CancellationToken cancellationToken = default)
+    public async Task StartLocalForwardingAsync(string host, string username, PrivateKeyFile keyFile, string boundHost, uint boundPort, string remoteHost, uint remotePort, CancellationToken cancellationToken = default)
     {
         string tunnelKey = GetTunnelKey(boundHost, boundPort);
 
@@ -30,7 +32,20 @@ public class TunnelingService : ITunnelingService, IDisposable
 
         _logger.LogInformation("Starting tunnel {TunnelKey} -> {RemoteHost}:{RemotePort} via {Host}", tunnelKey, remoteHost, remotePort, host);
 
-        var client = new SshClient(host, username, password);
+        var client = new SshClient(host, username, keyFile);
+        client.HostKeyReceived += (sender, e) => 
+        {
+            try 
+            {
+                _keyService.ValidateOrAddHostKey(host, e.HostKeyName, e.HostKey);
+                e.CanTrust = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Host key validation failed for {Host}", host);
+                e.CanTrust = false;
+            }
+        };
         
         try
         {

@@ -85,7 +85,7 @@ export function Dashboard() {
         (filters.status === "pending" && !device.isApproved);
 
       const matchesPlatform =
-        filters.platform === "all" || device.platform === filters.platform;
+        filters.platform === "all" || device.platform === Number(filters.platform);
 
       const matchesGroup =
         filters.group === "all" ||

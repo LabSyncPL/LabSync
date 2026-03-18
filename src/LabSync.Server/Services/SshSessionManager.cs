@@ -5,6 +5,7 @@ using LabSync.Server.Hubs;
 using Renci.SshNet;
 using LabSync.Server.Data;
 using Microsoft.EntityFrameworkCore;
+using LabSync.Core.Interfaces;
 
 namespace LabSync.Server.Services;
 
@@ -14,12 +15,14 @@ public class SshSessionManager : IAsyncDisposable
     private readonly IHubContext<SshTerminalHub> _hubContext;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ConcurrentDictionary<string, SshSession> _sessions = new();
+    private readonly ISecretProvider _secretProvider;
 
-    public SshSessionManager(ILogger<SshSessionManager> logger, IHubContext<SshTerminalHub> hubContext, IServiceScopeFactory scopeFactory)
+    public SshSessionManager(ILogger<SshSessionManager> logger, IHubContext<SshTerminalHub> hubContext, IServiceScopeFactory scopeFactory, ISecretProvider secretProvider)
     {
         _logger = logger;
         _hubContext = hubContext;
         _scopeFactory = scopeFactory;
+        _secretProvider = secretProvider;
     }
 
     public async Task StartSessionAsync(string connectionId, string deviceId)
@@ -29,16 +32,29 @@ public class SshSessionManager : IAsyncDisposable
             throw new ArgumentException("Invalid device ID format.");
         }
 
-        // Resolve Device Credentials from DB
-        var (host, user, pass) = await GetDeviceCredentialsAsync(parsedDeviceId);
+        var (host, user, pass, keyReference, useKeyAuth) = await GetDeviceCredentialsAsync(parsedDeviceId);
 
         if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user))
         {
             throw new InvalidOperationException("Device credentials or IP address not found.");
         }
 
+        string? privateKey = null;
+        if (useKeyAuth && !string.IsNullOrEmpty(keyReference))
+        {
+            try 
+            {
+                privateKey = await _secretProvider.RetrieveSecretAsync(keyReference);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve SSH key for device {DeviceId}", deviceId);
+                throw new InvalidOperationException("Failed to retrieve secure credentials.");
+            }
+        }
+
         _logger.LogInformation("Starting SSH session for connection {ConnectionId} to {Host}", connectionId, host);
-        var session = new SshSession(connectionId, host, user, pass, _hubContext, _logger);   
+        var session = new SshSession(connectionId, host, user, pass, privateKey, useKeyAuth, _hubContext, _logger);   
         try
         {
             await session.ConnectAsync();
@@ -94,7 +110,7 @@ public class SshSessionManager : IAsyncDisposable
         _sessions.Clear();
     }
 
-    private async Task<(string host, string user, string pass)> GetDeviceCredentialsAsync(Guid deviceId)
+    private async Task<(string host, string user, string pass, string? keyReference, bool useKeyAuth)> GetDeviceCredentialsAsync(Guid deviceId)
     {
         using var scope = _scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<LabSyncDbContext>();
@@ -106,23 +122,26 @@ public class SshSessionManager : IAsyncDisposable
         if (device == null)
         {
             _logger.LogWarning("Device {DeviceId} not found when resolving SSH credentials.", deviceId);
-            return (string.Empty, string.Empty, string.Empty);
+            return (string.Empty, string.Empty, string.Empty, null, false);
         }
 
         if (string.IsNullOrEmpty(device.IpAddress))
         {
             _logger.LogWarning("Device {DeviceId} does not have a known IP address.", deviceId);
-            return (string.Empty, string.Empty, string.Empty);
+            return (string.Empty, string.Empty, string.Empty, null, false);
         }
 
         if (device.Credentials == null)
         {
             _logger.LogWarning("Device {DeviceId} does not have SSH credentials configured.", deviceId);
-            return (device.IpAddress, string.Empty, string.Empty);
+            return (device.IpAddress, string.Empty, string.Empty, null, false);
         }
+        
+        _logger.LogInformation("Retrieving SSH credentials for device {DeviceId}. AuthType: {AuthType}", 
+            deviceId, 
+            device.Credentials.UseKeyAuthentication ? "Key" : "Password");
 
-        // TODO Later ICryptoService to decrypt the password.
-        return (device.IpAddress, device.Credentials.SshUsername, device.Credentials.SshPassword ?? string.Empty);
+        return (device.IpAddress, device.Credentials.SshUsername, device.Credentials.SshPassword ?? string.Empty, device.Credentials.SshKeyReference, device.Credentials.UseKeyAuthentication);
     }
 
     private class SshSession : IAsyncDisposable
@@ -131,6 +150,8 @@ public class SshSessionManager : IAsyncDisposable
         private readonly string _host;
         private readonly string _username;
         private readonly string _password;
+        private readonly string? _privateKey;
+        private readonly bool _useKeyAuth;
         private readonly IHubContext<SshTerminalHub> _hubContext;
         private readonly ILogger _logger;
         
@@ -139,19 +160,31 @@ public class SshSessionManager : IAsyncDisposable
         private CancellationTokenSource? _readCts;
         private Task? _readTask;
 
-        public SshSession(string connectionId, string host, string username, string password, IHubContext<SshTerminalHub> hubContext, ILogger logger)
+        public SshSession(string connectionId, string host, string username, string password, string? privateKey, bool useKeyAuth, IHubContext<SshTerminalHub> hubContext, ILogger logger)
         {
             _connectionId = connectionId;
             _host = host;
             _username = username;
             _password = password;
+            _privateKey = privateKey;
+            _useKeyAuth = useKeyAuth;
             _hubContext = hubContext;
             _logger = logger;
         }
 
         public async Task ConnectAsync()
         {
-            _client = new SshClient(_host, _username, _password);
+            if (_useKeyAuth && !string.IsNullOrEmpty(_privateKey))
+            {
+                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(_privateKey));
+                var privateKeyFile = new PrivateKeyFile(stream);
+                _client = new SshClient(_host, _username, privateKeyFile);
+            }
+            else
+            {
+                _client = new SshClient(_host, _username, _password);
+            }
+
             await _client.ConnectAsync(CancellationToken.None);
             
             _shellStream = _client.CreateShellStream("xterm", 80, 24, 800, 600, 1024);
@@ -205,7 +238,7 @@ public class SshSessionManager : IAsyncDisposable
                 while (!token.IsCancellationRequested && _shellStream != null)
                 {
                     int bytesRead = await _shellStream.ReadAsync(buffer, 0, buffer.Length, token);
-                    if (bytesRead == 0) break; // End of stream
+                    if (bytesRead == 0) break;
 
                     var text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                     await _hubContext.Clients.Client(_connectionId).SendAsync("ReceiveOutput", text, token);

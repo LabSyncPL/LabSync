@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using Renci.SshNet;
 
 namespace LabSync.Modules.SSH.Interfaces;
 
@@ -10,19 +11,19 @@ namespace LabSync.Modules.SSH.Interfaces;
 public interface ITunnelingService
 {
     /// <summary>
-    /// Starts a local port forwarding tunnel.
+    /// Starts a local port forwarding tunnel using SSH key authentication.
     /// Traffic sent to the local port is forwarded through the SSH tunnel to the remote destination.
     /// </summary>
     /// <param name="host">The SSH server host.</param>
     /// <param name="username">The SSH username.</param>
-    /// <param name="password">The SSH password.</param>
+    /// <param name="keyFile">The private key file for authentication.</param>
     /// <param name="boundHost">The local interface to bind to (e.g., "127.0.0.1").</param>
     /// <param name="boundPort">The local port to listen on.</param>
     /// <param name="remoteHost">The destination host reachable from the SSH server.</param>
     /// <param name="remotePort">The destination port on the remote host.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>A task representing the tunnel initialization.</returns>
-    Task StartLocalForwardingAsync(string host, string username, string password, string boundHost, uint boundPort, string remoteHost, uint remotePort, CancellationToken cancellationToken = default);
+    Task StartLocalForwardingAsync(string host, string username, PrivateKeyFile keyFile, string boundHost, uint boundPort, string remoteHost, uint remotePort, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Stops an active local port forwarding tunnel.

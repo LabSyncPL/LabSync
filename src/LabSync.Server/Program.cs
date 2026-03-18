@@ -14,10 +14,10 @@ if (builder.Environment.IsDevelopment())
 
 builder.Configuration.AddEnvironmentVariables();
 
-// Add Services via Extensions
 builder.AddDatabaseAndCors();
 builder.AddAppServices();
 builder.AddAppAuthentication();
+
 
 var app = builder.Build();
 
