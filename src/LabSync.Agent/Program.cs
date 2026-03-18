@@ -1,6 +1,7 @@
 using DotNetEnv;
 using LabSync.Agent;
 using LabSync.Agent.Services;
+using LabSync.Core.Interfaces;
 
 var builder = Host.CreateApplicationBuilder(args);
 if (builder.Environment.IsDevelopment())
@@ -15,12 +16,18 @@ builder.Configuration.AddEnvironmentVariables();
 var serverUrl = builder.Configuration["AGENT_SERVER_URL"]
     ?? throw new InvalidOperationException("ServerUrl is not configured. Please set it in appsettings.json or an environment variable.");
 
+
+if (OperatingSystem.IsWindows())
+    builder.Services.AddSingleton<IInputInjectionService, WindowsInputInjectionService>();
+
+
 builder.Services.AddSingleton<AgentIdentityService>();
 builder.Services.AddSingleton<AgentContext>();
 builder.Services.AddSingleton<LabSync.Core.Interfaces.IAgentContext>(sp => sp.GetRequiredService<AgentContext>());
 builder.Services.AddSingleton<LabSync.Core.Interfaces.IAgentHubInvoker, AgentHubInvoker>();
 builder.Services.AddSingleton<ServerClient>();
 builder.Services.AddSingleton<ModuleLoader>();
+builder.Services.AddSingleton<InputInjectionHubHandler>();
 
 builder.Services.AddHttpClient<ServerClient>(client =>
 {

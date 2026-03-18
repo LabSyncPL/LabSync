@@ -12,11 +12,14 @@ public class Worker(
 {
     private static readonly TimeSpan DefaultJobTimeout = TimeSpan.FromMinutes(30);
 
+    // Dodajemy Token, który pos³u¿y nam do wyzwalania restartu "od œrodka"
+    private CancellationTokenSource _restartCts = new();
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("LabSync Agent starting up...");
 
-        /// Load all available plugins from the 'Modules' directory.
+        // Load all available plugins from the 'Modules' directory.
         await moduleLoader.LoadPluginsAsync();
 
         var loadedModules = moduleLoader.LoadedModules;
@@ -31,58 +34,90 @@ public class Worker(
                 string.Join(", ", loadedModules.Select(m => $"{m.Module.Name} v{m.Module.Version}")));
         }
 
-        /// Collect system identity to prepare for registration.
-        var agentIdentity = identityService.CollectIdentity();
-        string? token = null;
-        while (token == null && !stoppingToken.IsCancellationRequested)
+        // PÊTLA RESTARTU - Agent bêdzie tu wraca³ za ka¿dym razem, gdy anulujesz _restartCts
+        while (!stoppingToken.IsCancellationRequested)
         {
-            token = await serverClient.RegisterAgentAsync(agentIdentity);
-            if (token == null)
+            // £¹czymy g³ówny token aplikacji z naszym tokenem restartu
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, _restartCts.Token);
+            var internalToken = linkedCts.Token;
+
+            try
             {
-                logger.LogWarning("Agent is not yet approved. Retrying in 30 seconds...");
-                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                var agentIdentity = identityService.CollectIdentity();
+                string? token = null;
+
+                // Pêtla rejestracji - u¿ywa internalToken
+                while (token == null && !internalToken.IsCancellationRequested)
+                {
+                    token = await serverClient.RegisterAgentAsync(agentIdentity);
+                    if (token == null)
+                    {
+                        logger.LogWarning("Agent is not yet approved. Retrying in 30 seconds...");
+                        await Task.Delay(TimeSpan.FromSeconds(30), internalToken);
+                    }
+                }
+
+                if (internalToken.IsCancellationRequested) continue; // Przerwie i przejdzie do catch/finally
+
+                logger.LogInformation("Agent authorized successfully. Connecting to real-time service...");
+
+                serverClient.OnReceiveJob += HandleJobAsync;
+
+                await serverClient.ConnectAsync(token!, internalToken);
+
+                var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(internalToken);
+                var heartbeatTask = RunHeartbeatLoopAsync(heartbeatCts.Token);
+
+                // Czekamy w nieskoñczonoœæ (a¿ do anulowania internalToken)
+                await Task.Delay(Timeout.Infinite, internalToken);
             }
-        }
-
-        if (stoppingToken.IsCancellationRequested) return;
-
-        logger.LogInformation("Agent authorized successfully. Connecting to real-time service...");
-
-        /// Subscribe to the job receiver event before connecting.
-        serverClient.OnReceiveJob += HandleJobAsync;
-
-        try
-        {
-            await serverClient.ConnectAsync(token!, stoppingToken);
-
-            var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            var heartbeatTask = RunHeartbeatLoopAsync(heartbeatCts.Token);
-
-            while (!stoppingToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (_restartCts.IsCancellationRequested)
             {
-                await Task.Delay(Timeout.Infinite, stoppingToken);
+                // To jest Oczekiwany b³¹d przy restarcie
+                logger.LogInformation("Agent is restarting gracefully...");
             }
-
-            await heartbeatCts.CancelAsync();
-            try { await heartbeatTask; } catch (OperationCanceledException) { }
-        }
-        catch (OperationCanceledException)
-        {
-            logger.LogInformation("Agent is shutting down.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex, "A fatal error occurred in the agent's main loop.");
-        }
-        finally
-        {
-            serverClient.OnReceiveJob -= HandleJobAsync;
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // To jest Oczekiwany b³¹d przy zamykaniu us³ugi
+                logger.LogInformation("Agent is shutting down permanently.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogCritical(ex, "A fatal error occurred in the agent's main loop. Attempting to restart...");
+                // Dodajemy ma³y delay, ¿eby nie spamowaæ serwera w razie b³êdu pêtli (np. brak neta)
+                await Task.Delay(5000, stoppingToken);
+            }
+            finally
+            {
+                // Sprz¹tanie po obecnej iteracji
+                serverClient.OnReceiveJob -= HandleJobAsync;
+                await serverClient.DisposeAsync();
+                _restartCts = new CancellationTokenSource();
+            }
         }
     }
 
-
     private async void HandleJobAsync(Guid jobId, string command, string arguments, string? scriptPayload)
     {
+        logger.LogInformation("DEBUG: Otrzymano komendê: {Cmd}", command);
+        // Obs³uga wbudowanej komendy restartu
+        if (command.Contains("Restart", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogInformation("Received Job: RestartAgent. Initiating shutdown and restart sequence...");
+
+            // Zg³aszamy sukces ZANIM zgasimy agenta
+            await serverClient.ReportJobResultAsync(new JobResultDto(jobId, 0, "Restart sequence initiated..."));
+
+            // Dajemy mu chwilê na wys³anie odpowiedzi do serwera, a nastêpnie triggerujemy restart
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1500);
+                _restartCts.Cancel(); // To przerwie "internalToken" w ExecuteAsync
+            });
+
+            return;
+        }
+
         logger.LogInformation("Received job {JobId}: Command='{Command}'", jobId, command);
 
         var module = moduleLoader.FindModuleForJob(command);
@@ -106,7 +141,6 @@ public class Worker(
         {
             var moduleResult = await module.ExecuteAsync(parameters, cts.Token);
 
-            /// Serialize result data to JSON if it's an object
             string output;
             if (moduleResult.Data != null)
             {
@@ -159,7 +193,6 @@ public class Worker(
             return parameters;
         }
 
-        /// Try JSON format first
         if (arguments.TrimStart().StartsWith('{'))
         {
             try
@@ -173,12 +206,10 @@ public class Worker(
             }
             catch (JsonException)
             {
-                /// Fall through to key=value parsing
                 logger.LogDebug("Arguments are not valid JSON, trying key=value format.");
             }
         }
 
-        /// Parse key=value format
         var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         foreach (var part in parts)
         {
@@ -191,7 +222,6 @@ public class Worker(
             }
             else if (!string.IsNullOrWhiteSpace(part))
             {
-                /// If no '=' found, treat as a positional argument
                 parameters[$"arg{parameters.Count}"] = part;
             }
         }

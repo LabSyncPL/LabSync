@@ -28,7 +28,7 @@ internal sealed class WindowsInputInjectionFactory : IInputInjectionFactory
 
     public WindowsInputInjectionFactory(ILogger? logger) => _logger = logger;
 
-    public IInputInjectionService Create() => new PlaceholderInputInjectionService(_logger);
+    public IInputInjectionService Create() => new WindowsInputInjectionService(_logger);
 }
 
 internal sealed class LinuxInputInjectionFactory : IInputInjectionFactory

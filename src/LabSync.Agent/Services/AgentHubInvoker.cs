@@ -1,4 +1,4 @@
-using LabSync.Core.Dto;
+﻿using LabSync.Core.Dto;
 using LabSync.Core.Interfaces;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -14,11 +14,20 @@ public class AgentHubInvoker : IAgentHubInvoker
     private readonly List<Delegate> _startMonitorHandlers = new();
     private readonly List<Delegate> _stopMonitorHandlers = new();
     private readonly List<Delegate> _configureMonitorHandlers = new();
+
+    // ── Input injection ───────────────────────────────────────────────────────
+    private readonly List<Delegate> _mouseMoveHandlers = new();
+    private readonly List<Delegate> _mouseButtonHandlers = new();
+    private readonly List<Delegate> _mouseWheelHandlers = new();
+    private readonly List<Delegate> _keyEventHandlers = new();
+    private readonly List<Delegate> _charEventHandlers = new();
+
     private readonly object _gate = new();
 
     public void AttachConnection(object hubConnection)
     {
         _hubConnection = (HubConnection)hubConnection;
+
         _hubConnection.On<Guid, string, string>("RemoteDesktopAnswer", (sessionId, sdpType, sdp) =>
         {
             lock (_gate)
@@ -54,7 +63,6 @@ public class AgentHubInvoker : IAgentHubInvoker
                     ((Action<Guid>)h)(sessionId);
             }
         });
-
         _hubConnection.On("StartMonitor", () =>
         {
             lock (_gate)
@@ -77,6 +85,38 @@ public class AgentHubInvoker : IAgentHubInvoker
                     ((Action<int, int, int>)h)(width, quality, fps);
             }
         });
+
+        // ── Input injection ───────────────────────────────────────────────────
+        _hubConnection.On<double, double>("MouseMove", (nx, ny) =>
+        {
+            lock (_gate)
+                foreach (var h in _mouseMoveHandlers)
+                    ((Action<double, double>)h)(nx, ny);
+        });
+        _hubConnection.On<int, bool>("MouseButton", (btn, down) =>
+        {
+            lock (_gate)
+                foreach (var h in _mouseButtonHandlers)
+                    ((Action<int, bool>)h)(btn, down);
+        });
+        _hubConnection.On<int>("MouseWheel", delta =>
+        {
+            lock (_gate)
+                foreach (var h in _mouseWheelHandlers)
+                    ((Action<int>)h)(delta);
+        });
+        _hubConnection.On<ushort, bool>("KeyEvent", (vk, down) =>
+        {
+            lock (_gate)
+                foreach (var h in _keyEventHandlers)
+                    ((Action<ushort, bool>)h)(vk, down);
+        });
+        _hubConnection.On<char, bool>("CharEvent", (ch, down) =>
+        {
+            lock (_gate)
+                foreach (var h in _charEventHandlers)
+                    ((Action<char, bool>)h)(ch, down);
+        });
     }
 
     public Task InvokeAsync(string methodName, object?[] args, CancellationToken cancellationToken = default)
@@ -89,52 +129,46 @@ public class AgentHubInvoker : IAgentHubInvoker
     public void RegisterHandler<T1, T2, T3>(string methodName, Action<T1, T2, T3> handler)
     {
         if (methodName == "RemoteDesktopAnswer")
-        {
-            lock (_gate) _remoteDesktopAnswerHandlers.Add(handler);
-        }
+            lock (_gate) { _remoteDesktopAnswerHandlers.Add(handler); }
         else if (methodName == "ConfigureMonitor")
-        {
-            lock (_gate) _configureMonitorHandlers.Add(handler);
-        }
+            lock (_gate) { _configureMonitorHandlers.Add(handler); }
     }
 
     public void RegisterHandler<T1, T2, T3, T4>(string methodName, Action<T1, T2, T3, T4> handler)
     {
         if (methodName == "RemoteDesktopIceCandidate")
-        {
-            lock (_gate) _remoteDesktopIceCandidateHandlers.Add(handler);
-        }
+            lock (_gate) { _remoteDesktopIceCandidateHandlers.Add(handler); }
     }
 
     public void RegisterHandler<T1, T2>(string methodName, Action<T1, T2> handler)
     {
         if (methodName == "StartRemoteDesktopSession")
-        {
-            lock (_gate) _startRemoteDesktopSessionHandlers.Add(handler);
-        }
+            lock (_gate) { _startRemoteDesktopSessionHandlers.Add(handler); }
+        else if (methodName == "MouseMove")
+            lock (_gate) { _mouseMoveHandlers.Add(handler); }
+        else if (methodName == "MouseButton")
+            lock (_gate) { _mouseButtonHandlers.Add(handler); }
+        else if (methodName == "KeyEvent")
+            lock (_gate) { _keyEventHandlers.Add(handler); }
+        else if (methodName == "CharEvent")
+            lock (_gate) { _charEventHandlers.Add(handler); }
     }
 
     public void RegisterHandler<T1>(string methodName, Action<T1> handler)
     {
         if (methodName == "StartRemoteDesktopSession")
-        {
-            lock (_gate) _startRemoteDesktopSessionHandlers.Add(handler);
-        }
+            lock (_gate) { _startRemoteDesktopSessionHandlers.Add(handler); }
         else if (methodName == "StopRemoteDesktopSession")
-        {
-            lock (_gate) _stopRemoteDesktopSessionHandlers.Add(handler);
-        }
+            lock (_gate) { _stopRemoteDesktopSessionHandlers.Add(handler); }
+        else if (methodName == "MouseWheel")
+            lock (_gate) { _mouseWheelHandlers.Add(handler); }
     }
 
     public void RegisterHandler(string methodName, Action handler)
     {
         if (methodName == "StartMonitor")
-        {
-            lock (_gate) _startMonitorHandlers.Add(handler);
-        }
+            lock (_gate) { _startMonitorHandlers.Add(handler); }
         else if (methodName == "StopMonitor")
-        {
-            lock (_gate) _stopMonitorHandlers.Add(handler);
-        }
+            lock (_gate) { _stopMonitorHandlers.Add(handler); }
     }
 }

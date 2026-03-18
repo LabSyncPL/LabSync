@@ -12,14 +12,18 @@ public class ServerClient : IAsyncDisposable
     private readonly ILogger<ServerClient> _logger;
     private readonly AgentContext _agentContext;
     private readonly IAgentHubInvoker? _hubInvoker;
+    private readonly InputInjectionHubHandler? _inputInjection;
     private HubConnection? _hubConnection;
 
-    public ServerClient(HttpClient httpClient, ILogger<ServerClient> logger, AgentContext agentContext, IAgentHubInvoker? hubInvoker = null)
+    public ServerClient(HttpClient httpClient, ILogger<ServerClient> logger, AgentContext agentContext, IAgentHubInvoker? hubInvoker = null, InputInjectionHubHandler? inputInjection = null)
     {
         _httpClient = httpClient;
         _logger = logger;
         _agentContext = agentContext;
         _hubInvoker = hubInvoker;
+        _inputInjection = inputInjection;
+        _inputInjection = inputInjection;
+
     }
     public Action<Guid, string, string, string?>? OnReceiveJob;
     public Action<Guid>? OnStartRemoteDesktopSession;
@@ -95,6 +99,7 @@ public class ServerClient : IAsyncDisposable
         };
 
         _hubInvoker?.AttachConnection(_hubConnection);
+        _inputInjection?.Register();
 
         await _hubConnection.StartAsync(cancellationToken);
         _logger.LogInformation("SignalR Hub connection established successfully.");
