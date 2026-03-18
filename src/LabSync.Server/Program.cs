@@ -56,9 +56,10 @@ builder.Services.AddCors(options =>
 });
 
 // Register application services
-builder.Services.AddScoped<TokenService>();
-builder.Services.AddScoped<ICryptoService, CryptoService>();
-builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddSingleton<TokenService>();
+builder.Services.AddSingleton<ICryptoService, CryptoService>();
+builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
+builder.Services.AddSingleton<ISecretProvider, FileSecretProvider>();
 builder.Services.AddScoped<JobDispatchService>();
 builder.Services.AddSingleton<ConnectionTracker>();
 builder.Services.AddSingleton<GridMonitorTracker>();

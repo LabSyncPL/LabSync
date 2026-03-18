@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Dto;
+﻿﻿﻿﻿﻿﻿﻿using LabSync.Core.Dto;
 using LabSync.Core.Interfaces;
 using LabSync.Server.Data;
 using LabSync.Server.Services;
@@ -11,11 +11,24 @@ namespace LabSync.Server.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "RequireAdminRole")]
-public class DevicesController(
-    LabSyncDbContext context,
-    JobDispatchService jobDispatch,
-    ILogger<DevicesController> logger) : ControllerBase
+public class DevicesController : ControllerBase
 {
+    private readonly LabSyncDbContext context;
+    private readonly JobDispatchService jobDispatch;
+    private readonly ISecretProvider secretProvider;
+    private readonly ILogger<DevicesController> logger;
+
+    public DevicesController(
+        LabSyncDbContext context,
+        JobDispatchService jobDispatch,
+        ISecretProvider secretProvider,
+        ILogger<DevicesController> logger)
+    {
+        this.context = context;
+        this.jobDispatch = jobDispatch;
+        this.secretProvider = secretProvider;
+        this.logger = logger;
+    }
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DeviceDto>>> GetAll(CancellationToken cancellationToken)
     {
@@ -41,7 +54,8 @@ public class DevicesController(
             IsOnline     = d.IsOnline,
             GroupId      = d.GroupId,
             GroupName    = d.Group?.Name,
-            HasSshCredentials = d.Credentials != null
+            HasSshCredentials = d.Credentials != null,
+            UseKeyAuthentication = d.Credentials?.UseKeyAuthentication ?? false
         }).ToList();
 
         return Ok(devices);
@@ -144,6 +158,12 @@ public class DevicesController(
         if (device is null)
             return NotFound(new ApiResponse("Device not found."));
 
+        string? keyReference = null;
+        if (!string.IsNullOrEmpty(request.PrivateKey))
+        {
+            keyReference = await secretProvider.StoreSecretAsync(request.PrivateKey, $"device:{id}");
+        }
+
         if (device.Credentials != null)
         {
             device.Credentials.SshUsername = request.Username;
@@ -151,10 +171,26 @@ public class DevicesController(
             {
                 device.Credentials.SshPassword = request.Password; // TODO: Encrypt
             }
+            if (keyReference != null)
+            {
+                device.Credentials.SshKeyReference = keyReference;
+                device.Credentials.SshPrivateKey = null;
+            }
+            if (request.UseKeyAuthentication.HasValue)
+            {
+                device.Credentials.UseKeyAuthentication = request.UseKeyAuthentication.Value;
+            }
         }
         else
         {
-            context.DeviceCredentials.Add(new Core.Entities.DeviceCredentials(id, request.Username, request.Password ?? string.Empty));
+            var creds = new Core.Entities.DeviceCredentials(id, request.Username, request.Password ?? string.Empty);
+            creds.SshKeyReference = keyReference;
+            creds.SshPrivateKey = null;
+            if (request.UseKeyAuthentication.HasValue)
+            {
+                creds.UseKeyAuthentication = request.UseKeyAuthentication.Value;
+            }
+            context.DeviceCredentials.Add(creds);
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -162,4 +198,4 @@ public class DevicesController(
     }
 }
 
-public record SetSshCredentialsRequest(string Username, string? Password);
+public record SetSshCredentialsRequest(string Username, string? Password, string? PrivateKey, bool? UseKeyAuthentication);

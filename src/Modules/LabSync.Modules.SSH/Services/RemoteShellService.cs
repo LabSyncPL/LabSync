@@ -12,6 +12,7 @@ namespace LabSync.Modules.SSH.Services;
 public class RemoteShellService : IRemoteShellService
 {
     private readonly ILogger<RemoteShellService> _logger;
+    private readonly IKeyManagementService _keyService;
     private SshClient? _client;
     private ShellStream? _shellStream;
     private CancellationTokenSource? _readCts;
@@ -19,12 +20,13 @@ public class RemoteShellService : IRemoteShellService
 
     public event EventHandler<string>? OutputReceived;
 
-    public RemoteShellService(ILogger<RemoteShellService> logger)
+    public RemoteShellService(ILogger<RemoteShellService> logger, IKeyManagementService keyService)
     {
         _logger = logger;
+        _keyService = keyService;
     }
 
-    public async Task OpenSessionAsync(string host, string username, string password, string terminalName = "xterm", uint columns = 80, uint rows = 24, CancellationToken cancellationToken = default)
+    public async Task OpenSessionAsync(string host, string username, PrivateKeyFile keyFile, string terminalName = "xterm", uint columns = 80, uint rows = 24, CancellationToken cancellationToken = default)
     {
         if (_client != null && _client.IsConnected)
         {
@@ -33,7 +35,20 @@ public class RemoteShellService : IRemoteShellService
 
         _logger.LogInformation("Opening SSH session to {Host} with terminal {Terminal}", host, terminalName);
 
-        _client = new SshClient(host, username, password);
+        _client = new SshClient(host, username, keyFile);
+        _client.HostKeyReceived += (sender, e) => 
+        {
+            try 
+            {
+                _keyService.ValidateOrAddHostKey(host, e.HostKeyName, e.HostKey);
+                e.CanTrust = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Host key validation failed for {Host}", host);
+                e.CanTrust = false;
+            }
+        };
         
         try
         {

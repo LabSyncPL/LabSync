@@ -16,10 +16,12 @@ public class SshModule : IAgentModule, IAsyncDisposable
     public string Version => "1.0.0";
 
     private ILogger<SshModule>? _logger;
+    private IKeyManagementService? _keyManagementService;
     private IFileTransferService? _fileTransferService;
     private ITunnelingService? _tunnelingService;
     private IRemoteShellService? _remoteShellService;
     
+    private string? _defaultKeyPath;
     private readonly List<IAsyncDisposable> _disposables = new();
 
     public async Task InitializeAsync(IServiceProvider serviceProvider)
@@ -29,30 +31,31 @@ public class SshModule : IAgentModule, IAsyncDisposable
 
         _logger.LogInformation("Initializing SSH Module...");
 
-        _fileTransferService = serviceProvider.GetService<IFileTransferService>();
-        _tunnelingService = serviceProvider.GetService<ITunnelingService>();
-        _remoteShellService = serviceProvider.GetService<IRemoteShellService>();
-        if (_fileTransferService == null)
-        {
-            _fileTransferService = new FileTransferService(loggerFactory.CreateLogger<FileTransferService>());
-        }
+        _keyManagementService = serviceProvider.GetService<IKeyManagementService>() 
+            ?? new KeyManagementService(loggerFactory.CreateLogger<KeyManagementService>());
 
+        _defaultKeyPath = await _keyManagementService.EnsureKeyAsync();
+
+        _fileTransferService = serviceProvider.GetService<IFileTransferService>() 
+            ?? new FileTransferService(loggerFactory.CreateLogger<FileTransferService>(), _keyManagementService);
+
+        _tunnelingService = serviceProvider.GetService<ITunnelingService>();
         if (_tunnelingService == null)
         {
-            var ts = new TunnelingService(loggerFactory.CreateLogger<TunnelingService>());
+            var ts = new TunnelingService(loggerFactory.CreateLogger<TunnelingService>(), _keyManagementService);
             _tunnelingService = ts;
             _disposables.Add(ts as IAsyncDisposable ?? new AsyncDisposableWrapper(ts));
         }
 
+        _remoteShellService = serviceProvider.GetService<IRemoteShellService>();
         if (_remoteShellService == null)
         {
-            var rs = new RemoteShellService(loggerFactory.CreateLogger<RemoteShellService>());
+            var rs = new RemoteShellService(loggerFactory.CreateLogger<RemoteShellService>(), _keyManagementService);
             _remoteShellService = rs;
             _disposables.Add(rs);
         }
 
         _logger.LogInformation("SSH Module initialized successfully.");
-        await Task.CompletedTask;
     }
 
     public bool CanHandle(string jobType)
@@ -91,6 +94,12 @@ public class SshModule : IAgentModule, IAsyncDisposable
                 case "stop-tunnel":
                     await ExecuteStopTunnelAsync(parameters, cancellationToken);
                     return ModuleResult.Success("Tunnel stopped.");
+
+                case "get-public-key":
+                    var keyPath = parameters.TryGetValue("KeyPath", out var kp) ? kp : _defaultKeyPath;
+                    if (string.IsNullOrEmpty(keyPath)) return ModuleResult.Failure("Key path not found.");
+                    var pubKey = _keyManagementService!.GetPublicKey(keyPath);
+                    return ModuleResult.Success(pubKey);
           
                 default:
                     return ModuleResult.Failure($"Unknown SSH command: {command}");
@@ -103,12 +112,23 @@ public class SshModule : IAgentModule, IAsyncDisposable
         }
     }
 
+    private Renci.SshNet.PrivateKeyFile GetKeyFile(IDictionary<string, string> parameters)
+    {
+        string? keyPath = parameters.TryGetValue("KeyPath", out var kp) ? kp : _defaultKeyPath;
+        string? passphrase = parameters.TryGetValue("Passphrase", out var pp) ? pp : null;
+        
+        if (string.IsNullOrEmpty(keyPath)) throw new InvalidOperationException("No private key available.");
+        
+        return _keyManagementService!.GetPrivateKeyFile(keyPath, passphrase);
+    }
+
     private async Task ExecuteUploadAsync(IDictionary<string, string> parameters, CancellationToken token)
     {
+        var keyFile = GetKeyFile(parameters);
         await _fileTransferService!.UploadFileAsync(
             parameters["Host"], 
             parameters["Username"], 
-            parameters["Password"], 
+            keyFile, 
             parameters["LocalPath"], 
             parameters["RemotePath"], 
             token);
@@ -116,10 +136,11 @@ public class SshModule : IAgentModule, IAsyncDisposable
 
     private async Task ExecuteDownloadAsync(IDictionary<string, string> parameters, CancellationToken token)
     {
+        var keyFile = GetKeyFile(parameters);
         await _fileTransferService!.DownloadFileAsync(
             parameters["Host"], 
             parameters["Username"], 
-            parameters["Password"], 
+            keyFile, 
             parameters["RemotePath"], 
             parameters["LocalPath"], 
             token);
@@ -127,10 +148,11 @@ public class SshModule : IAgentModule, IAsyncDisposable
 
     private async Task ExecuteStartTunnelAsync(IDictionary<string, string> parameters, CancellationToken token)
     {
+        var keyFile = GetKeyFile(parameters);
         await _tunnelingService!.StartLocalForwardingAsync(
             parameters["Host"],
             parameters["Username"],
-            parameters["Password"],
+            keyFile,
             parameters["BoundHost"],
             uint.Parse(parameters["BoundPort"]),
             parameters["RemoteHost"],
