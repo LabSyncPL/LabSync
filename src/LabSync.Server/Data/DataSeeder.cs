@@ -6,12 +6,25 @@ namespace LabSync.Server.Data;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(LabSyncDbContext context)
+    public static async Task DeleteSeedAsync(LabSyncDbContext context)
     {
         context.AgentLogs.RemoveRange(context.AgentLogs);
         context.Jobs.RemoveRange(context.Jobs);
         context.Devices.RemoveRange(context.Devices);
         context.AdminUsers.RemoveRange(context.AdminUsers);
+
+        await context.SaveChangesAsync();
+
+
+    }
+
+
+    public static async Task SeedAsync(LabSyncDbContext context)
+    {
+        //context.AgentLogs.RemoveRange(context.AgentLogs);
+        //context.Jobs.RemoveRange(context.Jobs);
+        //context.Devices.RemoveRange(context.Devices);
+        //context.AdminUsers.RemoveRange(context.AdminUsers);
 
         await context.SaveChangesAsync();
 
