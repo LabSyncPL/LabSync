@@ -109,13 +109,8 @@ export function DeviceDetails() {
       <DeviceHeader
         device={device}
         onOpenTerminal={() => {
-          if (!device.hasSshCredentials) {
-            setShowCredentialsModal(true);
-          } else {
-            setShowTerminal(true);
-          }
+          setShowTerminal(true);
         }}
-        onConfigureCredentials={() => setShowCredentialsModal(true)}
       />
 
       <div className="flex-1 overflow-y-auto p-8 scrollbar-dark">
@@ -174,7 +169,8 @@ export function DeviceDetails() {
           <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col overflow-hidden relative">
             <button
               onClick={() => setShowTerminal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white z-10 p-1 bg-slate-800 rounded-md"
+              className="absolute top-2.5 right-2.5 text-slate-400 hover:text-white hover:bg-slate-800 z-10 p-1.5 rounded-md transition-colors"
+              aria-label="Close terminal"
             >
               <svg
                 className="w-5 h-5"
@@ -190,7 +186,11 @@ export function DeviceDetails() {
                 />
               </svg>
             </button>
-            <DeviceTerminal deviceId={device.id} />
+            <DeviceTerminal
+              deviceId={device.id}
+              hasCredentials={device.hasSshCredentials}
+              onConfigureCredentials={() => setShowCredentialsModal(true)}
+            />
           </div>
         </div>
       )}
@@ -203,7 +203,6 @@ export function DeviceDetails() {
           onSuccess={() => {
             setShowCredentialsModal(false);
             queryClient.invalidateQueries({ queryKey: devicesQueryKey });
-            setShowTerminal(true); // Open terminal automatically after setting credentials
           }}
         />
       )}
