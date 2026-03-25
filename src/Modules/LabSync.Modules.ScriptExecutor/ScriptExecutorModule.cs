@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -249,6 +250,24 @@ public sealed class ScriptExecutorModule : IAgentModule
         }
     }
 
+    private static string NormalizeLineEndings(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+        {
+            return content;
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            // For Windows, ensure all line endings are consistently CRLF
+            // We first replace CRLF with LF to avoid double CRs, then replace all LF with CRLF
+            return content.Replace("\r\n", "\n").Replace("\n", "\r\n");
+        }
+
+        // For Linux/macOS, just ensure we use LF
+        return content.Replace("\r\n", "\n");
+    }
+
     private static string CreateTemporaryScript(string scriptContent, InterpreterType type)
     {
         var extension = type switch
@@ -260,8 +279,11 @@ public sealed class ScriptExecutorModule : IAgentModule
         };
 
         var tempPath = Path.Combine(Path.GetTempPath(), $"labsync-script-{Guid.NewGuid():N}{extension}");
+        
+        var normalizedContent = NormalizeLineEndings(scriptContent);
+
         // UTF-8 without BOM: compatible with Bash on Linux and PowerShell reading .ps1 on Windows.
-        File.WriteAllText(tempPath, scriptContent, Utf8NoBom);
+        File.WriteAllText(tempPath, normalizedContent, Utf8NoBom);
         return tempPath;
     }
 
