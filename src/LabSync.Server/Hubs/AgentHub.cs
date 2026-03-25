@@ -149,6 +149,34 @@ public class AgentHub(
             .SendAsync("ScriptOutputTelemetry", telemetry);
     }
 
+    /// <summary>
+    /// Invoked by the agent when a script process has exited; forwarded to admin ScriptHub clients.
+    /// </summary>
+    public async Task ScriptTaskCompleted(ScriptTaskCompletedDto dto)
+    {
+        var deviceId = GetDeviceIdFromContext();
+        if (deviceId == Guid.Empty)
+        {
+            logger.LogWarning("ScriptTaskCompleted called without valid DeviceId.");
+            return;
+        }
+
+        if (dto.MachineId != deviceId)
+        {
+            logger.LogWarning(
+                "ScriptTaskCompleted MachineId mismatch. ContextDeviceId={ContextDeviceId}, PayloadMachineId={PayloadMachineId}",
+                deviceId,
+                dto.MachineId);
+            return;
+        }
+
+        if (dto.TaskId == Guid.Empty)
+            return;
+
+        await scriptHubContext.Clients.Group(ScriptHub.TaskGroupName(dto.TaskId))
+            .SendAsync("TaskCompleted", dto);
+    }
+
     public async Task PushMonitorFrame(byte[] frameData)
     {
         var deviceId = GetDeviceIdFromContext();

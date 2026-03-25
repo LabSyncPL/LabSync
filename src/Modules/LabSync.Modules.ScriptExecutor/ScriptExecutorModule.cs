@@ -171,15 +171,19 @@ public sealed class ScriptExecutorModule : IAgentModule
             }
 
             sw.Stop();
-            var success = process.ExitCode == 0;
+            var exitCode = process.ExitCode;
+            var success = exitCode == 0;
+            await PublishTaskCompletedAsync(envelope, exitCode, success, linkedToken);
+
             _logger?.LogInformation(
                 "Script finished. Interpreter={Interpreter}, ExitCode={ExitCode}, DurationMs={DurationMs}",
-                envelope.InterpreterType, process.ExitCode, sw.ElapsedMilliseconds);
+                envelope.InterpreterType, exitCode, sw.ElapsedMilliseconds);
 
-            return new ExecutionResult(process.ExitCode, sw.Elapsed, success);
+            return new ExecutionResult(exitCode, sw.Elapsed, success);
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
         {
+            await PublishTaskCompletedAsync(envelope, -1, false, linkedToken);
             sw.Stop();
             _logger?.LogWarning(
                 "Script timed out after {TimeoutSeconds}s. Interpreter={Interpreter}",
@@ -187,9 +191,43 @@ public sealed class ScriptExecutorModule : IAgentModule
                 envelope.InterpreterType);
             throw new TimeoutException($"Script execution exceeded timeout of {timeoutSeconds} seconds.");
         }
+        catch (TimeoutException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            await PublishTaskCompletedAsync(envelope, -1, false, linkedToken);
+            throw;
+        }
         finally
         {
             TryDeleteFile(tempFile);
+        }
+    }
+
+    private async Task PublishTaskCompletedAsync(
+        CommandEnvelope envelope,
+        int exitCode,
+        bool isSuccess,
+        CancellationToken cancellationToken)
+    {
+        if (envelope.TaskId is not { } taskId || taskId == Guid.Empty)
+            return;
+        if (envelope.MachineId is not { } machineId || machineId == Guid.Empty)
+            return;
+
+        try
+        {
+            if (_hubInvoker != null)
+            {
+                var dto = new ScriptTaskCompletedDto(taskId, machineId, exitCode, isSuccess);
+                await _hubInvoker.InvokeAsync("ScriptTaskCompleted", [dto], cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to publish ScriptTaskCompleted.");
         }
     }
 

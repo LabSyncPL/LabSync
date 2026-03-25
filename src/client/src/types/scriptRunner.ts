@@ -53,3 +53,13 @@ export interface ScriptOutputTelemetryPayload {
   line?: string | null;
   timestampUtc?: string | null;
 }
+
+/**
+ * Mirrors LabSync.Core.Dto.ScriptTaskCompletedDto (SignalR JSON camelCase).
+ */
+export interface ScriptTaskCompletedPayload {
+  taskId: string;
+  machineId: string;
+  exitCode: number;
+  isSuccess: boolean;
+}

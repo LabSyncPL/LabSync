@@ -46,3 +46,12 @@ public sealed record ScriptOutputTelemetryDto(
     string Stream,
     string Line,
     DateTimeOffset TimestampUtc);
+
+/// <summary>
+/// Sent after the script process exits (after telemetry has been drained). Forwarded to ScriptHub as "TaskCompleted".
+/// </summary>
+public sealed record ScriptTaskCompletedDto(
+    Guid TaskId,
+    Guid MachineId,
+    int ExitCode,
+    bool IsSuccess);

@@ -12,6 +12,7 @@ import {
   ScriptInterpreterType,
   type ScriptInterpreterTypeNumber,
   type ScriptOutputTelemetryPayload,
+  type ScriptTaskCompletedPayload,
 } from "../types/scriptRunner";
 
 const DEFAULT_BASE_URL = "http://localhost:5038";
@@ -19,6 +20,9 @@ const BASE_URL =
   (typeof import.meta !== "undefined" &&
     (import.meta as any)?.env?.VITE_API_BASE_URL) ||
   DEFAULT_BASE_URL;
+
+/** While script is running, heuristic progress never exceeds this until TaskCompleted. */
+const MAX_INFERRED_PROGRESS = 95;
 
 export type ScriptInterpreter = "powershell" | "bash";
 export type ScriptExecutionStatus =
@@ -65,13 +69,7 @@ const inferStatusFromLine = (line: string, stream?: string): ScriptExecutionStat
   if (stream?.toLowerCase() === "stderr") return "error";
   if (lower.includes("error") || lower.includes("exception")) return "error";
   if (lower.includes("timed out") || lower.includes("timeout")) return "timeout";
-  if (
-    lower.includes("completed successfully") ||
-    lower.includes("exit code: 0") ||
-    lower.includes("finished successfully")
-  ) {
-    return "success";
-  }
+  // Do not infer "success" from text — TaskCompleted is authoritative for 100% / final status.
   if (lower.includes("started") || lower.includes("running")) return "running";
   return null;
 };
@@ -126,6 +124,26 @@ function payloadToTelemetryPatch(payload: ScriptOutputTelemetryPayload) {
   };
 }
 
+function parseTaskCompletedPayload(raw: unknown): ScriptTaskCompletedPayload | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const taskIdRaw = o.taskId ?? (o as { TaskId?: unknown }).TaskId;
+  const machineIdRaw = o.machineId ?? (o as { MachineId?: unknown }).MachineId;
+  const taskId = taskIdRaw != null ? String(taskIdRaw) : "";
+  const machineId = machineIdRaw != null ? String(machineIdRaw) : "";
+  if (!taskId || !machineId) return null;
+  const exitRaw = o.exitCode ?? (o as { ExitCode?: unknown }).ExitCode;
+  const exitCode = typeof exitRaw === "number" ? exitRaw : Number(exitRaw);
+  const isSuccessRaw = o.isSuccess ?? (o as { IsSuccess?: unknown }).IsSuccess;
+  const isSuccess = Boolean(isSuccessRaw);
+  return {
+    taskId,
+    machineId,
+    exitCode: Number.isFinite(exitCode) ? exitCode : -1,
+    isSuccess,
+  };
+}
+
 export function useMultiDeviceScriptRunner() {
   const [connectionState, setConnectionState] = useState<
     "connecting" | "connected" | "disconnected" | "error"
@@ -136,6 +154,34 @@ export function useMultiDeviceScriptRunner() {
 
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const activeTaskByMachineRef = useRef<Map<string, string>>(new Map());
+  /** Rows that received TaskCompleted — late stdout must not lower progress/status. */
+  const terminalCompletionKeysRef = useRef<Set<string>>(new Set());
+
+  const applyTaskCompleted = useCallback((payload: ScriptTaskCompletedPayload) => {
+    const key = makeRowKey(payload.taskId, payload.machineId);
+    terminalCompletionKeysRef.current.add(key);
+
+    const success = payload.exitCode === 0;
+    const status: ScriptExecutionStatus = success ? "success" : "error";
+    const logLine = `[system] Process exited with code ${payload.exitCode}.`;
+
+    setRowsByKey((prev) => {
+      const existing = prev[key];
+      return {
+        ...prev,
+        [key]: {
+          taskId: payload.taskId,
+          machineId: payload.machineId,
+          machineName: existing?.machineName ?? payload.machineId,
+          status,
+          progress: 100,
+          logLines: [...(existing?.logLines ?? []), logLine],
+          lastUpdatedAt: Date.now(),
+          interpreter: existing?.interpreter,
+        },
+      };
+    });
+  }, []);
 
   const upsertTelemetry = useCallback(
     (incoming: {
@@ -155,24 +201,58 @@ export function useMultiDeviceScriptRunner() {
       const taskId =
         incoming.taskId || activeTaskByMachineRef.current.get(machineId) || "unknown-task";
 
+      const key = makeRowKey(taskId, machineId);
       const line = incoming.line || incoming.message || "";
-      const normalizedFromStatus = normalizeStatus(incoming.status);
 
       setRowsByKey((prev) => {
-        const key = makeRowKey(taskId, machineId);
         const existing = prev[key];
-        const nextStatus =
+
+        if (terminalCompletionKeysRef.current.has(key)) {
+          if (!line) return prev;
+          const base =
+            existing ??
+            ({
+              taskId,
+              machineId,
+              machineName: machineId,
+              status: "running" as const,
+              progress: 100,
+              logLines: [],
+              lastUpdatedAt: Date.now(),
+            } satisfies DeviceExecutionRow);
+          return {
+            ...prev,
+            [key]: {
+              ...base,
+              logLines: [...base.logLines, `[${incoming.stream || "stdout"}] ${line}`],
+              lastUpdatedAt: Date.now(),
+            },
+          };
+        }
+
+        const normalizedFromStatus = normalizeStatus(incoming.status);
+
+        let nextStatus: ScriptExecutionStatus =
           normalizedFromStatus ||
           inferStatusFromLine(line, incoming.stream) ||
           existing?.status ||
           "running";
 
-        const nextProgress = inferProgress(
+        // Success + 100% is only applied via TaskCompleted, not stream heuristics.
+        if (nextStatus === "success") {
+          nextStatus = "running";
+        }
+
+        let nextProgress = inferProgress(
           nextStatus,
           existing?.progress ?? 0,
           line,
           incoming.progress,
         );
+
+        if (nextStatus === "running" || nextStatus === "pending") {
+          nextProgress = Math.min(MAX_INFERRED_PROGRESS, nextProgress);
+        }
 
         return {
           ...prev,
@@ -216,12 +296,13 @@ export function useMultiDeviceScriptRunner() {
       upsertTelemetry(patch);
     });
 
-    connection.on(ScriptRunnerHubEvents.TaskCompleted, () => {
-      /* reserved for future server events */
+    connection.on(ScriptRunnerHubEvents.TaskCompleted, (raw: unknown) => {
+      const parsed = parseTaskCompletedPayload(raw);
+      if (parsed) applyTaskCompleted(parsed);
     });
 
     connection.on(ScriptRunnerHubEvents.MachineStatusChanged, () => {
-      /* reserved for future server events */
+      /* reserved */
     });
 
     connection.onreconnecting(() => {
@@ -253,7 +334,7 @@ export function useMultiDeviceScriptRunner() {
       connection.stop();
       connectionRef.current = null;
     };
-  }, [upsertTelemetry]);
+  }, [upsertTelemetry, applyTaskCompleted]);
 
   const subscribeToTask = useCallback(async (taskId: string) => {
     const connection = connectionRef.current;
@@ -299,6 +380,7 @@ export function useMultiDeviceScriptRunner() {
         const next = { ...prev };
         for (const machineId of input.machineIds) {
           const rowKey = makeRowKey(taskId, machineId);
+          terminalCompletionKeysRef.current.delete(rowKey);
           next[rowKey] = {
             taskId,
             machineId,
@@ -326,7 +408,7 @@ export function useMultiDeviceScriptRunner() {
           next[rowKey] = {
             ...existing,
             status: "running",
-            progress: Math.max(existing.progress, 15),
+            progress: Math.min(MAX_INFERRED_PROGRESS, Math.max(existing.progress, 15)),
             logLines: [...existing.logLines, "[system] Execution dispatched to agent(s)."],
             lastUpdatedAt: Date.now(),
           };
@@ -341,6 +423,7 @@ export function useMultiDeviceScriptRunner() {
 
   const cancelMachine = useCallback(async (taskId: string, machineId: string) => {
     const rowKey = makeRowKey(taskId, machineId);
+    terminalCompletionKeysRef.current.add(rowKey);
     setRowsByKey((prev) => {
       const row = prev[rowKey];
       if (!row) return prev;
@@ -376,6 +459,7 @@ export function useMultiDeviceScriptRunner() {
       Object.keys(next).forEach((key) => {
         const row = next[key];
         if (row.status === "running" || row.status === "pending") {
+          terminalCompletionKeysRef.current.add(key);
           next[key] = {
             ...row,
             status: "timeout",
@@ -403,6 +487,8 @@ export function useMultiDeviceScriptRunner() {
       Object.entries(prev).forEach(([key, value]) => {
         if (value.status === "pending" || value.status === "running") {
           next[key] = value;
+        } else {
+          terminalCompletionKeysRef.current.delete(key);
         }
       });
       return next;
