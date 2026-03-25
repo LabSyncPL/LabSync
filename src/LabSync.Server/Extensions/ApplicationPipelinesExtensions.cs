@@ -1,4 +1,4 @@
-﻿using LabSync.Server.Data;
+using LabSync.Server.Data;
 using LabSync.Server.Hubs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
@@ -67,6 +67,7 @@ public static class ApplicationPipelineExtensions
         app.MapHub<AgentHub>("/agentHub");
         app.MapHub<RemoteDesktopHub>("/remoteDesktopHub");
         app.MapHub<SshTerminalHub>("/sshTerminalHub");
+        app.MapHub<ScriptHub>("/scriptHub");
 
 
         var urls = app.Configuration["ASPNETCORE_URLS"];

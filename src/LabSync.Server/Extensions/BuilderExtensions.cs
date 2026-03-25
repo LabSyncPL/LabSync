@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Interfaces;
+using LabSync.Core.Interfaces;
 using LabSync.Server.Data;
 using LabSync.Server.Services;
 using Microsoft.AspNetCore.Builder;
@@ -57,6 +57,7 @@ public static class BuilderExtensions
         builder.Services.AddScoped<JobDispatchService>();
         builder.Services.AddSingleton<ConnectionTracker>();
         builder.Services.AddSingleton<GridMonitorTracker>();
+        builder.Services.AddSingleton<ScriptTaskRegistry>();
         builder.Services.AddSingleton<SshSessionManager>();
 
         builder.Services.AddSignalR(options =>

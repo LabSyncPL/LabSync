@@ -1,4 +1,4 @@
-﻿using LabSync.Server.Authentication;
+using LabSync.Server.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -38,7 +38,7 @@ public static class AuthenticationExtensions
                         var accessToken = context.Request.Query["access_token"];
                         var path = context.HttpContext.Request.Path;
                         if (!string.IsNullOrEmpty(accessToken) &&
-                            (path.StartsWithSegments("/agentHub") || path.StartsWithSegments("/remoteDesktopHub") || path.StartsWithSegments("/sshTerminalHub")))
+                            (path.StartsWithSegments("/agentHub") || path.StartsWithSegments("/remoteDesktopHub") || path.StartsWithSegments("/sshTerminalHub") || path.StartsWithSegments("/scriptHub")))
                         {
                             context.Token = accessToken;
                         }

@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -16,6 +16,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabSync.Modules.RemoteDesktop", "Modules\LabSync.Modules.RemoteDesktop\LabSync.Modules.RemoteDesktop.csproj", "{430BADA4-A551-43AF-BDA8-3A5D3B009A5F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabSync.Modules.SSH", "Modules\LabSync.Modules.SSH\LabSync.Modules.SSH.csproj", "{B04721D6-5E8C-49BD-A45E-F629750353B5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LabSync.Modules.ScriptExecutor", "Modules\LabSync.Modules.ScriptExecutor\LabSync.Modules.ScriptExecutor.csproj", "{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -99,6 +101,18 @@ Global
 		{B04721D6-5E8C-49BD-A45E-F629750353B5}.Release|x64.Build.0 = Release|Any CPU
 		{B04721D6-5E8C-49BD-A45E-F629750353B5}.Release|x86.ActiveCfg = Release|Any CPU
 		{B04721D6-5E8C-49BD-A45E-F629750353B5}.Release|x86.Build.0 = Release|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Debug|x64.Build.0 = Debug|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Debug|x86.Build.0 = Debug|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Release|x64.ActiveCfg = Release|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Release|x64.Build.0 = Release|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Release|x86.ActiveCfg = Release|Any CPU
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -107,5 +121,6 @@ Global
 		{CCAA4696-7CE6-47D3-8672-032DF2EAC4EB} = {CA253913-39DE-BFD0-C9A3-4B7EC6FBDF17}
 		{430BADA4-A551-43AF-BDA8-3A5D3B009A5F} = {CA253913-39DE-BFD0-C9A3-4B7EC6FBDF17}
 		{B04721D6-5E8C-49BD-A45E-F629750353B5} = {CA253913-39DE-BFD0-C9A3-4B7EC6FBDF17}
+		{D1FE6D4F-6266-4CF6-9D77-E4E8E4824047} = {CA253913-39DE-BFD0-C9A3-4B7EC6FBDF17}
 	EndGlobalSection
 EndGlobal

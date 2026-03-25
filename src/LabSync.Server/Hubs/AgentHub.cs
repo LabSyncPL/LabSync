@@ -18,6 +18,7 @@ public class AgentHub(
     ConnectionTracker _connectionTracker,
     GridMonitorTracker _gridMonitorTracker,
     IHubContext<RemoteDesktopHub> remoteDesktopHubContext,
+    IHubContext<ScriptHub> scriptHubContext,
     ILogger<AgentHub> logger)
     : Hub<IAgentClient>
 {
@@ -119,6 +120,34 @@ public class AgentHub(
     }
 
     // Grid Monitor Methods
+
+    /// <summary>
+    /// Invoked by the agent (script module) to stream script output; forwarded to admin clients on ScriptHub.
+    /// </summary>
+    public async Task ScriptOutputTelemetry(ScriptOutputTelemetryDto telemetry)
+    {
+        var deviceId = GetDeviceIdFromContext();
+        if (deviceId == Guid.Empty)
+        {
+            logger.LogWarning("ScriptOutputTelemetry called without valid DeviceId.");
+            return;
+        }
+
+        if (telemetry.MachineId is not { } machineId || machineId != deviceId)
+        {
+            logger.LogWarning(
+                "ScriptOutputTelemetry MachineId mismatch. ContextDeviceId={ContextDeviceId}, PayloadMachineId={PayloadMachineId}",
+                deviceId,
+                telemetry.MachineId);
+            return;
+        }
+
+        if (telemetry.TaskId is not { } taskId || taskId == Guid.Empty)
+            return;
+
+        await scriptHubContext.Clients.Group(ScriptHub.TaskGroupName(taskId))
+            .SendAsync("ScriptOutputTelemetry", telemetry);
+    }
 
     public async Task PushMonitorFrame(byte[] frameData)
     {

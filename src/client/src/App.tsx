@@ -11,6 +11,7 @@ import { TasksPage } from "./pages/TasksPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { RemoteViewPage } from "./pages/RemoteViewPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ScriptDeploymentDashboard } from "./components/ScriptDeploymentDashboard";
 
 function App() {
   const [token, setTokenState] = useState<string | null>(() => getToken());
@@ -95,7 +96,7 @@ function App() {
           <Route path="vnc" element={<RemoteViewPage />} />
           <Route
             path="scripts"
-            element={<PlaceholderPage title="Task Runner" />}
+            element={<ScriptDeploymentDashboard />}
           />
           <Route
             path="repository"
