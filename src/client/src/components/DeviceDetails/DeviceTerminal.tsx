@@ -71,6 +71,8 @@ const DeviceTerminal: React.FC<DeviceTerminalProps> = ({
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const connectionRef = useRef<signalR.HubConnection | null>(null);
+  const pendingInputRef = useRef<string>("");
+  const flushScheduledRef = useRef<number | null>(null);
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(true);
@@ -148,6 +150,64 @@ const DeviceTerminal: React.FC<DeviceTerminalProps> = ({
 
     connectionRef.current = connection;
 
+    const flushPendingInput = () => {
+      const conn = connectionRef.current;
+      if (!conn || conn.state !== signalR.HubConnectionState.Connected) return;
+      const toSend = pendingInputRef.current;
+      if (!toSend) return;
+
+      pendingInputRef.current = "";
+      conn.invoke("SendInput", toSend).catch((err: any) => {
+        console.error("Failed to send input:", err);
+      });
+    };
+
+    const scheduleFlush = () => {
+      if (flushScheduledRef.current) return;
+      flushScheduledRef.current = window.setTimeout(() => {
+        flushScheduledRef.current = null;
+        flushPendingInput();
+      }, 8);
+    };
+
+    connection.on("ReceiveOutput", (data: string) => {
+      term.write(data);
+    });
+
+    connection.on("ErrorMessage", (msg: string) => {
+      term.writeln(`\r\n\x1b[31m✖ Error: ${msg}\x1b[0m\r\n`);
+      setError(msg);
+      setIsConnecting(false);
+      setIsConnected(false);
+    });
+
+    connection.onreconnecting(() => {
+      setIsConnecting(true);
+      setIsConnected(false);
+    });
+
+    connection.onreconnected(async () => {
+      try {
+        await connection.invoke("ConnectToDevice", deviceId);
+
+        const dims = fitAddon.proposeDimensions();
+        if (dims) {
+          await connection.invoke("ResizeTerminal", dims.cols, dims.rows);
+        }
+
+        flushPendingInput();
+
+        setIsConnected(true);
+        setIsConnecting(false);
+        setError(null);
+      } catch (err: any) {
+        console.error("Reconnected but failed to restore session:", err);
+        setError(err.toString());
+        setIsConnecting(false);
+        setIsConnected(false);
+      }
+    });
+
     const startConnection = async () => {
       try {
         await connection.start();
@@ -155,23 +215,13 @@ const DeviceTerminal: React.FC<DeviceTerminalProps> = ({
           "\x1b[32m✔\x1b[0m Connected to SignalR server. Establishing SSH session...",
         );
 
-        connection.on("ReceiveOutput", (data: string) => {
-          term.write(data);
-        });
-
-        connection.on("ErrorMessage", (msg: string) => {
-          term.writeln(`\r\n\x1b[31m✖ Error: ${msg}\x1b[0m\r\n`);
-          setError(msg);
-          setIsConnecting(false);
-          setIsConnected(false);
-        });
-
         await connection.invoke("ConnectToDevice", deviceId);
 
         setIsConnected(true);
         setIsConnecting(false);
         setError(null);
 
+        fitAddon.fit();
         const dims = fitAddon.proposeDimensions();
         if (dims) {
           await connection.invoke("ResizeTerminal", dims.cols, dims.rows);
@@ -189,11 +239,19 @@ const DeviceTerminal: React.FC<DeviceTerminalProps> = ({
 
     startConnection();
 
+    // Ensure terminal captures keystrokes after connection.
+    term.focus();
+
     const onDataDisposable = term.onData((data: string) => {
       if (connection.state === signalR.HubConnectionState.Connected) {
-        connection.invoke("SendInput", data).catch((err: any) => {
-          console.error("Failed to send input:", err);
-        });
+        pendingInputRef.current += data;
+        scheduleFlush();
+      } else {
+        // During reconnect/disconnect we buffer a bit to avoid dropping user input.
+        if (pendingInputRef.current.length < 8192) {
+          pendingInputRef.current += data;
+          scheduleFlush();
+        }
       }
     });
 
@@ -233,6 +291,11 @@ const DeviceTerminal: React.FC<DeviceTerminalProps> = ({
       resizeObserver.disconnect();
 
       if (connectionRef.current) {
+        pendingInputRef.current = "";
+        if (flushScheduledRef.current) {
+          window.clearTimeout(flushScheduledRef.current);
+          flushScheduledRef.current = null;
+        }
         connectionRef.current.stop();
       }
       if (xtermRef.current) {
