@@ -39,6 +39,7 @@ export function RemoteControlModal({
 
   // Settings state
   const [showSettings, setShowSettings] = useState(false);
+  const [controlEnabled, setControlEnabled] = useState(false);
   const [autoResize, setAutoResize] = useState(storedSettings.autoResize);
   const [preferences, setPreferences] = useState<RemoteDesktopPreferences>({
     initialWidth: storedSettings.initialWidth,
@@ -126,6 +127,18 @@ export function RemoteControlModal({
       if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
     };
   }, [autoResize, status, preferences, sendConfiguration]);
+
+  // Global Shift+C shortcut – toggles remote control regardless of focus
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key === "C") {
+        e.preventDefault();
+        setControlEnabled((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -357,6 +370,7 @@ export function RemoteControlModal({
   }, [deviceId]); // Re-run if deviceId changes, but NOT if preferences change (we handle that via DataChannel)
 
   const sendInput = (type: string, data: any) => {
+    if (!controlEnabled) return;
     if (dataChannelRef.current?.readyState === "open") {
       dataChannelRef.current.send(JSON.stringify({ type, ...data }));
     }
@@ -389,6 +403,11 @@ export function RemoteControlModal({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.shiftKey && e.key === "C") {
+      e.preventDefault();
+      setControlEnabled((v) => !v);
+      return;
+    }
     sendInput("key", { keyCode: e.keyCode, pressed: true });
   };
 
@@ -470,6 +489,20 @@ export function RemoteControlModal({
                 strokeWidth="2"
                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
               />
+            </svg>
+          </button>
+          <button
+            onClick={() => setControlEnabled((v) => !v)}
+            className={`p-2 rounded-full backdrop-blur-sm transition-all ${
+              controlEnabled
+                ? "bg-primary-600/90 hover:bg-primary-500 text-white ring-1 ring-primary-400/50"
+                : "bg-black/40 hover:bg-white/20 text-slate-300"
+            }`}
+            title={controlEnabled ? "Disable remote control (Shift+C)" : "Enable remote control (Shift+C)"}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
             </svg>
           </button>
           <button
