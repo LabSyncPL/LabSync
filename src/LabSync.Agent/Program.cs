@@ -19,7 +19,8 @@ var serverUrl = builder.Configuration["AGENT_SERVER_URL"]
 
 if (OperatingSystem.IsWindows())
     builder.Services.AddSingleton<IInputInjectionService, WindowsInputInjectionService>();
-
+else
+    builder.Services.AddSingleton<IInputInjectionService, DummyInputInjectionService>();
 
 builder.Services.AddSingleton<AgentIdentityService>();
 builder.Services.AddSingleton<AgentContext>();
