@@ -76,6 +76,18 @@ public class DevicesController : ControllerBase
         return Ok(new ApiResponse("Device approved successfully."));
     }
 
+    [HttpDelete("{id}")]
+    public async Task<ActionResult<ApiResponse>> DeleteDevice(Guid id, CancellationToken cancellationToken)
+    {
+        var device = await context.Devices.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (device is null)
+            return NotFound(new ApiResponse("Device not found."));
+
+        context.Devices.Remove(device);
+        await context.SaveChangesAsync(cancellationToken);
+        return Ok(new ApiResponse("Device deleted successfully."));
+    }
+
     [HttpPost("{id}/group")]
     public async Task<ActionResult<ApiResponse>> AssignToGroup(
         Guid id,

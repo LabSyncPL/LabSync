@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   assignDeviceToGroup,
   approveDevice,
+  deleteDevice,
   devicesQueryKey,
   fetchDevices,
   removeDeviceFromGroup,
@@ -25,6 +26,7 @@ import {
 import { DeviceGridCard } from "../components/Dashboard/DeviceGridCard";
 import { DeviceListItem } from "../components/Dashboard/DeviceListItem";
 import { extractApiErrorMessage } from "../api/scriptRunner";
+import { createCollectMetricsJob } from "../api/jobs";
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -45,6 +47,7 @@ export function Dashboard() {
   const [assigningDevice, setAssigningDevice] = useState<DeviceDto | null>(null);
   const [assignTargetGroupId, setAssignTargetGroupId] = useState<string>("");
   const [groupsError, setGroupsError] = useState<string | null>(null);
+  const [deviceActionError, setDeviceActionError] = useState<string | null>(null);
 
   const {
     data: devices = [],
@@ -123,6 +126,22 @@ export function Dashboard() {
       queryClient.invalidateQueries({ queryKey: deviceGroupsQueryKey });
     },
     onError: (error) => setGroupsError(extractApiErrorMessage(error)),
+  });
+  const deleteDeviceMutation = useMutation({
+    mutationFn: deleteDevice,
+    onSuccess: () => {
+      setDeviceActionError(null);
+      queryClient.invalidateQueries({ queryKey: devicesQueryKey });
+      queryClient.invalidateQueries({ queryKey: deviceGroupsQueryKey });
+    },
+    onError: (error) => setDeviceActionError(extractApiErrorMessage(error)),
+  });
+  const diagnosticsMutation = useMutation({
+    mutationFn: createCollectMetricsJob,
+    onSuccess: () => {
+      setDeviceActionError(null);
+    },
+    onError: (error) => setDeviceActionError(extractApiErrorMessage(error)),
   });
 
   const handleApprove = async (e: React.MouseEvent, device: DeviceDto) => {
@@ -214,6 +233,35 @@ export function Dashboard() {
     await removeDeviceMutation.mutateAsync(device.id);
   };
 
+  const handleViewDetails = (device: DeviceDto) => {
+    navigate(`/devices/${device.id}`);
+  };
+
+  const handleCopyDeviceId = async (device: DeviceDto) => {
+    try {
+      await navigator.clipboard.writeText(device.id);
+      setDeviceActionError(null);
+    } catch {
+      setDeviceActionError("Failed to copy device ID.");
+    }
+  };
+
+  const handleRunQuickDiagnostics = async (device: DeviceDto) => {
+    if (!device.isApproved || !device.isOnline) {
+      setDeviceActionError("Quick diagnostics is available only for approved online devices.");
+      return;
+    }
+    await diagnosticsMutation.mutateAsync(device.id);
+  };
+
+  const handleDeleteDevice = async (device: DeviceDto) => {
+    const confirmed = window.confirm(
+      `Delete device "${device.hostname}"? This action is irreversible and removes related records.`,
+    );
+    if (!confirmed) return;
+    await deleteDeviceMutation.mutateAsync(device.id);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <header className="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900 shrink-0">
@@ -272,6 +320,9 @@ export function Dashboard() {
             onRefresh={() => refetch()}
             isRefreshing={isFetching}
           />
+          {deviceActionError && (
+            <p className="text-xs text-rose-300 -mt-2">{deviceActionError}</p>
+          )}
 
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-slate-500">
@@ -383,6 +434,10 @@ export function Dashboard() {
                     isApproving={approvingId === device.id}
                     onAssignToGroup={handleAssignFromMenu}
                     onRemoveFromGroup={handleRemoveFromMenu}
+                    onViewDetails={handleViewDetails}
+                    onCopyDeviceId={handleCopyDeviceId}
+                    onRunQuickDiagnostics={handleRunQuickDiagnostics}
+                    onDeleteDevice={handleDeleteDevice}
                   />
                 ) : (
                   <DeviceListItem
@@ -392,6 +447,10 @@ export function Dashboard() {
                     isApproving={approvingId === device.id}
                     onAssignToGroup={handleAssignFromMenu}
                     onRemoveFromGroup={handleRemoveFromMenu}
+                    onViewDetails={handleViewDetails}
+                    onCopyDeviceId={handleCopyDeviceId}
+                    onRunQuickDiagnostics={handleRunQuickDiagnostics}
+                    onDeleteDevice={handleDeleteDevice}
                   />
                 ),
               )}

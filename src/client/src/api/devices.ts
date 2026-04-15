@@ -15,6 +15,11 @@ export async function approveDevice(deviceId: string): Promise<ApiResponse> {
   return data;
 }
 
+export async function deleteDevice(deviceId: string): Promise<ApiResponse> {
+  const { data } = await apiClient.delete<ApiResponse>(`/api/devices/${deviceId}`);
+  return data;
+}
+
 export async function setSshCredentials(
   deviceId: string,
   credentials: {

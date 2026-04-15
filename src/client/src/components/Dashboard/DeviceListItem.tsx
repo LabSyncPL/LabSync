@@ -10,6 +10,10 @@ interface DeviceListItemProps {
   isApproving: boolean;
   onAssignToGroup: (device: DeviceDto) => void;
   onRemoveFromGroup: (device: DeviceDto) => void;
+  onViewDetails: (device: DeviceDto) => void;
+  onCopyDeviceId: (device: DeviceDto) => void;
+  onRunQuickDiagnostics: (device: DeviceDto) => void;
+  onDeleteDevice: (device: DeviceDto) => void;
 }
 
 export function DeviceListItem({
@@ -18,6 +22,10 @@ export function DeviceListItem({
   isApproving,
   onAssignToGroup,
   onRemoveFromGroup,
+  onViewDetails,
+  onCopyDeviceId,
+  onRunQuickDiagnostics,
+  onDeleteDevice,
 }: DeviceListItemProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -174,6 +182,32 @@ export function DeviceListItem({
                   className="absolute right-0 top-8 z-20 w-44 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                    General
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onViewDetails(device);
+                    }}
+                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                  >
+                    View details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onCopyDeviceId(device);
+                    }}
+                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                  >
+                    Copy device ID
+                  </button>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                    Group
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
@@ -194,6 +228,33 @@ export function DeviceListItem({
                     className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
                   >
                     Remove from group
+                  </button>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                    Execution
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onRunQuickDiagnostics(device);
+                    }}
+                    disabled={!device.isApproved || !device.isOnline}
+                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
+                  >
+                    Run quick diagnostics
+                  </button>
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                  Management
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDeleteDevice(device);
+                    }}
+                    className="w-full text-left text-xs text-rose-300 hover:bg-rose-600/20 px-3 py-2"
+                  >
+                    Delete device
                   </button>
                 </div>
               )}
