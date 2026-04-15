@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Linq;
 using LabSync.Core.Dto;
 using LabSync.Core.Types;
 using LabSync.Server.Data;
@@ -18,6 +19,12 @@ public sealed class ScriptRunnerController(
     LabSyncDbContext dbContext,
     ILogger<ScriptRunnerController> logger) : ControllerBase
 {
+    private const int MaxScriptContentChars = 200_000;
+    private const int MaxArguments = 64;
+    private const int MaxArgumentLength = 2_048;
+    private const int MinTimeoutSeconds = 1;
+    private const int MaxTimeoutSeconds = 3_600;
+
     [HttpPost("execute")]
     public async Task<ActionResult<ExecuteScriptResponse>> Execute(
         [FromBody] ExecuteScriptRequest request,
@@ -31,6 +38,18 @@ public sealed class ScriptRunnerController(
 
         if (!Enum.IsDefined(typeof(ScriptInterpreterType), request.InterpreterType))
             return BadRequest(new ApiResponse("Invalid interpreter type."));
+
+        if (request.ScriptContent.Length > MaxScriptContentChars)
+            return BadRequest(new ApiResponse($"Script content is too large (max {MaxScriptContentChars:N0} characters)."));
+
+        if (request.TimeoutSeconds < MinTimeoutSeconds || request.TimeoutSeconds > MaxTimeoutSeconds)
+            return BadRequest(new ApiResponse($"TimeoutSeconds must be between {MinTimeoutSeconds} and {MaxTimeoutSeconds}."));
+
+        if (request.Arguments is { Length: > MaxArguments })
+            return BadRequest(new ApiResponse($"A maximum of {MaxArguments} arguments is allowed."));
+
+        if (request.Arguments is { Length: > 0 } && request.Arguments.Any(a => a.Length > MaxArgumentLength))
+            return BadRequest(new ApiResponse($"Each argument must be at most {MaxArgumentLength:N0} characters."));
 
         var taskId = Guid.NewGuid();
         var warnings = new List<string>();

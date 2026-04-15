@@ -20,6 +20,7 @@ const STATUS_BADGE_CLASS: Record<ScriptExecutionStatus, string> = {
   success: "bg-emerald-600/20 text-emerald-300",
   error: "bg-rose-600/20 text-rose-300",
   timeout: "bg-amber-600/20 text-amber-300",
+  cancelled: "bg-orange-600/20 text-orange-300",
 };
 
 const STATUS_LABEL: Record<ScriptExecutionStatus, string> = {
@@ -28,15 +29,17 @@ const STATUS_LABEL: Record<ScriptExecutionStatus, string> = {
   success: "Success",
   error: "Error",
   timeout: "Timeout",
+  cancelled: "Cancelled",
 };
 
 const monacoLanguage = (interpreter: ScriptInterpreter) =>
-  interpreter === "powershell" ? "powershell" : "shell";
+  interpreter === "powershell" ? "powershell" : interpreter === "cmd" ? "bat" : "shell";
 
 const inferInterpreterFromFileName = (name: string): ScriptInterpreter | null => {
   const lower = name.toLowerCase();
   if (lower.endsWith(".ps1")) return "powershell";
   if (lower.endsWith(".sh")) return "bash";
+  if (lower.endsWith(".cmd") || lower.endsWith(".bat")) return "cmd";
   return null;
 };
 
@@ -91,6 +94,11 @@ export function ScriptDeploymentDashboard() {
     if (!activeLogRowKey) return null;
     return rows.find((row) => `${row.taskId}::${row.machineId}` === activeLogRowKey) ?? null;
   }, [activeLogRowKey, rows]);
+  const activeCount = useMemo(
+    () => rows.filter((row) => row.status === "running" || row.status === "pending").length,
+    [rows],
+  );
+  const selectedSummary = `${selectedDeviceIds.length} selected / ${devices.length} total`;
 
   const toggleDevice = (id: string) => {
     setSelectedDeviceIds((prev) =>
@@ -182,6 +190,7 @@ export function ScriptDeploymentDashboard() {
               >
                 <option value="powershell">PowerShell</option>
                 <option value="bash">Bash</option>
+                <option value="cmd">CMD</option>
               </select>
             </div>
 
@@ -190,7 +199,7 @@ export function ScriptDeploymentDashboard() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".ps1,.sh,.txt"
+                accept=".ps1,.sh,.cmd,.bat,.txt"
                 className="hidden"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
@@ -213,16 +222,24 @@ export function ScriptDeploymentDashboard() {
               className="ml-auto bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium"
               disabled={!selectedDeviceIds.length || !scriptContent.trim()}
               onClick={handleRun}
+              title={!selectedDeviceIds.length ? "Select at least one device." : undefined}
             >
               Run on Selected Devices ({selectedDeviceIds.length})
             </button>
             <button
               type="button"
-              className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
+              className="bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium"
               onClick={stopAll}
+              disabled={activeCount === 0}
             >
               Stop All
             </button>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="text-slate-400">{selectedSummary}</span>
+            <span className="text-slate-500">
+              Active executions: <span className="text-slate-300">{activeCount}</span>
+            </span>
           </div>
 
           <div className="h-[280px] border border-slate-700 rounded-lg overflow-hidden">
@@ -323,6 +340,7 @@ export function ScriptDeploymentDashboard() {
                 <tr>
                   <th className="text-left px-4 py-2">Machine Name</th>
                   <th className="text-left px-4 py-2">Task</th>
+                  <th className="text-left px-4 py-2">Interpreter</th>
                   <th className="text-left px-4 py-2">Current Status</th>
                   <th className="text-left px-4 py-2">Progress</th>
                   <th className="text-right px-4 py-2">Action</th>
@@ -331,7 +349,7 @@ export function ScriptDeploymentDashboard() {
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td className="px-4 py-6 text-slate-400" colSpan={5}>
+                    <td className="px-4 py-6 text-slate-400" colSpan={6}>
                       No script executions yet.
                     </td>
                   </tr>
@@ -342,6 +360,9 @@ export function ScriptDeploymentDashboard() {
                       <tr key={rowKey} className="border-t border-slate-800">
                         <td className="px-4 py-3 text-white">{row.machineName}</td>
                         <td className="px-4 py-3 text-slate-300 font-mono text-xs">{row.taskId}</td>
+                        <td className="px-4 py-3 text-slate-300 text-xs uppercase">
+                          {row.interpreter || "-"}
+                        </td>
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex px-2 py-1 rounded-full text-xs ${STATUS_BADGE_CLASS[row.status]}`}
@@ -402,6 +423,9 @@ export function ScriptDeploymentDashboard() {
                   Log Stream - {activeLogRow.machineName}
                 </h3>
                 <p className="text-slate-400 text-xs font-mono">{activeLogRow.taskId}</p>
+                <p className="text-slate-500 text-xs mt-1">
+                  Showing up to the last {activeLogRow.logLines.length} lines retained in memory.
+                </p>
               </div>
               <button
                 type="button"

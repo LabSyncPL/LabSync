@@ -23,14 +23,16 @@ const BASE_URL =
 
 /** While script is running, heuristic progress never exceeds this until TaskCompleted. */
 const MAX_INFERRED_PROGRESS = 95;
+const MAX_LOG_LINES_PER_ROW = 500;
 
-export type ScriptInterpreter = "powershell" | "bash";
+export type ScriptInterpreter = "powershell" | "bash" | "cmd";
 export type ScriptExecutionStatus =
   | "pending"
   | "running"
   | "success"
   | "error"
-  | "timeout";
+  | "timeout"
+  | "cancelled";
 
 export interface DeviceExecutionRow {
   taskId: string;
@@ -58,7 +60,8 @@ const normalizeStatus = (raw?: string): ScriptExecutionStatus | null => {
   const value = raw.toLowerCase();
   if (value.includes("success") || value.includes("completed")) return "success";
   if (value.includes("error") || value.includes("fail")) return "error";
-  if (value.includes("timeout") || value.includes("cancel")) return "timeout";
+  if (value.includes("cancel")) return "cancelled";
+  if (value.includes("timeout")) return "timeout";
   if (value.includes("running") || value.includes("started")) return "running";
   if (value.includes("pending") || value.includes("queued")) return "pending";
   return null;
@@ -68,6 +71,7 @@ const inferStatusFromLine = (line: string, stream?: string): ScriptExecutionStat
   const lower = line.toLowerCase();
   if (stream?.toLowerCase() === "stderr") return "error";
   if (lower.includes("error") || lower.includes("exception")) return "error";
+  if (lower.includes("cancel")) return "cancelled";
   if (lower.includes("timed out") || lower.includes("timeout")) return "timeout";
   // Do not infer "success" from text — TaskCompleted is authoritative for 100% / final status.
   if (lower.includes("started") || lower.includes("running")) return "running";
@@ -97,11 +101,23 @@ const inferProgress = (
   if (status === "success") return 100;
   if (status === "error") return Math.max(existingProgress, 100);
   if (status === "timeout") return Math.max(existingProgress, 100);
+  if (status === "cancelled") return Math.max(existingProgress, 100);
   return existingProgress;
 };
 
 const interpreterToApi = (i: ScriptInterpreter): ScriptInterpreterTypeNumber =>
-  (i === "powershell" ? ScriptInterpreterType.PowerShell : ScriptInterpreterType.Bash) as ScriptInterpreterTypeNumber;
+  (i === "powershell"
+    ? ScriptInterpreterType.PowerShell
+    : i === "cmd"
+      ? ScriptInterpreterType.Cmd
+      : ScriptInterpreterType.Bash) as ScriptInterpreterTypeNumber;
+
+const appendLogLine = (existing: string[], line?: string) => {
+  if (!line) return existing;
+  const next = [...existing, line];
+  if (next.length <= MAX_LOG_LINES_PER_ROW) return next;
+  return next.slice(next.length - MAX_LOG_LINES_PER_ROW);
+};
 
 function payloadToTelemetryPatch(payload: ScriptOutputTelemetryPayload) {
   const taskId =
@@ -162,11 +178,15 @@ export function useMultiDeviceScriptRunner() {
     terminalCompletionKeysRef.current.add(key);
 
     const success = payload.exitCode === 0;
-    const status: ScriptExecutionStatus = success ? "success" : "error";
     const logLine = `[system] Process exited with code ${payload.exitCode}.`;
 
     setRowsByKey((prev) => {
       const existing = prev[key];
+      const status: ScriptExecutionStatus = success
+        ? "success"
+        : existing?.status === "cancelled"
+          ? "cancelled"
+          : "error";
       return {
         ...prev,
         [key]: {
@@ -175,7 +195,7 @@ export function useMultiDeviceScriptRunner() {
           machineName: existing?.machineName ?? payload.machineId,
           status,
           progress: 100,
-          logLines: [...(existing?.logLines ?? []), logLine],
+          logLines: appendLogLine(existing?.logLines ?? [], logLine),
           lastUpdatedAt: Date.now(),
           interpreter: existing?.interpreter,
         },
@@ -224,7 +244,10 @@ export function useMultiDeviceScriptRunner() {
             ...prev,
             [key]: {
               ...base,
-              logLines: [...base.logLines, `[${incoming.stream || "stdout"}] ${line}`],
+              logLines: appendLogLine(
+                base.logLines,
+                `[${incoming.stream || "stdout"}] ${line}`,
+              ),
               lastUpdatedAt: Date.now(),
             },
           };
@@ -262,9 +285,10 @@ export function useMultiDeviceScriptRunner() {
             machineName: incoming.machineName || existing?.machineName || machineId,
             status: nextStatus,
             progress: nextProgress,
-            logLines: line
-              ? [...(existing?.logLines ?? []), `[${incoming.stream || "stdout"}] ${line}`]
-              : (existing?.logLines ?? []),
+            logLines: appendLogLine(
+              existing?.logLines ?? [],
+              line ? `[${incoming.stream || "stdout"}] ${line}` : undefined,
+            ),
             lastUpdatedAt: Date.now(),
             interpreter: incoming.interpreter || existing?.interpreter,
           },
@@ -409,7 +433,7 @@ export function useMultiDeviceScriptRunner() {
             ...existing,
             status: "running",
             progress: Math.min(MAX_INFERRED_PROGRESS, Math.max(existing.progress, 15)),
-            logLines: [...existing.logLines, "[system] Execution dispatched to agent(s)."],
+            logLines: appendLogLine(existing.logLines, "[system] Execution dispatched to agent(s)."),
             lastUpdatedAt: Date.now(),
           };
         }
@@ -431,9 +455,9 @@ export function useMultiDeviceScriptRunner() {
         ...prev,
         [rowKey]: {
           ...row,
-          status: "timeout",
+          status: "cancelled",
           progress: 100,
-          logLines: [...row.logLines, "[system] Cancel requested by operator."],
+          logLines: appendLogLine(row.logLines, "[system] Cancel requested by operator."),
           lastUpdatedAt: Date.now(),
         },
       };
@@ -462,9 +486,9 @@ export function useMultiDeviceScriptRunner() {
           terminalCompletionKeysRef.current.add(key);
           next[key] = {
             ...row,
-            status: "timeout",
+            status: "cancelled",
             progress: 100,
-            logLines: [...row.logLines, "[system] Stopped by global control."],
+            logLines: appendLogLine(row.logLines, "[system] Stopped by global control."),
             lastUpdatedAt: Date.now(),
           };
         }

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -15,6 +14,7 @@ namespace LabSync.Modules.ScriptExecutor;
 
 public sealed class ScriptExecutorModule : IAgentModule
 {
+    private const int TelemetryChannelCapacity = 2048;
     public string Name => "ScriptExecutor";
     public string Version => "1.0.0";
 
@@ -92,8 +92,6 @@ public sealed class ScriptExecutorModule : IAgentModule
         var linkedToken = linkedCts.Token;
 
         var sw = Stopwatch.StartNew();
-        var stdOut = new StringBuilder();
-        var stdErr = new StringBuilder();
         var scriptForDisk = interpreter.ApplyEncodingPreamble(envelope.ScriptContent);
         var tempFile = CreateTemporaryScript(scriptForDisk, envelope.InterpreterType);
 
@@ -112,20 +110,16 @@ public sealed class ScriptExecutorModule : IAgentModule
                 throw new InvalidOperationException("Failed to start script process.");
             }
 
-            var telemetryChannel = Channel.CreateUnbounded<ScriptOutputTelemetryDto>(new UnboundedChannelOptions
+            var telemetryChannel = Channel.CreateBounded<ScriptOutputTelemetryDto>(new BoundedChannelOptions(TelemetryChannelCapacity)
             {
                 SingleReader = true,
-                SingleWriter = false
+                SingleWriter = false,
+                FullMode = BoundedChannelFullMode.DropOldest
             });
 
-            var streamState = new ConcurrentDictionary<string, object>(StringComparer.Ordinal);
             process.OutputDataReceived += (_, e) =>
             {
                 if (e.Data == null) return;
-                lock (streamState)
-                {
-                    stdOut.AppendLine(e.Data);
-                }
                 telemetryChannel.Writer.TryWrite(new ScriptOutputTelemetryDto(
                     envelope.TaskId,
                     envelope.MachineId,
@@ -138,10 +132,6 @@ public sealed class ScriptExecutorModule : IAgentModule
             process.ErrorDataReceived += (_, e) =>
             {
                 if (e.Data == null) return;
-                lock (streamState)
-                {
-                    stdErr.AppendLine(e.Data);
-                }
                 telemetryChannel.Writer.TryWrite(new ScriptOutputTelemetryDto(
                     envelope.TaskId,
                     envelope.MachineId,
@@ -151,7 +141,7 @@ public sealed class ScriptExecutorModule : IAgentModule
                     DateTimeOffset.UtcNow));
             };
 
-            var telemetryTask = PumpTelemetryAsync(telemetryChannel.Reader, linkedToken);
+            var telemetryTask = PumpTelemetryAsync(telemetryChannel.Reader, CancellationToken.None);
 
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
@@ -174,7 +164,7 @@ public sealed class ScriptExecutorModule : IAgentModule
             sw.Stop();
             var exitCode = process.ExitCode;
             var success = exitCode == 0;
-            await PublishTaskCompletedAsync(envelope, exitCode, success, linkedToken);
+            await PublishTaskCompletedAsync(envelope, exitCode, success, CancellationToken.None);
 
             _logger?.LogInformation(
                 "Script finished. Interpreter={Interpreter}, ExitCode={ExitCode}, DurationMs={DurationMs}",
@@ -184,7 +174,7 @@ public sealed class ScriptExecutorModule : IAgentModule
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
         {
-            await PublishTaskCompletedAsync(envelope, -1, false, linkedToken);
+            await PublishTaskCompletedAsync(envelope, -1, false, CancellationToken.None);
             sw.Stop();
             _logger?.LogWarning(
                 "Script timed out after {TimeoutSeconds}s. Interpreter={Interpreter}",
@@ -198,7 +188,7 @@ public sealed class ScriptExecutorModule : IAgentModule
         }
         catch (Exception)
         {
-            await PublishTaskCompletedAsync(envelope, -1, false, linkedToken);
+            await PublishTaskCompletedAsync(envelope, -1, false, CancellationToken.None);
             throw;
         }
         finally
@@ -234,19 +224,26 @@ public sealed class ScriptExecutorModule : IAgentModule
 
     private async Task PumpTelemetryAsync(ChannelReader<ScriptOutputTelemetryDto> reader, CancellationToken cancellationToken)
     {
-        await foreach (var item in reader.ReadAllAsync(cancellationToken))
+        try
         {
-            try
+            await foreach (var item in reader.ReadAllAsync(cancellationToken))
             {
-                if (_hubInvoker != null)
+                try
                 {
-                    await _hubInvoker.InvokeAsync("ScriptOutputTelemetry", [item], cancellationToken);
+                    if (_hubInvoker != null)
+                    {
+                        await _hubInvoker.InvokeAsync("ScriptOutputTelemetry", [item], cancellationToken);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to publish ScriptOutputTelemetry.");
                 }
             }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "Failed to publish ScriptOutputTelemetry.");
-            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is expected on shutdown.
         }
     }
 
