@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Activity,
@@ -10,12 +10,22 @@ import {
   Clock3,
   LoaderCircle,
   Search,
+  Save,
   Square,
   TerminalSquare,
   XCircle,
 } from "lucide-react";
 import { devicesQueryKey, fetchDevices } from "../api/devices";
+import {
+  createSavedScript,
+  deleteSavedScript,
+  fetchSavedScripts,
+  savedScriptsQueryKey,
+  updateSavedScript,
+} from "../api/savedScripts";
+import { extractApiErrorMessage } from "../api/scriptRunner";
 import type { DeviceDto } from "../types/device";
+import type { SavedScript } from "../types/savedScripts";
 import {
   type ScriptInterpreter,
   type ScriptExecutionStatus,
@@ -83,6 +93,7 @@ const parseLogLine = (line: string) => {
 };
 
 export function ScriptDeploymentDashboard() {
+  const queryClient = useQueryClient();
   const [scriptContent, setScriptContent] = useState(DEFAULT_SCRIPT);
   const [interpreter, setInterpreter] = useState<ScriptInterpreter>("powershell");
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
@@ -95,6 +106,18 @@ export function ScriptDeploymentDashboard() {
   const [logStreamFilter, setLogStreamFilter] = useState<"all" | "stdout" | "stderr" | "system">(
     "all",
   );
+  const [savedScriptsSearch, setSavedScriptsSearch] = useState("");
+  const [activeSavedScriptId, setActiveSavedScriptId] = useState<string | null>(null);
+  const [loadedScriptMeta, setLoadedScriptMeta] = useState<{
+    id: string;
+    title: string;
+    description: string;
+  } | null>(null);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [saveModalTitle, setSaveModalTitle] = useState("");
+  const [saveModalDescription, setSaveModalDescription] = useState("");
+  const [saveModalTargetId, setSaveModalTargetId] = useState<string | null>(null);
+  const [savedScriptsError, setSavedScriptsError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const monitorContainerRef = useRef<HTMLDivElement | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
@@ -102,6 +125,10 @@ export function ScriptDeploymentDashboard() {
   const devicesQuery = useQuery({
     queryKey: devicesQueryKey,
     queryFn: fetchDevices,
+  });
+  const savedScriptsQuery = useQuery({
+    queryKey: savedScriptsQueryKey,
+    queryFn: fetchSavedScripts,
   });
 
   const {
@@ -154,6 +181,16 @@ export function ScriptDeploymentDashboard() {
   }, [rows]);
   const activeCount = countsByStatus.running + countsByStatus.pending;
   const selectedSummary = `${selectedDeviceIds.length} selected / ${devices.length} total`;
+  const savedScripts = savedScriptsQuery.data || [];
+  const filteredSavedScripts = useMemo(() => {
+    if (!savedScriptsSearch.trim()) return savedScripts;
+    const query = savedScriptsSearch.trim().toLowerCase();
+    return savedScripts.filter((script) => script.title.toLowerCase().includes(query));
+  }, [savedScripts, savedScriptsSearch]);
+  const activeSavedScript = useMemo(
+    () => savedScripts.find((script) => script.id === activeSavedScriptId) ?? null,
+    [savedScripts, activeSavedScriptId],
+  );
   const monitorRows = useMemo(() => {
     const query = monitorSearch.trim().toLowerCase();
     return rows.filter((row) => {
@@ -214,6 +251,7 @@ export function ScriptDeploymentDashboard() {
   const onUploadScriptFile = async (file: File) => {
     const text = await file.text();
     setScriptContent(text);
+    setLoadedScriptMeta(null);
     const detected = inferInterpreterFromFileName(file.name);
     if (detected) {
       setInterpreter(detected);
@@ -232,6 +270,123 @@ export function ScriptDeploymentDashboard() {
     } catch {
       /* lastInvokeError from hook surfaces the message */
     }
+  };
+  const createSavedScriptMutation = useMutation({
+    mutationFn: createSavedScript,
+    onSuccess: (created) => {
+      setSavedScriptsError(null);
+      setActiveSavedScriptId(created.id);
+      setLoadedScriptMeta({
+        id: created.id,
+        title: created.title,
+        description: created.description || "",
+      });
+      setIsSaveModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: savedScriptsQueryKey });
+    },
+    onError: (error: unknown) => {
+      setSavedScriptsError(extractApiErrorMessage(error));
+    },
+  });
+
+  const updateSavedScriptMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateSavedScript>[1] }) =>
+      updateSavedScript(id, payload),
+    onSuccess: (updated) => {
+      setSavedScriptsError(null);
+      setActiveSavedScriptId(updated.id);
+      setLoadedScriptMeta({
+        id: updated.id,
+        title: updated.title,
+        description: updated.description || "",
+      });
+      setIsSaveModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: savedScriptsQueryKey });
+    },
+    onError: (error: unknown) => {
+      setSavedScriptsError(extractApiErrorMessage(error));
+    },
+  });
+
+  const deleteSavedScriptMutation = useMutation({
+    mutationFn: deleteSavedScript,
+    onSuccess: (_, id) => {
+      setSavedScriptsError(null);
+      if (activeSavedScriptId === id) {
+        setActiveSavedScriptId(null);
+      }
+      if (loadedScriptMeta?.id === id) {
+        setLoadedScriptMeta(null);
+      }
+      queryClient.invalidateQueries({ queryKey: savedScriptsQueryKey });
+    },
+    onError: (error: unknown) => {
+      setSavedScriptsError(extractApiErrorMessage(error));
+    },
+  });
+
+  const persistCurrentScript = async () => {
+    const title = saveModalTitle.trim();
+    if (!title || !scriptContent.trim()) {
+      setSavedScriptsError("Title and script content are required.");
+      return;
+    }
+
+    const payload = {
+      title,
+      description: saveModalDescription.trim() || null,
+      content: scriptContent,
+      interpreter,
+    };
+
+    if (saveModalTargetId) {
+      await updateSavedScriptMutation.mutateAsync({
+        id: saveModalTargetId,
+        payload,
+      });
+      return;
+    }
+
+    await createSavedScriptMutation.mutateAsync(payload);
+  };
+
+  const loadSavedScript = (script: SavedScript) => {
+    setScriptContent(script.content);
+    setInterpreter(script.interpreter);
+    setActiveSavedScriptId(script.id);
+    setLoadedScriptMeta({
+      id: script.id,
+      title: script.title,
+      description: script.description || "",
+    });
+  };
+
+  const runSavedScript = async (script: SavedScript) => {
+    if (!selectedDeviceIds.length) {
+      setSavedScriptsError("Select at least one device before running.");
+      return;
+    }
+    setSavedScriptsError(null);
+    await runOnDevices({
+      machineIds: selectedDeviceIds,
+      machineNamesById,
+      scriptContent: script.content,
+      interpreter: script.interpreter,
+    });
+  };
+
+  const openSaveModal = () => {
+    setSavedScriptsError(null);
+    if (loadedScriptMeta) {
+      setSaveModalTitle(loadedScriptMeta.title);
+      setSaveModalDescription(loadedScriptMeta.description);
+      setSaveModalTargetId(loadedScriptMeta.id);
+    } else {
+      setSaveModalTitle("");
+      setSaveModalDescription("");
+      setSaveModalTargetId(null);
+    }
+    setIsSaveModalOpen(true);
   };
 
   const toggleSelectAllFiltered = () => {
@@ -354,6 +509,114 @@ export function ScriptDeploymentDashboard() {
       </header>
 
       <div className="flex-1 overflow-auto p-6 md:p-8 space-y-6">
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Saved Scripts</h2>
+              <p className="text-xs text-slate-400">Quickly pick, open, and run reusable scripts.</p>
+            </div>
+            <div className="relative">
+              <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2 top-1/2 -translate-y-1/2" />
+              <input
+                value={savedScriptsSearch}
+                onChange={(e) => setSavedScriptsSearch(e.target.value)}
+                placeholder="Search by title..."
+                className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-60"
+              />
+            </div>
+          </div>
+
+          <div className="border border-slate-800 rounded-lg max-h-64 overflow-auto bg-slate-950/40">
+            {savedScriptsQuery.isLoading ? (
+              <p className="text-sm text-slate-400 p-4">Loading saved scripts…</p>
+            ) : savedScriptsQuery.isError ? (
+              <p className="text-sm text-rose-300 p-4">Failed to load saved scripts.</p>
+            ) : filteredSavedScripts.length === 0 ? (
+              <p className="text-sm text-slate-400 p-4">No saved scripts found.</p>
+            ) : (
+              <ul className="divide-y divide-slate-800">
+                {filteredSavedScripts.map((script) => {
+                  const isSelected = activeSavedScriptId === script.id;
+                  return (
+                    <li key={script.id}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSavedScriptId(script.id)}
+                        className={`w-full px-4 py-3 text-left transition ${
+                          isSelected
+                            ? "bg-primary-600/15 border-l-2 border-primary-500"
+                            : "hover:bg-slate-900/80 border-l-2 border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className={`text-sm font-medium ${isSelected ? "text-white" : "text-slate-200"}`}>
+                              {script.title}
+                            </p>
+                            {script.description && (
+                              <p className="text-xs text-slate-400 mt-1 line-clamp-1">{script.description}</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
+                              {script.interpreter}
+                            </span>
+                            <p className="text-[11px] text-slate-500 mt-1">
+                              {new Date(script.updatedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="border border-slate-800 rounded-lg p-3 bg-slate-900/70">
+            {activeSavedScript ? (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-400">
+                  Selected: <span className="text-slate-200">{activeSavedScript.title}</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-xs px-3 py-1.5 rounded"
+                    onClick={() => loadSavedScript(activeSavedScript)}
+                  >
+                    Open in editor
+                  </button>
+                  <button
+                    type="button"
+                    className="bg-primary-600/90 hover:bg-primary-500 text-white text-xs px-3 py-1.5 rounded disabled:opacity-50"
+                    onClick={() => runSavedScript(activeSavedScript)}
+                    disabled={!selectedDeviceIds.length}
+                  >
+                    Run script
+                  </button>
+                  <button
+                    type="button"
+                    className="bg-rose-700/80 hover:bg-rose-600 text-white text-xs px-3 py-1.5 rounded disabled:opacity-50"
+                    onClick={() => {
+                      if (window.confirm(`Delete saved script "${activeSavedScript.title}"?`)) {
+                        deleteSavedScriptMutation.mutate(activeSavedScript.id);
+                      }
+                    }}
+                    disabled={deleteSavedScriptMutation.isPending}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">Select a script to view available actions.</p>
+            )}
+          </div>
+          {savedScriptsError && <p className="text-xs text-rose-300">{savedScriptsError}</p>}
+        </section>
+
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div>
@@ -394,7 +657,20 @@ export function ScriptDeploymentDashboard() {
 
             <button
               type="button"
-              className="ml-auto bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium"
+              className="bg-slate-800 border border-slate-700 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm"
+              disabled={!scriptContent.trim() || createSavedScriptMutation.isPending || updateSavedScriptMutation.isPending}
+              onClick={openSaveModal}
+              title="Save the script currently in the editor"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Save className="h-4 w-4" />
+                Save
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium"
               disabled={!selectedDeviceIds.length || !scriptContent.trim()}
               onClick={handleRun}
               title={!selectedDeviceIds.length ? "Select at least one device." : "Dispatch script"}
@@ -411,6 +687,15 @@ export function ScriptDeploymentDashboard() {
               Active executions: <span className="text-slate-300">{activeCount}</span>
             </span>
           </div>
+          {loadedScriptMeta && (
+            <div className="border border-slate-800 rounded-lg bg-slate-950/40 px-3 py-2">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Loaded Saved Script</p>
+              <p className="text-sm text-white font-medium">{loadedScriptMeta.title}</p>
+              {loadedScriptMeta.description && (
+                <p className="text-xs text-slate-400 mt-1">{loadedScriptMeta.description}</p>
+              )}
+            </div>
+          )}
 
           <div className="h-[280px] border border-slate-700 rounded-lg overflow-hidden">
             <Editor
@@ -636,6 +921,62 @@ export function ScriptDeploymentDashboard() {
           </div>
         </section>
       </div>
+
+      {isSaveModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-xl shadow-xl">
+            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white">Save Script</h3>
+              <button
+                type="button"
+                onClick={() => setIsSaveModalOpen(false)}
+                className="text-xs text-slate-400 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1.5">Script name *</label>
+                <input
+                  value={saveModalTitle}
+                  onChange={(e) => setSaveModalTitle(e.target.value)}
+                  placeholder="Enter script name"
+                  className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1.5">Description</label>
+                <textarea
+                  value={saveModalDescription}
+                  onChange={(e) => setSaveModalDescription(e.target.value)}
+                  placeholder="Optional description"
+                  rows={3}
+                  className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 resize-none"
+                />
+              </div>
+              {savedScriptsError && <p className="text-xs text-rose-300">{savedScriptsError}</p>}
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsSaveModalOpen(false)}
+                  className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-sm px-3 py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={persistCurrentScript}
+                  disabled={createSavedScriptMutation.isPending || updateSavedScriptMutation.isPending}
+                  className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white text-sm px-3 py-2 rounded-lg"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeLogRow && (
         <div

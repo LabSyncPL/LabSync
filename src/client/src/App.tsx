@@ -8,7 +8,6 @@ import { SetupWizard } from "./components/SetupWizard";
 import { Dashboard } from "./pages/Dashboard";
 import { DeviceDetails } from "./pages/DeviceDetails";
 import { TasksPage } from "./pages/TasksPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { RemoteViewPage } from "./pages/RemoteViewPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ScriptDeploymentDashboard } from "./components/ScriptDeploymentDashboard";
@@ -98,11 +97,6 @@ function App() {
             path="scripts"
             element={<ScriptDeploymentDashboard />}
           />
-          <Route
-            path="repository"
-            element={<PlaceholderPage title="Repository" />}
-          />
-          <Route path="audit" element={<PlaceholderPage title="Audit Log" />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
