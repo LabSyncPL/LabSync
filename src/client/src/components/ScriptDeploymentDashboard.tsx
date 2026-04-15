@@ -1,6 +1,19 @@
 import { useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import { useQuery } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  Activity,
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  Clock3,
+  LoaderCircle,
+  Search,
+  Square,
+  TerminalSquare,
+  XCircle,
+} from "lucide-react";
 import { devicesQueryKey, fetchDevices } from "../api/devices";
 import type { DeviceDto } from "../types/device";
 import {
@@ -14,13 +27,13 @@ const DEFAULT_SCRIPT = [
   "",
 ].join("\n");
 
-const STATUS_BADGE_CLASS: Record<ScriptExecutionStatus, string> = {
-  pending: "bg-slate-700 text-slate-200",
-  running: "bg-blue-600/20 text-blue-300",
-  success: "bg-emerald-600/20 text-emerald-300",
-  error: "bg-rose-600/20 text-rose-300",
-  timeout: "bg-amber-600/20 text-amber-300",
-  cancelled: "bg-orange-600/20 text-orange-300",
+const STATUS_STYLE: Record<ScriptExecutionStatus, { badge: string; icon: typeof Activity }> = {
+  pending: { badge: "bg-slate-700 text-slate-200", icon: Clock3 },
+  running: { badge: "bg-blue-600/20 text-blue-300", icon: LoaderCircle },
+  success: { badge: "bg-emerald-600/20 text-emerald-300", icon: CheckCircle2 },
+  error: { badge: "bg-rose-600/20 text-rose-300", icon: XCircle },
+  timeout: { badge: "bg-amber-600/20 text-amber-300", icon: AlertTriangle },
+  cancelled: { badge: "bg-orange-600/20 text-orange-300", icon: Ban },
 };
 
 const STATUS_LABEL: Record<ScriptExecutionStatus, string> = {
@@ -56,12 +69,35 @@ const buildDeviceGroups = (devices: DeviceDto[]) => {
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
 };
 
+const STREAM_COLORS: Record<string, string> = {
+  stdout: "text-slate-200",
+  stderr: "text-rose-300",
+  system: "text-amber-300",
+};
+
+const parseLogLine = (line: string) => {
+  const match = line.match(/^\[(?<stream>[^\]]+)\]\s?(?<message>.*)$/);
+  const stream = match?.groups?.stream?.toLowerCase() || "system";
+  const message = match?.groups?.message || line;
+  return { stream, message };
+};
+
 export function ScriptDeploymentDashboard() {
   const [scriptContent, setScriptContent] = useState(DEFAULT_SCRIPT);
   const [interpreter, setInterpreter] = useState<ScriptInterpreter>("powershell");
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
   const [activeLogRowKey, setActiveLogRowKey] = useState<string | null>(null);
+  const [deviceSearch, setDeviceSearch] = useState("");
+  const [monitorSearch, setMonitorSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | ScriptExecutionStatus>("all");
+  const [showActiveOnly, setShowActiveOnly] = useState(false);
+  const [logSearch, setLogSearch] = useState("");
+  const [logStreamFilter, setLogStreamFilter] = useState<"all" | "stdout" | "stderr" | "system">(
+    "all",
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const monitorContainerRef = useRef<HTMLDivElement | null>(null);
+  const logContainerRef = useRef<HTMLDivElement | null>(null);
 
   const devicesQuery = useQuery({
     queryKey: devicesQueryKey,
@@ -82,6 +118,14 @@ export function ScriptDeploymentDashboard() {
   const devices = devicesQuery.data || [];
   const groups = useMemo(() => buildDeviceGroups(devices), [devices]);
   const selectedIdSet = useMemo(() => new Set(selectedDeviceIds), [selectedDeviceIds]);
+  const filteredDevices = useMemo(() => {
+    if (!deviceSearch.trim()) return devices;
+    const query = deviceSearch.toLowerCase();
+    return devices.filter((d) =>
+      `${d.hostname} ${d.groupName || "ungrouped"} ${d.id}`.toLowerCase().includes(query),
+    );
+  }, [devices, deviceSearch]);
+  const filteredDeviceIdSet = useMemo(() => new Set(filteredDevices.map((d) => d.id)), [filteredDevices]);
   const machineNamesById = useMemo(() => {
     const map: Record<string, string> = {};
     devices.forEach((d) => {
@@ -94,11 +138,59 @@ export function ScriptDeploymentDashboard() {
     if (!activeLogRowKey) return null;
     return rows.find((row) => `${row.taskId}::${row.machineId}` === activeLogRowKey) ?? null;
   }, [activeLogRowKey, rows]);
-  const activeCount = useMemo(
-    () => rows.filter((row) => row.status === "running" || row.status === "pending").length,
-    [rows],
-  );
+  const countsByStatus = useMemo(() => {
+    const base: Record<ScriptExecutionStatus, number> = {
+      pending: 0,
+      running: 0,
+      success: 0,
+      error: 0,
+      timeout: 0,
+      cancelled: 0,
+    };
+    rows.forEach((row) => {
+      base[row.status] += 1;
+    });
+    return base;
+  }, [rows]);
+  const activeCount = countsByStatus.running + countsByStatus.pending;
   const selectedSummary = `${selectedDeviceIds.length} selected / ${devices.length} total`;
+  const monitorRows = useMemo(() => {
+    const query = monitorSearch.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (showActiveOnly && row.status !== "running" && row.status !== "pending") return false;
+      if (statusFilter !== "all" && row.status !== statusFilter) return false;
+      if (!query) return true;
+      return `${row.machineName} ${row.taskId} ${row.interpreter || ""}`
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [rows, monitorSearch, showActiveOnly, statusFilter]);
+
+  const monitorVirtualizer = useVirtualizer({
+    count: monitorRows.length,
+    getScrollElement: () => monitorContainerRef.current,
+    estimateSize: () => 56,
+    overscan: 12,
+  });
+
+  const parsedActiveLogs = useMemo(() => {
+    if (!activeLogRow) return [];
+    const query = logSearch.trim().toLowerCase();
+    return activeLogRow.logLines
+      .map((line, index) => ({ ...parseLogLine(line), raw: line, index }))
+      .filter((line) => {
+        if (logStreamFilter !== "all" && line.stream !== logStreamFilter) return false;
+        if (!query) return true;
+        return line.raw.toLowerCase().includes(query);
+      });
+  }, [activeLogRow, logSearch, logStreamFilter]);
+
+  const logVirtualizer = useVirtualizer({
+    count: parsedActiveLogs.length,
+    getScrollElement: () => logContainerRef.current,
+    estimateSize: () => 22,
+    overscan: 20,
+  });
 
   const toggleDevice = (id: string) => {
     setSelectedDeviceIds((prev) =>
@@ -142,39 +234,122 @@ export function ScriptDeploymentDashboard() {
     }
   };
 
+  const toggleSelectAllFiltered = () => {
+    const ids = filteredDevices.map((d) => d.id);
+    const allSelected = ids.length > 0 && ids.every((id) => selectedIdSet.has(id));
+    setSelectedDeviceIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        ids.forEach((id) => next.delete(id));
+      } else {
+        ids.forEach((id) => next.add(id));
+      }
+      return Array.from(next);
+    });
+  };
+
+  const handleStopAll = async () => {
+    if (activeCount === 0) return;
+    const confirmed = window.confirm(`Stop ${activeCount} active execution(s)?`);
+    if (!confirmed) return;
+    await stopAll();
+  };
+
   return (
     <>
-      <header className="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900 shrink-0">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Script Deployment</h1>
-          <p className="text-slate-500 text-xs">
-            Deploy scripts to multiple devices and monitor output in real time
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          {lastInvokeError && (
-            <span className="text-xs text-amber-300 max-w-md text-right">{lastInvokeError}</span>
-          )}
-          <div className="flex items-center gap-2">
-          <span
-            className={`text-xs px-2 py-1 rounded-full ${
-              connectionState === "connected"
-                ? "bg-emerald-600/20 text-emerald-300"
-                : connectionState === "connecting"
-                  ? "bg-blue-600/20 text-blue-300"
-                  : "bg-rose-600/20 text-rose-300"
-            }`}
-          >
-            SignalR: {connectionState}
-          </span>
-          <button
-            type="button"
-            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-xs"
-            onClick={clearFinished}
-          >
-            Clear Finished
-          </button>
+      <header className="border-b border-slate-800/80 px-6 md:px-8 py-3 bg-slate-900/80 shrink-0 space-y-3 backdrop-blur-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold text-white">Script Deployment</h1>
+            <p className="text-slate-500 text-xs">
+              Execute scripts across devices and monitor outcomes in real time.
+            </p>
           </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-[11px] px-2 py-1 rounded-full border ${
+                connectionState === "connected"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                  : connectionState === "connecting"
+                    ? "border-blue-500/40 bg-blue-500/10 text-blue-300"
+                    : "border-rose-500/40 bg-rose-500/10 text-rose-300"
+              }`}
+            >
+              SignalR: {connectionState}
+            </span>
+            <button
+              type="button"
+              className="bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[11px]"
+              onClick={clearFinished}
+              disabled={rows.length === 0}
+            >
+              Clear Finished
+            </button>
+            <button
+              type="button"
+              className="bg-rose-600/90 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-[11px] font-medium"
+              onClick={handleStopAll}
+              disabled={activeCount === 0}
+              title="Stop all running and pending executions"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Square className="h-3 w-3" />
+                Stop Active
+              </span>
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5">
+          {(
+            [
+              ["running", countsByStatus.running, "Running"],
+              ["pending", countsByStatus.pending, "Pending"],
+              ["error", countsByStatus.error, "Errors"],
+              ["timeout", countsByStatus.timeout, "Timeouts"],
+              ["cancelled", countsByStatus.cancelled, "Cancelled"],
+              ["success", countsByStatus.success, "Success"],
+            ] as const
+          ).map(([status, count, label]) => {
+            const Icon = STATUS_STYLE[status].icon;
+            return (
+              <button
+                key={status}
+                type="button"
+                onClick={() => {
+                  setStatusFilter((current) =>
+                    current === status ? "all" : (status as ScriptExecutionStatus),
+                  );
+                  setShowActiveOnly(false);
+                }}
+                className={`rounded-md border px-2.5 py-1.5 text-left transition ${
+                  statusFilter === status
+                    ? "border-primary-500/60 bg-primary-500/10"
+                    : "border-slate-800 bg-slate-900/70 hover:bg-slate-800/60"
+                }`}
+                title={`Filter executions by ${label.toLowerCase()}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">{label}</span>
+                  <Icon
+                    className={`h-3.5 w-3.5 ${STATUS_STYLE[status].badge.split(" ").at(-1) || "text-slate-300"} ${
+                      status === "running" && count > 0 ? "animate-spin" : ""
+                    }`}
+                  />
+                </div>
+                <div className="text-sm font-semibold text-white leading-tight">{count}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="min-h-[16px] flex items-center justify-between">
+          {lastInvokeError && (
+            <span className="text-[11px] text-amber-300 inline-flex items-center gap-1.5">
+              <AlertTriangle className="h-3 w-3" />
+              {lastInvokeError}
+            </span>
+          )}
+          {!lastInvokeError && <span />}
+          {connectionError && <span className="text-[11px] text-rose-300">{connectionError}</span>}
         </div>
       </header>
 
@@ -222,17 +397,12 @@ export function ScriptDeploymentDashboard() {
               className="ml-auto bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium"
               disabled={!selectedDeviceIds.length || !scriptContent.trim()}
               onClick={handleRun}
-              title={!selectedDeviceIds.length ? "Select at least one device." : undefined}
+              title={!selectedDeviceIds.length ? "Select at least one device." : "Dispatch script"}
             >
-              Run on Selected Devices ({selectedDeviceIds.length})
-            </button>
-            <button
-              type="button"
-              className="bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium"
-              onClick={stopAll}
-              disabled={activeCount === 0}
-            >
-              Stop All
+              <span className="inline-flex items-center gap-1.5">
+                <TerminalSquare className="h-4 w-4" />
+                Run on {selectedDeviceIds.length} device(s)
+              </span>
             </button>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -260,7 +430,30 @@ export function ScriptDeploymentDashboard() {
         </section>
 
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <h2 className="text-sm font-semibold text-white mb-3">Target Selection</h2>
+          <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Target Selection</h2>
+              <p className="text-xs text-slate-400">Filter and bulk-select devices quickly.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2 top-1/2 -translate-y-1/2" />
+                <input
+                  value={deviceSearch}
+                  onChange={(e) => setDeviceSearch(e.target.value)}
+                  placeholder="Search devices..."
+                  className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-52"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={toggleSelectAllFiltered}
+                className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-xs rounded-lg px-3 py-2"
+              >
+                Toggle All Filtered
+              </button>
+            </div>
+          </div>
           {devicesQuery.isLoading ? (
             <p className="text-slate-400 text-sm">Loading devices…</p>
           ) : devicesQuery.isError ? (
@@ -271,12 +464,14 @@ export function ScriptDeploymentDashboard() {
                 <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">Groups</h3>
                 <div className="space-y-2 max-h-52 overflow-auto pr-1">
                   {groups.map((group) => {
-                    const groupSelectedCount = group.deviceIds.filter((id) =>
-                      selectedIdSet.has(id),
-                    ).length;
+                    const groupIdsInFilter = group.deviceIds.filter((id) =>
+                      filteredDeviceIdSet.has(id),
+                    );
+                    if (groupIdsInFilter.length === 0) return null;
+                    const groupSelectedCount = groupIdsInFilter.filter((id) => selectedIdSet.has(id))
+                      .length;
                     const allSelected =
-                      group.deviceIds.length > 0 &&
-                      groupSelectedCount === group.deviceIds.length;
+                      groupIdsInFilter.length > 0 && groupSelectedCount === groupIdsInFilter.length;
                     return (
                       <label
                         key={group.id}
@@ -285,12 +480,12 @@ export function ScriptDeploymentDashboard() {
                         <span>{group.name}</span>
                         <span className="flex items-center gap-2">
                           <span className="text-xs text-slate-400">
-                            {groupSelectedCount}/{group.deviceIds.length}
+                            {groupSelectedCount}/{groupIdsInFilter.length}
                           </span>
                           <input
                             type="checkbox"
                             checked={allSelected}
-                            onChange={() => toggleGroup(group.deviceIds)}
+                            onChange={() => toggleGroup(groupIdsInFilter)}
                           />
                         </span>
                       </label>
@@ -302,7 +497,7 @@ export function ScriptDeploymentDashboard() {
               <div className="border border-slate-800 rounded-lg p-3">
                 <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">Devices</h3>
                 <div className="space-y-2 max-h-52 overflow-auto pr-1">
-                  {devices.map((device) => (
+                  {filteredDevices.map((device) => (
                     <label
                       key={device.id}
                       className="flex items-center justify-between text-sm text-slate-200 bg-slate-800/70 rounded px-2 py-1.5"
@@ -327,83 +522,117 @@ export function ScriptDeploymentDashboard() {
         </section>
 
         <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white">Execution Monitor</h2>
-            {connectionError && (
-              <span className="text-xs text-rose-300">SignalR error: {connectionError}</span>
-            )}
+          <div className="px-4 py-3 border-b border-slate-800 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-white">Execution Monitor</h2>
+              <span className="text-xs text-slate-400">{monitorRows.length} shown</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2 top-1/2 -translate-y-1/2" />
+                <input
+                  value={monitorSearch}
+                  onChange={(e) => setMonitorSearch(e.target.value)}
+                  placeholder="Search machine / task / interpreter..."
+                  className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-72"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as "all" | ScriptExecutionStatus)}
+                className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2 py-2"
+              >
+                <option value="all">All statuses</option>
+                <option value="running">Running</option>
+                <option value="pending">Pending</option>
+                <option value="error">Error</option>
+                <option value="timeout">Timeout</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="success">Success</option>
+              </select>
+              <label className="text-xs text-slate-300 inline-flex items-center gap-2 px-2 py-1.5 rounded border border-slate-700 bg-slate-800/80">
+                <input
+                  type="checkbox"
+                  checked={showActiveOnly}
+                  onChange={(e) => setShowActiveOnly(e.target.checked)}
+                />
+                Active only
+              </label>
+            </div>
           </div>
 
-          <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-850 text-slate-400 text-xs uppercase tracking-wide">
-                <tr>
-                  <th className="text-left px-4 py-2">Machine Name</th>
-                  <th className="text-left px-4 py-2">Task</th>
-                  <th className="text-left px-4 py-2">Interpreter</th>
-                  <th className="text-left px-4 py-2">Current Status</th>
-                  <th className="text-left px-4 py-2">Progress</th>
-                  <th className="text-right px-4 py-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-6 text-slate-400" colSpan={6}>
-                      No script executions yet.
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((row) => {
-                    const rowKey = `${row.taskId}::${row.machineId}`;
-                    return (
-                      <tr key={rowKey} className="border-t border-slate-800">
-                        <td className="px-4 py-3 text-white">{row.machineName}</td>
-                        <td className="px-4 py-3 text-slate-300 font-mono text-xs">{row.taskId}</td>
-                        <td className="px-4 py-3 text-slate-300 text-xs uppercase">
-                          {row.interpreter || "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex px-2 py-1 rounded-full text-xs ${STATUS_BADGE_CLASS[row.status]}`}
-                          >
-                            {STATUS_LABEL[row.status]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 min-w-[180px]">
-                          <div className="w-full h-2 bg-slate-800 rounded">
-                            <div
-                              className="h-2 bg-primary-500 rounded"
-                              style={{ width: `${Math.max(0, Math.min(100, row.progress))}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-400 mt-1 inline-block">
-                            {Math.round(row.progress)}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right space-x-2">
-                          <button
-                            type="button"
-                            className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-1.5 rounded"
-                            onClick={() => setActiveLogRowKey(rowKey)}
-                          >
-                            View Log
-                          </button>
-                          <button
-                            type="button"
-                            className="bg-rose-600/80 hover:bg-rose-600 text-white text-xs px-3 py-1.5 rounded"
-                            onClick={() => cancelMachine(row.taskId, row.machineId)}
-                            disabled={row.status !== "pending" && row.status !== "running"}
-                          >
-                            Cancel
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+          <div className="px-4 py-2 border-b border-slate-800 text-[11px] uppercase tracking-wide text-slate-400 grid grid-cols-[2fr_2fr_1fr_1.5fr_1.5fr_180px] gap-3">
+            <span>Machine</span>
+            <span>Task ID</span>
+            <span>Interpreter</span>
+            <span>Status</span>
+            <span>Progress</span>
+            <span className="text-right">Actions</span>
+          </div>
+          <div ref={monitorContainerRef} className="h-[420px] overflow-auto">
+            {monitorRows.length === 0 ? (
+              <div className="px-4 py-8 text-slate-400 text-sm">No executions matching current filters.</div>
+            ) : (
+              <div
+                className="relative"
+                style={{
+                  height: `${monitorVirtualizer.getTotalSize()}px`,
+                }}
+              >
+                {monitorVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = monitorRows[virtualRow.index];
+                  const rowKey = `${row.taskId}::${row.machineId}`;
+                  const StatusIcon = STATUS_STYLE[row.status].icon;
+                  return (
+                    <div
+                      key={rowKey}
+                      className="absolute left-0 top-0 w-full border-b border-slate-800 px-4 py-2 grid grid-cols-[2fr_2fr_1fr_1.5fr_1.5fr_180px] gap-3 text-sm items-center"
+                      style={{ transform: `translateY(${virtualRow.start}px)` }}
+                    >
+                      <span className="text-white truncate">{row.machineName}</span>
+                      <span className="text-slate-300 font-mono text-xs truncate">{row.taskId}</span>
+                      <span className="text-slate-300 text-xs uppercase">{row.interpreter || "-"}</span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs w-fit ${STATUS_STYLE[row.status].badge}`}
+                      >
+                        <StatusIcon
+                          className={`h-3.5 w-3.5 ${row.status === "running" ? "animate-spin" : ""}`}
+                        />
+                        {STATUS_LABEL[row.status]}
+                      </span>
+                      <span>
+                        <div className="w-full h-2 bg-slate-800 rounded">
+                          <div
+                            className="h-2 bg-primary-500 rounded"
+                            style={{ width: `${Math.max(0, Math.min(100, row.progress))}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] text-slate-400 mt-1 inline-block">
+                          {Math.round(row.progress)}%
+                        </span>
+                      </span>
+                      <span className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-2.5 py-1.5 rounded"
+                          onClick={() => setActiveLogRowKey(rowKey)}
+                        >
+                          Log
+                        </button>
+                        <button
+                          type="button"
+                          className="bg-rose-600/80 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs px-2.5 py-1.5 rounded"
+                          onClick={() => cancelMachine(row.taskId, row.machineId)}
+                          disabled={row.status !== "pending" && row.status !== "running"}
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
       </div>
@@ -424,7 +653,7 @@ export function ScriptDeploymentDashboard() {
                 </h3>
                 <p className="text-slate-400 text-xs font-mono">{activeLogRow.taskId}</p>
                 <p className="text-slate-500 text-xs mt-1">
-                  Showing up to the last {activeLogRow.logLines.length} lines retained in memory.
+                  {parsedActiveLogs.length} matching lines shown (from {activeLogRow.logLines.length} retained).
                 </p>
               </div>
               <button
@@ -435,10 +664,61 @@ export function ScriptDeploymentDashboard() {
                 Close
               </button>
             </div>
-            <div className="p-4">
-              <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 overflow-auto max-h-[60vh] whitespace-pre-wrap">
-                {activeLogRow.logLines.join("\n") || "No log output yet."}
-              </pre>
+            <div className="p-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2 top-1/2 -translate-y-1/2" />
+                  <input
+                    value={logSearch}
+                    onChange={(e) => setLogSearch(e.target.value)}
+                    placeholder="Search logs..."
+                    className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-64"
+                  />
+                </div>
+                <select
+                  value={logStreamFilter}
+                  onChange={(e) =>
+                    setLogStreamFilter(e.target.value as "all" | "stdout" | "stderr" | "system")
+                  }
+                  className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2 py-2"
+                >
+                  <option value="all">All streams</option>
+                  <option value="stdout">stdout</option>
+                  <option value="stderr">stderr</option>
+                  <option value="system">system</option>
+                </select>
+              </div>
+              <div
+                ref={logContainerRef}
+                className="bg-slate-950 border border-slate-800 rounded-lg overflow-auto h-[60vh]"
+              >
+                {parsedActiveLogs.length === 0 ? (
+                  <p className="text-slate-400 text-xs p-3">No log lines matching current filters.</p>
+                ) : (
+                  <div
+                    className="relative text-xs"
+                    style={{
+                      height: `${logVirtualizer.getTotalSize()}px`,
+                    }}
+                  >
+                    {logVirtualizer.getVirtualItems().map((virtualLog) => {
+                      const line = parsedActiveLogs[virtualLog.index];
+                      const streamColor = STREAM_COLORS[line.stream] || "text-slate-200";
+                      return (
+                        <div
+                          key={`${line.index}-${virtualLog.index}`}
+                          className="absolute left-0 top-0 w-full px-3 py-1 font-mono border-b border-slate-900/70"
+                          style={{ transform: `translateY(${virtualLog.start}px)` }}
+                        >
+                          <span className="text-slate-500 mr-2">{String(line.index + 1).padStart(4, " ")}</span>
+                          <span className={`mr-2 uppercase ${streamColor}`}>[{line.stream}]</span>
+                          <span className={streamColor}>{line.message}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
