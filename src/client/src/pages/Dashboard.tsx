@@ -1,15 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchDevices, approveDevice, devicesQueryKey } from "../api/devices";
+import {
+  assignDeviceToGroup,
+  approveDevice,
+  devicesQueryKey,
+  fetchDevices,
+  removeDeviceFromGroup,
+} from "../api/devices";
+import {
+  createDeviceGroup,
+  deleteDeviceGroup,
+  deviceGroupsQueryKey,
+  fetchDeviceGroups,
+  updateDeviceGroup,
+} from "../api/deviceGroups";
 import { clearToken } from "../auth/authStore";
 import { useNavigate } from "react-router-dom";
 import type { DeviceDto } from "../types/device";
 import { useState, useMemo } from "react";
+import type { DeviceGroupDto } from "../types/deviceGroups";
 import {
   DeviceFilterControls,
   type DeviceFilters,
 } from "../components/Dashboard/DeviceFilterControls";
 import { DeviceGridCard } from "../components/Dashboard/DeviceGridCard";
 import { DeviceListItem } from "../components/Dashboard/DeviceListItem";
+import { extractApiErrorMessage } from "../api/scriptRunner";
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -22,6 +37,14 @@ export function Dashboard() {
     group: "all",
     viewMode: "grid",
   });
+  const [groupsModalOpen, setGroupsModalOpen] = useState(false);
+  const [groupFormName, setGroupFormName] = useState("");
+  const [groupFormDescription, setGroupFormDescription] = useState("");
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [assigningDevice, setAssigningDevice] = useState<DeviceDto | null>(null);
+  const [assignTargetGroupId, setAssignTargetGroupId] = useState<string>("");
+  const [groupsError, setGroupsError] = useState<string | null>(null);
 
   const {
     data: devices = [],
@@ -35,6 +58,10 @@ export function Dashboard() {
     queryFn: fetchDevices,
     refetchInterval: 30000,
   });
+  const groupsQuery = useQuery({
+    queryKey: deviceGroupsQueryKey,
+    queryFn: fetchDeviceGroups,
+  });
 
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
@@ -43,6 +70,59 @@ export function Dashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: devicesQueryKey });
     },
+  });
+  const createGroupMutation = useMutation({
+    mutationFn: createDeviceGroup,
+    onSuccess: () => {
+      setGroupsError(null);
+      setGroupFormName("");
+      setGroupFormDescription("");
+      queryClient.invalidateQueries({ queryKey: deviceGroupsQueryKey });
+    },
+    onError: (error) => setGroupsError(extractApiErrorMessage(error)),
+  });
+  const updateGroupMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: { name: string; description?: string | null } }) =>
+      updateDeviceGroup(id, payload),
+    onSuccess: () => {
+      setGroupsError(null);
+      setEditingGroupId(null);
+      setGroupFormName("");
+      setGroupFormDescription("");
+      queryClient.invalidateQueries({ queryKey: deviceGroupsQueryKey });
+    },
+    onError: (error) => setGroupsError(extractApiErrorMessage(error)),
+  });
+  const deleteGroupMutation = useMutation({
+    mutationFn: deleteDeviceGroup,
+    onSuccess: (_, deletedId) => {
+      setGroupsError(null);
+      if (activeGroupId === deletedId) setActiveGroupId(null);
+      queryClient.invalidateQueries({ queryKey: deviceGroupsQueryKey });
+      queryClient.invalidateQueries({ queryKey: devicesQueryKey });
+    },
+    onError: (error) => setGroupsError(extractApiErrorMessage(error)),
+  });
+  const assignDeviceMutation = useMutation({
+    mutationFn: ({ deviceId, groupId }: { deviceId: string; groupId: string }) =>
+      assignDeviceToGroup(deviceId, groupId),
+    onSuccess: () => {
+      setGroupsError(null);
+      setAssigningDevice(null);
+      setAssignTargetGroupId("");
+      queryClient.invalidateQueries({ queryKey: devicesQueryKey });
+      queryClient.invalidateQueries({ queryKey: deviceGroupsQueryKey });
+    },
+    onError: (error) => setGroupsError(extractApiErrorMessage(error)),
+  });
+  const removeDeviceMutation = useMutation({
+    mutationFn: removeDeviceFromGroup,
+    onSuccess: () => {
+      setGroupsError(null);
+      queryClient.invalidateQueries({ queryKey: devicesQueryKey });
+      queryClient.invalidateQueries({ queryKey: deviceGroupsQueryKey });
+    },
+    onError: (error) => setGroupsError(extractApiErrorMessage(error)),
   });
 
   const handleApprove = async (e: React.MouseEvent, device: DeviceDto) => {
@@ -63,13 +143,12 @@ export function Dashboard() {
     navigate("/login");
   };
 
-  const uniqueGroups = useMemo(() => {
-    const groups = new Set<string>();
-    devices.forEach((d) => {
-      if (d.groupName) groups.add(d.groupName);
-    });
-    return Array.from(groups).sort();
-  }, [devices]);
+  const groups = groupsQuery.data ?? [];
+  const uniqueGroups = useMemo(() => groups.map((group) => group.name), [groups]);
+  const activeGroup = useMemo(
+    () => groups.find((group) => group.id === activeGroupId) ?? null,
+    [groups, activeGroupId],
+  );
 
   const filteredDevices = useMemo(() => {
     return devices.filter((device) => {
@@ -99,6 +178,41 @@ export function Dashboard() {
   const totalDevices = devices.length;
   const onlineDevices = devices.filter((d) => d.isOnline).length;
   const pendingDevices = devices.filter((d) => !d.isApproved).length;
+  const upsertGroup = async () => {
+    const name = groupFormName.trim();
+    if (!name) {
+      setGroupsError("Group name is required.");
+      return;
+    }
+
+    const payload = {
+      name,
+      description: groupFormDescription.trim() || null,
+    };
+
+    if (editingGroupId) {
+      await updateGroupMutation.mutateAsync({ id: editingGroupId, payload });
+      return;
+    }
+
+    await createGroupMutation.mutateAsync(payload);
+  };
+
+  const beginEditGroup = (group: DeviceGroupDto) => {
+    setEditingGroupId(group.id);
+    setGroupFormName(group.name);
+    setGroupFormDescription(group.description || "");
+  };
+
+  const handleAssignFromMenu = (device: DeviceDto) => {
+    setAssigningDevice(device);
+    setAssignTargetGroupId(device.groupId || "");
+  };
+
+  const handleRemoveFromMenu = async (device: DeviceDto) => {
+    if (!device.groupId) return;
+    await removeDeviceMutation.mutateAsync(device.id);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -133,22 +247,10 @@ export function Dashboard() {
         <div className="flex items-center space-x-4">
           <button
             type="button"
-            className="text-primary-400 hover:text-primary-300 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-primary-500/20 bg-primary-500/5 hover:bg-primary-500/10 flex items-center gap-2"
+            onClick={() => setGroupsModalOpen(true)}
+            className="text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-700 bg-slate-800/60 hover:bg-slate-700/70"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Create Group
+            Groups
           </button>
           <div className="h-6 w-px bg-slate-800"></div>
           <button
@@ -279,6 +381,8 @@ export function Dashboard() {
                     device={device}
                     onApprove={handleApprove}
                     isApproving={approvingId === device.id}
+                    onAssignToGroup={handleAssignFromMenu}
+                    onRemoveFromGroup={handleRemoveFromMenu}
                   />
                 ) : (
                   <DeviceListItem
@@ -286,6 +390,8 @@ export function Dashboard() {
                     device={device}
                     onApprove={handleApprove}
                     isApproving={approvingId === device.id}
+                    onAssignToGroup={handleAssignFromMenu}
+                    onRemoveFromGroup={handleRemoveFromMenu}
                   />
                 ),
               )}
@@ -293,6 +399,208 @@ export function Dashboard() {
           )}
         </div>
       </div>
+
+      {groupsModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setGroupsModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-5xl bg-slate-900 border border-slate-700 rounded-2xl shadow-xl p-4 md:p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-white text-sm font-semibold">Device Groups</h2>
+                <p className="text-xs text-slate-400">{groups.length} groups</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGroupsModalOpen(false)}
+                className="text-xs text-slate-300 hover:text-white bg-slate-800 border border-slate-700 rounded px-2 py-1"
+              >
+                Close
+              </button>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+              <div className="border border-slate-700 rounded-xl p-3 space-y-2 bg-slate-900/60">
+                <p className="text-xs text-slate-400">
+                  {editingGroupId ? "Edit group" : "Create group"}
+                </p>
+                <input
+                  value={groupFormName}
+                  onChange={(e) => setGroupFormName(e.target.value)}
+                  placeholder="Group name"
+                  className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2"
+                />
+                <textarea
+                  value={groupFormDescription}
+                  onChange={(e) => setGroupFormDescription(e.target.value)}
+                  placeholder="Description (optional)"
+                  rows={3}
+                  className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={upsertGroup}
+                    disabled={createGroupMutation.isPending || updateGroupMutation.isPending}
+                    className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white text-xs px-3 py-2 rounded-lg"
+                  >
+                    {editingGroupId ? "Update Group" : "Create Group"}
+                  </button>
+                  {editingGroupId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingGroupId(null);
+                        setGroupFormName("");
+                        setGroupFormDescription("");
+                      }}
+                      className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-2 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="border border-slate-700 rounded-xl divide-y divide-slate-700 bg-slate-900/40 max-h-56 overflow-auto">
+                  {groupsQuery.isLoading ? (
+                    <p className="p-3 text-sm text-slate-400">Loading groups…</p>
+                  ) : groups.length === 0 ? (
+                    <p className="p-3 text-sm text-slate-400">No groups created yet.</p>
+                  ) : (
+                    groups.map((group) => (
+                      <div
+                        key={group.id}
+                        className={`p-3 flex items-start justify-between gap-3 ${
+                          activeGroupId === group.id ? "bg-primary-500/10" : ""
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setActiveGroupId(group.id)}
+                          className="text-left flex-1"
+                        >
+                          <p className="text-sm text-white font-medium">{group.name}</p>
+                          {group.description && (
+                            <p className="text-xs text-slate-400 mt-0.5">{group.description}</p>
+                          )}
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            {group.deviceCount} device(s)
+                          </p>
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => beginEditGroup(group)}
+                            className="text-xs text-slate-300 hover:text-white"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`Delete group "${group.name}"?`)) {
+                                deleteGroupMutation.mutate(group.id);
+                              }
+                            }}
+                            className="text-xs text-rose-300 hover:text-rose-200"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="border border-slate-700 rounded-xl p-3 bg-slate-900/40">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                    Group devices
+                  </p>
+                  {activeGroup ? (
+                    activeGroup.devices.length > 0 ? (
+                      <ul className="space-y-1 max-h-28 overflow-auto pr-1">
+                        {activeGroup.devices.map((device) => (
+                          <li key={device.id} className="text-xs text-slate-300 flex justify-between">
+                            <span>{device.hostname}</span>
+                            <span className={device.isOnline ? "text-success" : "text-slate-500"}>
+                              {device.isOnline ? "Online" : "Offline"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-slate-400">No devices in selected group.</p>
+                    )
+                  ) : (
+                    <p className="text-xs text-slate-400">Select a group to view its devices.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            {groupsError && <p className="text-xs text-rose-300">{groupsError}</p>}
+          </div>
+        </div>
+      )}
+
+      {assigningDevice && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setAssigningDevice(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-xl shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-slate-800">
+              <h3 className="text-sm font-semibold text-white">Assign to group</h3>
+              <p className="text-xs text-slate-400 mt-1">{assigningDevice.hostname}</p>
+            </div>
+            <div className="p-4 space-y-3">
+              <select
+                value={assignTargetGroupId}
+                onChange={(e) => setAssignTargetGroupId(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2"
+              >
+                <option value="">Select a group</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAssigningDevice(null)}
+                  className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!assignTargetGroupId) {
+                      setGroupsError("Select a target group.");
+                      return;
+                    }
+                    await assignDeviceMutation.mutateAsync({
+                      deviceId: assigningDevice.id,
+                      groupId: assignTargetGroupId,
+                    });
+                  }}
+                  disabled={assignDeviceMutation.isPending}
+                  className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white text-xs px-3 py-2 rounded-lg"
+                >
+                  Assign
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

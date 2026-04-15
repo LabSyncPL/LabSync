@@ -19,6 +19,9 @@ public class DeviceGroupConfiguration : IEntityTypeConfiguration<DeviceGroup>
         builder.Property(g => g.Description)
             .HasMaxLength(500);
 
+        builder.Property(g => g.CreatedAt)
+            .IsRequired();
+
         builder.Navigation(g => g.Devices)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }

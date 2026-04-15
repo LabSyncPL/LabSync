@@ -8,6 +8,7 @@ public class DeviceGroup
     public Guid Id { get; init; }
     public string Name { get; private set; }
     public string? Description { get; private set; }
+    public DateTime CreatedAt { get; init; }
 
     private readonly List<Device> _devices = new();
     public IReadOnlyCollection<Device> Devices => _devices.AsReadOnly();
@@ -20,6 +21,7 @@ public class DeviceGroup
             throw new ArgumentException("Group name cannot be empty.", nameof(name));
 
         Id = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
         UpdateDetails(name, description);
     }
 
@@ -50,6 +52,7 @@ public class DeviceGroup
         if (_devices.Contains(device))
             return;
 
+        device.AssignToGroup(Id);
         _devices.Add(device);
     }
 
@@ -58,6 +61,7 @@ public class DeviceGroup
         if (device is null)
             throw new ArgumentNullException(nameof(device));
 
+        device.RemoveFromGroup();
         _devices.Remove(device);
     }
 }

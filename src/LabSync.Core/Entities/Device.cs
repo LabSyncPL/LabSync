@@ -60,5 +60,15 @@ public class Device
         IpAddress  = ipAddress;
         LastSeenAt = DateTime.UtcNow;
     }
+
+    public void AssignToGroup(Guid groupId)
+    {
+        GroupId = groupId;
+    }
+
+    public void RemoveFromGroup()
+    {
+        GroupId = null;
+    }
 }
 

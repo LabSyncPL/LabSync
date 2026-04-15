@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import type { DeviceDto } from "../../types/device";
 import { DEVICE_PLATFORM_LABELS } from "../../types/device";
 import { formatLastSeen, getPlatformIcon } from "../../utils/deviceUtils";
@@ -7,19 +8,24 @@ interface DeviceListItemProps {
   device: DeviceDto;
   onApprove: (e: React.MouseEvent, device: DeviceDto) => void;
   isApproving: boolean;
+  onAssignToGroup: (device: DeviceDto) => void;
+  onRemoveFromGroup: (device: DeviceDto) => void;
 }
 
 export function DeviceListItem({
   device,
   onApprove,
   isApproving,
+  onAssignToGroup,
+  onRemoveFromGroup,
 }: DeviceListItemProps) {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div
       onClick={() => navigate(`/devices/${device.id}`)}
-      className={`group bg-slate-800 rounded-xl border border-slate-700 p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-700/30 hover:border-slate-600 transition-all active:scale-[0.99] relative overflow-hidden ${
+      className={`group bg-slate-800 rounded-xl border border-slate-700 p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-700/30 hover:border-slate-600 transition-all active:scale-[0.99] relative overflow-visible ${
         !device.isApproved ? "border-l-4 border-l-warning" : ""
       }`}
     >
@@ -140,25 +146,58 @@ export function DeviceListItem({
               {device.isOnline ? "Active" : "Offline"}
             </span>
 
-            <button
-              className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors ml-1"
-              onClick={(e) => e.stopPropagation()}
-              title="Manage Group"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="relative">
+              <button
+                className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors ml-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen((prev) => !prev);
+                }}
+                title="Manage Group"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                />
-              </svg>
-            </button>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                  />
+                </svg>
+              </button>
+              {menuOpen && (
+                <div
+                  className="absolute right-0 top-8 z-20 w-44 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAssignToGroup(device);
+                    }}
+                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                  >
+                    Assign to group
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onRemoveFromGroup(device);
+                    }}
+                    disabled={!device.groupId}
+                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
+                  >
+                    Remove from group
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

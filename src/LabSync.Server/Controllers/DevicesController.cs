@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿using LabSync.Core.Dto;
+﻿using LabSync.Core.Dto;
 using LabSync.Core.Interfaces;
 using LabSync.Server.Data;
 using LabSync.Server.Services;
@@ -74,6 +74,43 @@ public class DevicesController : ControllerBase
         device.Approve();
         await context.SaveChangesAsync(cancellationToken);
         return Ok(new ApiResponse("Device approved successfully."));
+    }
+
+    [HttpPost("{id}/group")]
+    public async Task<ActionResult<ApiResponse>> AssignToGroup(
+        Guid id,
+        [FromBody] AssignDeviceGroupRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.GroupId == Guid.Empty)
+            return BadRequest(new ApiResponse("GroupId is required."));
+
+        var device = await context.Devices.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (device is null)
+            return NotFound(new ApiResponse("Device not found."));
+
+        var groupExists = await context.Set<Core.Entities.DeviceGroup>()
+            .AnyAsync(g => g.Id == request.GroupId, cancellationToken);
+        if (!groupExists)
+            return NotFound(new ApiResponse("Group not found."));
+
+        device.AssignToGroup(request.GroupId);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return Ok(new ApiResponse("Device assigned to group."));
+    }
+
+    [HttpDelete("{id}/group")]
+    public async Task<ActionResult<ApiResponse>> RemoveFromGroup(Guid id, CancellationToken cancellationToken)
+    {
+        var device = await context.Devices.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (device is null)
+            return NotFound(new ApiResponse("Device not found."));
+
+        device.RemoveFromGroup();
+        await context.SaveChangesAsync(cancellationToken);
+
+        return Ok(new ApiResponse("Device removed from group."));
     }
 
     [HttpPost("{id}/jobs")]

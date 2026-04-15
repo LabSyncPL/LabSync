@@ -30,3 +30,18 @@ export async function setSshCredentials(
   );
   return data;
 }
+
+export async function assignDeviceToGroup(
+  deviceId: string,
+  groupId: string,
+): Promise<ApiResponse> {
+  const { data } = await apiClient.post<ApiResponse>(`/api/devices/${deviceId}/group`, {
+    groupId,
+  });
+  return data;
+}
+
+export async function removeDeviceFromGroup(deviceId: string): Promise<ApiResponse> {
+  const { data } = await apiClient.delete<ApiResponse>(`/api/devices/${deviceId}/group`);
+  return data;
+}

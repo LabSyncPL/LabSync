@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DeviceDto } from "../../types/device";
 import { DEVICE_PLATFORM_LABELS } from "../../types/device";
@@ -9,6 +10,8 @@ interface DeviceGridCardProps {
   isApproving: boolean;
   monitorImageSrc?: string;
   onDoubleClick?: (device: DeviceDto) => void;
+  onAssignToGroup: (device: DeviceDto) => void;
+  onRemoveFromGroup: (device: DeviceDto) => void;
 }
 
 export function DeviceGridCard({
@@ -17,8 +20,11 @@ export function DeviceGridCard({
   isApproving,
   monitorImageSrc,
   onDoubleClick,
+  onAssignToGroup,
+  onRemoveFromGroup,
 }: DeviceGridCardProps) {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div
@@ -29,7 +35,7 @@ export function DeviceGridCard({
           onDoubleClick(device);
         }
       }}
-      className={`group bg-slate-800 rounded-2xl border p-5 flex flex-col h-full shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-hidden ${
+      className={`group bg-slate-800 rounded-2xl border p-5 flex flex-col h-full shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-visible ${
         !device.isApproved
           ? "border-warning/30 hover:border-warning/50 bg-gradient-to-b from-slate-800 to-warning/5"
           : "border-slate-700 hover:border-primary-500/50 hover:translate-y-[-2px]"
@@ -136,11 +142,13 @@ export function DeviceGridCard({
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Placeholder for future group menu */}
+            <div className="flex items-center gap-2 relative">
               <button
                 className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen((prev) => !prev);
+                }}
                 title="Manage Group"
               >
                 <svg
@@ -157,6 +165,34 @@ export function DeviceGridCard({
                   />
                 </svg>
               </button>
+              {menuOpen && (
+                <div
+                  className="absolute right-0 top-8 z-20 w-44 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onAssignToGroup(device);
+                    }}
+                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                  >
+                    Assign to group
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onRemoveFromGroup(device);
+                    }}
+                    disabled={!device.groupId}
+                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
+                  >
+                    Remove from group
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
