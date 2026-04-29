@@ -3,6 +3,7 @@ using System;
 using LabSync.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LabSync.Server.Migrations
 {
     [DbContext(typeof(LabSyncDbContext))]
-    partial class LabSyncDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260429165721_AddScriptScheduler")]
+    partial class AddScriptScheduler
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -292,6 +295,10 @@ namespace LabSync.Server.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<int>("InterpreterType")
                         .HasColumnType("integer");
 
@@ -321,6 +328,11 @@ namespace LabSync.Server.Migrations
 
                     b.Property<int>("TargetType")
                         .HasColumnType("integer");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int>("TimeoutSeconds")
                         .HasColumnType("integer");

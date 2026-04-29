@@ -14,8 +14,18 @@ import {
   Square,
   TerminalSquare,
   XCircle,
+  Calendar,
+  History,
+  Trash2,
 } from "lucide-react";
 import { devicesQueryKey, fetchDevices } from "../api/devices";
+import {
+  createScheduledScript,
+  deleteScheduledScript,
+  fetchScheduledScripts,
+  scheduledScriptsQueryKey,
+  updateScheduledScript,
+} from "../api/scheduledScripts";
 import {
   createSavedScript,
   deleteSavedScript,
@@ -31,13 +41,18 @@ import {
   type ScriptExecutionStatus,
   useMultiDeviceScriptRunner,
 } from "../hooks/useMultiDeviceScriptRunner";
+import { CreateScheduleModal } from "./CreateScheduleModal";
+import {
+  ScheduledScriptTargetType,
+  type ScheduledScriptDto,
+} from "../types/scheduledScripts";
 
-const DEFAULT_SCRIPT = [
-  "# Write your deployment script here",
-  "",
-].join("\n");
+const DEFAULT_SCRIPT = ["# Write your deployment script here", ""].join("\n");
 
-const STATUS_STYLE: Record<ScriptExecutionStatus, { badge: string; icon: typeof Activity }> = {
+const STATUS_STYLE: Record<
+  ScriptExecutionStatus,
+  { badge: string; icon: typeof Activity }
+> = {
   pending: { badge: "bg-slate-700 text-slate-200", icon: Clock3 },
   running: { badge: "bg-blue-600/20 text-blue-300", icon: LoaderCircle },
   success: { badge: "bg-emerald-600/20 text-emerald-300", icon: CheckCircle2 },
@@ -56,9 +71,15 @@ const STATUS_LABEL: Record<ScriptExecutionStatus, string> = {
 };
 
 const monacoLanguage = (interpreter: ScriptInterpreter) =>
-  interpreter === "powershell" ? "powershell" : interpreter === "cmd" ? "bat" : "shell";
+  interpreter === "powershell"
+    ? "powershell"
+    : interpreter === "cmd"
+      ? "bat"
+      : "shell";
 
-const inferInterpreterFromFileName = (name: string): ScriptInterpreter | null => {
+const inferInterpreterFromFileName = (
+  name: string,
+): ScriptInterpreter | null => {
   const lower = name.toLowerCase();
   if (lower.endsWith(".ps1")) return "powershell";
   if (lower.endsWith(".sh")) return "bash";
@@ -67,7 +88,10 @@ const inferInterpreterFromFileName = (name: string): ScriptInterpreter | null =>
 };
 
 const buildDeviceGroups = (devices: DeviceDto[]) => {
-  const map = new Map<string, { id: string; name: string; deviceIds: string[] }>();
+  const map = new Map<
+    string,
+    { id: string; name: string; deviceIds: string[] }
+  >();
   for (const device of devices) {
     const groupId = device.groupId || "__ungrouped__";
     const groupName = device.groupName || "Ungrouped";
@@ -95,19 +119,24 @@ const parseLogLine = (line: string) => {
 export function ScriptDeploymentDashboard() {
   const queryClient = useQueryClient();
   const [scriptContent, setScriptContent] = useState(DEFAULT_SCRIPT);
-  const [interpreter, setInterpreter] = useState<ScriptInterpreter>("powershell");
+  const [interpreter, setInterpreter] =
+    useState<ScriptInterpreter>("powershell");
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
   const [activeLogRowKey, setActiveLogRowKey] = useState<string | null>(null);
   const [deviceSearch, setDeviceSearch] = useState("");
   const [monitorSearch, setMonitorSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | ScriptExecutionStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | ScriptExecutionStatus
+  >("all");
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [logSearch, setLogSearch] = useState("");
-  const [logStreamFilter, setLogStreamFilter] = useState<"all" | "stdout" | "stderr" | "system">(
-    "all",
-  );
+  const [logStreamFilter, setLogStreamFilter] = useState<
+    "all" | "stdout" | "stderr" | "system"
+  >("all");
   const [savedScriptsSearch, setSavedScriptsSearch] = useState("");
-  const [activeSavedScriptId, setActiveSavedScriptId] = useState<string | null>(null);
+  const [activeSavedScriptId, setActiveSavedScriptId] = useState<string | null>(
+    null,
+  );
   const [loadedScriptMeta, setLoadedScriptMeta] = useState<{
     id: string;
     title: string;
@@ -116,8 +145,18 @@ export function ScriptDeploymentDashboard() {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveModalTitle, setSaveModalTitle] = useState("");
   const [saveModalDescription, setSaveModalDescription] = useState("");
-  const [saveModalTargetId, setSaveModalTargetId] = useState<string | null>(null);
-  const [savedScriptsError, setSavedScriptsError] = useState<string | null>(null);
+  const [saveModalTargetId, setSaveModalTargetId] = useState<string | null>(
+    null,
+  );
+  const [savedScriptsError, setSavedScriptsError] = useState<string | null>(
+    null,
+  );
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] =
+    useState<ScheduledScriptDto | null>(null);
+  const [activeTab, setActiveTab] = useState<"library" | "schedules">(
+    "library",
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const monitorContainerRef = useRef<HTMLDivElement | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
@@ -129,6 +168,50 @@ export function ScriptDeploymentDashboard() {
   const savedScriptsQuery = useQuery({
     queryKey: savedScriptsQueryKey,
     queryFn: fetchSavedScripts,
+  });
+  const scheduledScriptsQuery = useQuery({
+    queryKey: scheduledScriptsQueryKey,
+    queryFn: fetchScheduledScripts,
+  });
+
+  const createScheduleMutation = useMutation({
+    mutationFn: createScheduledScript,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scheduledScriptsQueryKey });
+      setIsScheduleModalOpen(false);
+      setEditingSchedule(null);
+    },
+  });
+
+  const updateScheduleMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      updateScheduledScript(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scheduledScriptsQueryKey });
+      setIsScheduleModalOpen(false);
+      setEditingSchedule(null);
+    },
+  });
+
+  const deleteScheduleMutation = useMutation({
+    mutationFn: deleteScheduledScript,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scheduledScriptsQueryKey });
+    },
+  });
+
+  const toggleScheduleMutation = useMutation({
+    mutationFn: ({ id, isEnabled }: { id: string; isEnabled: boolean }) => {
+      const schedule = scheduledScriptsQuery.data?.find((s) => s.id === id);
+      if (!schedule) throw new Error("Schedule not found");
+      return updateScheduledScript(id, {
+        ...schedule,
+        isEnabled,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scheduledScriptsQueryKey });
+    },
   });
 
   const {
@@ -144,15 +227,23 @@ export function ScriptDeploymentDashboard() {
 
   const devices = devicesQuery.data || [];
   const groups = useMemo(() => buildDeviceGroups(devices), [devices]);
-  const selectedIdSet = useMemo(() => new Set(selectedDeviceIds), [selectedDeviceIds]);
+  const selectedIdSet = useMemo(
+    () => new Set(selectedDeviceIds),
+    [selectedDeviceIds],
+  );
   const filteredDevices = useMemo(() => {
     if (!deviceSearch.trim()) return devices;
     const query = deviceSearch.toLowerCase();
     return devices.filter((d) =>
-      `${d.hostname} ${d.groupName || "ungrouped"} ${d.id}`.toLowerCase().includes(query),
+      `${d.hostname} ${d.groupName || "ungrouped"} ${d.id}`
+        .toLowerCase()
+        .includes(query),
     );
   }, [devices, deviceSearch]);
-  const filteredDeviceIdSet = useMemo(() => new Set(filteredDevices.map((d) => d.id)), [filteredDevices]);
+  const filteredDeviceIdSet = useMemo(
+    () => new Set(filteredDevices.map((d) => d.id)),
+    [filteredDevices],
+  );
   const machineNamesById = useMemo(() => {
     const map: Record<string, string> = {};
     devices.forEach((d) => {
@@ -163,7 +254,11 @@ export function ScriptDeploymentDashboard() {
 
   const activeLogRow = useMemo(() => {
     if (!activeLogRowKey) return null;
-    return rows.find((row) => `${row.taskId}::${row.machineId}` === activeLogRowKey) ?? null;
+    return (
+      rows.find(
+        (row) => `${row.taskId}::${row.machineId}` === activeLogRowKey,
+      ) ?? null
+    );
   }, [activeLogRowKey, rows]);
   const countsByStatus = useMemo(() => {
     const base: Record<ScriptExecutionStatus, number> = {
@@ -182,19 +277,29 @@ export function ScriptDeploymentDashboard() {
   const activeCount = countsByStatus.running + countsByStatus.pending;
   const selectedSummary = `${selectedDeviceIds.length} selected / ${devices.length} total`;
   const savedScripts = savedScriptsQuery.data || [];
+  const scheduledScripts = scheduledScriptsQuery.data || [];
+
   const filteredSavedScripts = useMemo(() => {
     if (!savedScriptsSearch.trim()) return savedScripts;
     const query = savedScriptsSearch.trim().toLowerCase();
-    return savedScripts.filter((script) => script.title.toLowerCase().includes(query));
+    return savedScripts.filter((script) =>
+      script.title.toLowerCase().includes(query),
+    );
   }, [savedScripts, savedScriptsSearch]);
   const activeSavedScript = useMemo(
-    () => savedScripts.find((script) => script.id === activeSavedScriptId) ?? null,
+    () =>
+      savedScripts.find((script) => script.id === activeSavedScriptId) ?? null,
     [savedScripts, activeSavedScriptId],
   );
   const monitorRows = useMemo(() => {
     const query = monitorSearch.trim().toLowerCase();
     return rows.filter((row) => {
-      if (showActiveOnly && row.status !== "running" && row.status !== "pending") return false;
+      if (
+        showActiveOnly &&
+        row.status !== "running" &&
+        row.status !== "pending"
+      )
+        return false;
       if (statusFilter !== "all" && row.status !== statusFilter) return false;
       if (!query) return true;
       return `${row.machineName} ${row.taskId} ${row.interpreter || ""}`
@@ -216,7 +321,8 @@ export function ScriptDeploymentDashboard() {
     return activeLogRow.logLines
       .map((line, index) => ({ ...parseLogLine(line), raw: line, index }))
       .filter((line) => {
-        if (logStreamFilter !== "all" && line.stream !== logStreamFilter) return false;
+        if (logStreamFilter !== "all" && line.stream !== logStreamFilter)
+          return false;
         if (!query) return true;
         return line.raw.toLowerCase().includes(query);
       });
@@ -271,6 +377,32 @@ export function ScriptDeploymentDashboard() {
       /* lastInvokeError from hook surfaces the message */
     }
   };
+
+  const handleScheduleSave = (data: {
+    name: string;
+    cronExpression?: string;
+    runAt?: string;
+    targetType: ScheduledScriptTargetType;
+    targetId: string;
+  }) => {
+    const payload = {
+      ...data,
+      scriptContent,
+      interpreterType:
+        interpreter === "powershell" ? 0 : interpreter === "bash" ? 1 : 2,
+      arguments: [],
+      timeoutSeconds: 300,
+    };
+
+    if (editingSchedule) {
+      updateScheduleMutation.mutate({
+        id: editingSchedule.id,
+        data: { ...payload, isEnabled: editingSchedule.isEnabled },
+      });
+    } else {
+      createScheduleMutation.mutate(payload);
+    }
+  };
   const createSavedScriptMutation = useMutation({
     mutationFn: createSavedScript,
     onSuccess: (created) => {
@@ -290,8 +422,13 @@ export function ScriptDeploymentDashboard() {
   });
 
   const updateSavedScriptMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateSavedScript>[1] }) =>
-      updateSavedScript(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Parameters<typeof updateSavedScript>[1];
+    }) => updateSavedScript(id, payload),
     onSuccess: (updated) => {
       setSavedScriptsError(null);
       setActiveSavedScriptId(updated.id);
@@ -391,7 +528,8 @@ export function ScriptDeploymentDashboard() {
 
   const toggleSelectAllFiltered = () => {
     const ids = filteredDevices.map((d) => d.id);
-    const allSelected = ids.length > 0 && ids.every((id) => selectedIdSet.has(id));
+    const allSelected =
+      ids.length > 0 && ids.every((id) => selectedIdSet.has(id));
     setSelectedDeviceIds((prev) => {
       const next = new Set(prev);
       if (allSelected) {
@@ -405,7 +543,9 @@ export function ScriptDeploymentDashboard() {
 
   const handleStopAll = async () => {
     if (activeCount === 0) return;
-    const confirmed = window.confirm(`Stop ${activeCount} active execution(s)?`);
+    const confirmed = window.confirm(
+      `Stop ${activeCount} active execution(s)?`,
+    );
     if (!confirmed) return;
     await stopAll();
   };
@@ -415,7 +555,9 @@ export function ScriptDeploymentDashboard() {
       <header className="border-b border-slate-800/80 px-6 md:px-8 py-3 bg-slate-900/80 shrink-0 space-y-3 backdrop-blur-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold text-white">Script Deployment</h1>
+            <h1 className="text-lg font-semibold text-white">
+              Script Deployment
+            </h1>
             <p className="text-slate-500 text-xs">
               Execute scripts across devices and monitor outcomes in real time.
             </p>
@@ -472,7 +614,9 @@ export function ScriptDeploymentDashboard() {
                 type="button"
                 onClick={() => {
                   setStatusFilter((current) =>
-                    current === status ? "all" : (status as ScriptExecutionStatus),
+                    current === status
+                      ? "all"
+                      : (status as ScriptExecutionStatus),
                   );
                   setShowActiveOnly(false);
                 }}
@@ -491,7 +635,9 @@ export function ScriptDeploymentDashboard() {
                     }`}
                   />
                 </div>
-                <div className="text-sm font-semibold text-white leading-tight">{count}</div>
+                <div className="text-sm font-semibold text-white leading-tight">
+                  {count}
+                </div>
               </button>
             );
           })}
@@ -504,7 +650,9 @@ export function ScriptDeploymentDashboard() {
             </span>
           )}
           {!lastInvokeError && <span />}
-          {connectionError && <span className="text-[11px] text-rose-300">{connectionError}</span>}
+          {connectionError && (
+            <span className="text-[11px] text-rose-300">{connectionError}</span>
+          )}
         </div>
       </header>
 
@@ -512,64 +660,190 @@ export function ScriptDeploymentDashboard() {
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Saved Scripts</h2>
-              <p className="text-xs text-slate-400">Quickly pick, open, and run reusable scripts.</p>
+              <div className="flex gap-4 border-b border-slate-800 mb-2">
+                <button
+                  onClick={() => setActiveTab("library")}
+                  className={`pb-2 text-sm font-semibold transition-colors ${
+                    activeTab === "library"
+                      ? "text-primary-500 border-b-2 border-primary-500"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Script Library
+                </button>
+                <button
+                  onClick={() => setActiveTab("schedules")}
+                  className={`pb-2 text-sm font-semibold transition-colors ${
+                    activeTab === "schedules"
+                      ? "text-primary-500 border-b-2 border-primary-500"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Schedules
+                </button>
+              </div>
+              <p className="text-xs text-slate-400">
+                {activeTab === "library"
+                  ? "Quickly pick, open, and run reusable scripts."
+                  : "Manage automated script executions."}
+              </p>
             </div>
             <div className="relative">
               <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2 top-1/2 -translate-y-1/2" />
               <input
-                value={savedScriptsSearch}
-                onChange={(e) => setSavedScriptsSearch(e.target.value)}
-                placeholder="Search by title..."
+                value={activeTab === "library" ? savedScriptsSearch : ""}
+                onChange={(e) =>
+                  activeTab === "library"
+                    ? setSavedScriptsSearch(e.target.value)
+                    : null
+                }
+                placeholder={
+                  activeTab === "library"
+                    ? "Search library..."
+                    : "Search schedules..."
+                }
                 className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-60"
               />
             </div>
           </div>
 
           <div className="border border-slate-800 rounded-lg max-h-64 overflow-auto bg-slate-950/40">
-            {savedScriptsQuery.isLoading ? (
-              <p className="text-sm text-slate-400 p-4">Loading saved scripts…</p>
-            ) : savedScriptsQuery.isError ? (
-              <p className="text-sm text-rose-300 p-4">Failed to load saved scripts.</p>
-            ) : filteredSavedScripts.length === 0 ? (
-              <p className="text-sm text-slate-400 p-4">No saved scripts found.</p>
+            {activeTab === "library" ? (
+              savedScriptsQuery.isLoading ? (
+                <p className="text-sm text-slate-400 p-4">
+                  Loading saved scripts…
+                </p>
+              ) : savedScriptsQuery.isError ? (
+                <p className="text-sm text-rose-300 p-4">
+                  Failed to load saved scripts.
+                </p>
+              ) : filteredSavedScripts.length === 0 ? (
+                <p className="text-sm text-slate-400 p-4">
+                  No saved scripts found.
+                </p>
+              ) : (
+                <ul className="divide-y divide-slate-800">
+                  {filteredSavedScripts.map((script) => {
+                    const isSelected = activeSavedScriptId === script.id;
+                    return (
+                      <li key={script.id}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveSavedScriptId(script.id)}
+                          className={`w-full px-4 py-3 text-left transition ${
+                            isSelected
+                              ? "bg-primary-600/15 border-l-2 border-primary-500"
+                              : "hover:bg-slate-900/80 border-l-2 border-transparent"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p
+                                className={`text-sm font-medium ${isSelected ? "text-white" : "text-slate-200"}`}
+                              >
+                                {script.title}
+                              </p>
+                              {script.description && (
+                                <p className="text-xs text-slate-400 mt-1 line-clamp-1">
+                                  {script.description}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
+                                {script.interpreter}
+                              </span>
+                              <p className="text-[11px] text-slate-500 mt-1">
+                                {new Date(
+                                  script.updatedAt,
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
+            ) : scheduledScriptsQuery.isLoading ? (
+              <p className="text-sm text-slate-400 p-4">Loading schedules…</p>
+            ) : scheduledScriptsQuery.isError ? (
+              <p className="text-sm text-rose-300 p-4">
+                Failed to load schedules.
+              </p>
+            ) : scheduledScripts.length === 0 ? (
+              <p className="text-sm text-slate-400 p-4">No schedules found.</p>
             ) : (
               <ul className="divide-y divide-slate-800">
-                {filteredSavedScripts.map((script) => {
-                  const isSelected = activeSavedScriptId === script.id;
-                  return (
-                    <li key={script.id}>
+                {scheduledScripts.map((s) => (
+                  <li
+                    key={s.id}
+                    className="px-4 py-3 flex items-center justify-between gap-4"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-200 truncate">
+                          {s.name}
+                        </p>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${s.isEnabled ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-800 text-slate-400"}`}
+                        >
+                          {s.isEnabled ? "Active" : "Disabled"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Clock3 className="h-3 w-3" />
+                          {s.cronExpression
+                            ? `Cron: ${s.cronExpression}`
+                            : `Once: ${new Date(s.runAt!).toLocaleString()}`}
+                        </span>
+                        {s.nextRunAt && (
+                          <span className="flex items-center gap-1">
+                            <History className="h-3 w-3" />
+                            Next: {new Date(s.nextRunAt).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <button
-                        type="button"
-                        onClick={() => setActiveSavedScriptId(script.id)}
-                        className={`w-full px-4 py-3 text-left transition ${
-                          isSelected
-                            ? "bg-primary-600/15 border-l-2 border-primary-500"
-                            : "hover:bg-slate-900/80 border-l-2 border-transparent"
+                        onClick={() => {
+                          setEditingSchedule(s);
+                          setIsScheduleModalOpen(true);
+                        }}
+                        className="text-xs px-2 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() =>
+                          toggleScheduleMutation.mutate({
+                            id: s.id,
+                            isEnabled: !s.isEnabled,
+                          })
+                        }
+                        className={`text-xs px-2 py-1 rounded border transition ${
+                          s.isEnabled
+                            ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                            : "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className={`text-sm font-medium ${isSelected ? "text-white" : "text-slate-200"}`}>
-                              {script.title}
-                            </p>
-                            {script.description && (
-                              <p className="text-xs text-slate-400 mt-1 line-clamp-1">{script.description}</p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
-                              {script.interpreter}
-                            </span>
-                            <p className="text-[11px] text-slate-500 mt-1">
-                              {new Date(script.updatedAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
+                        {s.isEnabled ? "Disable" : "Enable"}
                       </button>
-                    </li>
-                  );
-                })}
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Delete this schedule?"))
+                            deleteScheduleMutation.mutate(s.id);
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </div>
@@ -578,7 +852,10 @@ export function ScriptDeploymentDashboard() {
             {activeSavedScript ? (
               <div className="space-y-2">
                 <p className="text-xs text-slate-400">
-                  Selected: <span className="text-slate-200">{activeSavedScript.title}</span>
+                  Selected:{" "}
+                  <span className="text-slate-200">
+                    {activeSavedScript.title}
+                  </span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -600,7 +877,11 @@ export function ScriptDeploymentDashboard() {
                     type="button"
                     className="bg-rose-700/80 hover:bg-rose-600 text-white text-xs px-3 py-1.5 rounded disabled:opacity-50"
                     onClick={() => {
-                      if (window.confirm(`Delete saved script "${activeSavedScript.title}"?`)) {
+                      if (
+                        window.confirm(
+                          `Delete saved script "${activeSavedScript.title}"?`,
+                        )
+                      ) {
                         deleteSavedScriptMutation.mutate(activeSavedScript.id);
                       }
                     }}
@@ -611,19 +892,27 @@ export function ScriptDeploymentDashboard() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-slate-400">Select a script to view available actions.</p>
+              <p className="text-xs text-slate-400">
+                Select a script to view available actions.
+              </p>
             )}
           </div>
-          {savedScriptsError && <p className="text-xs text-rose-300">{savedScriptsError}</p>}
+          {savedScriptsError && (
+            <p className="text-xs text-rose-300">{savedScriptsError}</p>
+          )}
         </section>
 
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">Interpreter</label>
+              <label className="block text-xs text-slate-400 mb-1.5">
+                Interpreter
+              </label>
               <select
                 value={interpreter}
-                onChange={(e) => setInterpreter(e.target.value as ScriptInterpreter)}
+                onChange={(e) =>
+                  setInterpreter(e.target.value as ScriptInterpreter)
+                }
                 className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary-500"
               >
                 <option value="powershell">PowerShell</option>
@@ -633,7 +922,9 @@ export function ScriptDeploymentDashboard() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">Upload Script File</label>
+              <label className="block text-xs text-slate-400 mb-1.5">
+                Upload Script File
+              </label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -658,7 +949,11 @@ export function ScriptDeploymentDashboard() {
             <button
               type="button"
               className="bg-slate-800 border border-slate-700 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm"
-              disabled={!scriptContent.trim() || createSavedScriptMutation.isPending || updateSavedScriptMutation.isPending}
+              disabled={
+                !scriptContent.trim() ||
+                createSavedScriptMutation.isPending ||
+                updateSavedScriptMutation.isPending
+              }
               onClick={openSaveModal}
               title="Save the script currently in the editor"
             >
@@ -672,8 +967,29 @@ export function ScriptDeploymentDashboard() {
               type="button"
               className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium"
               disabled={!selectedDeviceIds.length || !scriptContent.trim()}
+              onClick={() => setIsScheduleModalOpen(true)}
+              title={
+                !selectedDeviceIds.length
+                  ? "Select at least one device."
+                  : "Schedule script"
+              }
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" />
+                Schedule
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium"
+              disabled={!selectedDeviceIds.length || !scriptContent.trim()}
               onClick={handleRun}
-              title={!selectedDeviceIds.length ? "Select at least one device." : "Dispatch script"}
+              title={
+                !selectedDeviceIds.length
+                  ? "Select at least one device."
+                  : "Dispatch script"
+              }
             >
               <span className="inline-flex items-center gap-1.5">
                 <TerminalSquare className="h-4 w-4" />
@@ -684,15 +1000,22 @@ export function ScriptDeploymentDashboard() {
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="text-slate-400">{selectedSummary}</span>
             <span className="text-slate-500">
-              Active executions: <span className="text-slate-300">{activeCount}</span>
+              Active executions:{" "}
+              <span className="text-slate-300">{activeCount}</span>
             </span>
           </div>
           {loadedScriptMeta && (
             <div className="border border-slate-800 rounded-lg bg-slate-950/40 px-3 py-2">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Loaded Saved Script</p>
-              <p className="text-sm text-white font-medium">{loadedScriptMeta.title}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Loaded Saved Script
+              </p>
+              <p className="text-sm text-white font-medium">
+                {loadedScriptMeta.title}
+              </p>
               {loadedScriptMeta.description && (
-                <p className="text-xs text-slate-400 mt-1">{loadedScriptMeta.description}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {loadedScriptMeta.description}
+                </p>
               )}
             </div>
           )}
@@ -714,11 +1037,28 @@ export function ScriptDeploymentDashboard() {
           </div>
         </section>
 
+        <CreateScheduleModal
+          isOpen={isScheduleModalOpen}
+          onClose={() => {
+            setIsScheduleModalOpen(false);
+            setEditingSchedule(null);
+          }}
+          onSave={handleScheduleSave}
+          scriptTitle={loadedScriptMeta?.title || "Custom Script"}
+          selectedDeviceIds={selectedDeviceIds}
+          groups={groups}
+          editData={editingSchedule}
+        />
+
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">Target Selection</h2>
-              <p className="text-xs text-slate-400">Filter and bulk-select devices quickly.</p>
+              <h2 className="text-sm font-semibold text-white">
+                Target Selection
+              </h2>
+              <p className="text-xs text-slate-400">
+                Filter and bulk-select devices quickly.
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -746,17 +1086,21 @@ export function ScriptDeploymentDashboard() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="border border-slate-800 rounded-lg p-3">
-                <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">Groups</h3>
+                <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+                  Groups
+                </h3>
                 <div className="space-y-2 max-h-52 overflow-auto pr-1">
                   {groups.map((group) => {
                     const groupIdsInFilter = group.deviceIds.filter((id) =>
                       filteredDeviceIdSet.has(id),
                     );
                     if (groupIdsInFilter.length === 0) return null;
-                    const groupSelectedCount = groupIdsInFilter.filter((id) => selectedIdSet.has(id))
-                      .length;
+                    const groupSelectedCount = groupIdsInFilter.filter((id) =>
+                      selectedIdSet.has(id),
+                    ).length;
                     const allSelected =
-                      groupIdsInFilter.length > 0 && groupSelectedCount === groupIdsInFilter.length;
+                      groupIdsInFilter.length > 0 &&
+                      groupSelectedCount === groupIdsInFilter.length;
                     return (
                       <label
                         key={group.id}
@@ -780,7 +1124,9 @@ export function ScriptDeploymentDashboard() {
               </div>
 
               <div className="border border-slate-800 rounded-lg p-3">
-                <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">Devices</h3>
+                <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+                  Devices
+                </h3>
                 <div className="space-y-2 max-h-52 overflow-auto pr-1">
                   {filteredDevices.map((device) => (
                     <label
@@ -809,8 +1155,12 @@ export function ScriptDeploymentDashboard() {
         <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-800 space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-white">Execution Monitor</h2>
-              <span className="text-xs text-slate-400">{monitorRows.length} shown</span>
+              <h2 className="text-sm font-semibold text-white">
+                Execution Monitor
+              </h2>
+              <span className="text-xs text-slate-400">
+                {monitorRows.length} shown
+              </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
@@ -824,7 +1174,11 @@ export function ScriptDeploymentDashboard() {
               </div>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as "all" | ScriptExecutionStatus)}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value as "all" | ScriptExecutionStatus,
+                  )
+                }
                 className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2 py-2"
               >
                 <option value="all">All statuses</option>
@@ -856,7 +1210,9 @@ export function ScriptDeploymentDashboard() {
           </div>
           <div ref={monitorContainerRef} className="h-[420px] overflow-auto">
             {monitorRows.length === 0 ? (
-              <div className="px-4 py-8 text-slate-400 text-sm">No executions matching current filters.</div>
+              <div className="px-4 py-8 text-slate-400 text-sm">
+                No executions matching current filters.
+              </div>
             ) : (
               <div
                 className="relative"
@@ -874,9 +1230,15 @@ export function ScriptDeploymentDashboard() {
                       className="absolute left-0 top-0 w-full border-b border-slate-800 px-4 py-2 grid grid-cols-[2fr_2fr_1fr_1.5fr_1.5fr_180px] gap-3 text-sm items-center"
                       style={{ transform: `translateY(${virtualRow.start}px)` }}
                     >
-                      <span className="text-white truncate">{row.machineName}</span>
-                      <span className="text-slate-300 font-mono text-xs truncate">{row.taskId}</span>
-                      <span className="text-slate-300 text-xs uppercase">{row.interpreter || "-"}</span>
+                      <span className="text-white truncate">
+                        {row.machineName}
+                      </span>
+                      <span className="text-slate-300 font-mono text-xs truncate">
+                        {row.taskId}
+                      </span>
+                      <span className="text-slate-300 text-xs uppercase">
+                        {row.interpreter || "-"}
+                      </span>
                       <span
                         className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs w-fit ${STATUS_STYLE[row.status].badge}`}
                       >
@@ -889,7 +1251,9 @@ export function ScriptDeploymentDashboard() {
                         <div className="w-full h-2 bg-slate-800 rounded">
                           <div
                             className="h-2 bg-primary-500 rounded"
-                            style={{ width: `${Math.max(0, Math.min(100, row.progress))}%` }}
+                            style={{
+                              width: `${Math.max(0, Math.min(100, row.progress))}%`,
+                            }}
                           />
                         </div>
                         <span className="text-[11px] text-slate-400 mt-1 inline-block">
@@ -907,8 +1271,12 @@ export function ScriptDeploymentDashboard() {
                         <button
                           type="button"
                           className="bg-rose-600/80 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs px-2.5 py-1.5 rounded"
-                          onClick={() => cancelMachine(row.taskId, row.machineId)}
-                          disabled={row.status !== "pending" && row.status !== "running"}
+                          onClick={() =>
+                            cancelMachine(row.taskId, row.machineId)
+                          }
+                          disabled={
+                            row.status !== "pending" && row.status !== "running"
+                          }
                         >
                           Cancel
                         </button>
@@ -937,7 +1305,9 @@ export function ScriptDeploymentDashboard() {
             </div>
             <div className="p-4 space-y-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1.5">Script name *</label>
+                <label className="block text-xs text-slate-400 mb-1.5">
+                  Script name *
+                </label>
                 <input
                   value={saveModalTitle}
                   onChange={(e) => setSaveModalTitle(e.target.value)}
@@ -946,7 +1316,9 @@ export function ScriptDeploymentDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1.5">Description</label>
+                <label className="block text-xs text-slate-400 mb-1.5">
+                  Description
+                </label>
                 <textarea
                   value={saveModalDescription}
                   onChange={(e) => setSaveModalDescription(e.target.value)}
@@ -955,7 +1327,9 @@ export function ScriptDeploymentDashboard() {
                   className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 resize-none"
                 />
               </div>
-              {savedScriptsError && <p className="text-xs text-rose-300">{savedScriptsError}</p>}
+              {savedScriptsError && (
+                <p className="text-xs text-rose-300">{savedScriptsError}</p>
+              )}
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
@@ -967,7 +1341,10 @@ export function ScriptDeploymentDashboard() {
                 <button
                   type="button"
                   onClick={persistCurrentScript}
-                  disabled={createSavedScriptMutation.isPending || updateSavedScriptMutation.isPending}
+                  disabled={
+                    createSavedScriptMutation.isPending ||
+                    updateSavedScriptMutation.isPending
+                  }
                   className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white text-sm px-3 py-2 rounded-lg"
                 >
                   Save
@@ -992,9 +1369,12 @@ export function ScriptDeploymentDashboard() {
                 <h3 className="text-white font-semibold text-sm">
                   Log Stream - {activeLogRow.machineName}
                 </h3>
-                <p className="text-slate-400 text-xs font-mono">{activeLogRow.taskId}</p>
+                <p className="text-slate-400 text-xs font-mono">
+                  {activeLogRow.taskId}
+                </p>
                 <p className="text-slate-500 text-xs mt-1">
-                  {parsedActiveLogs.length} matching lines shown (from {activeLogRow.logLines.length} retained).
+                  {parsedActiveLogs.length} matching lines shown (from{" "}
+                  {activeLogRow.logLines.length} retained).
                 </p>
               </div>
               <button
@@ -1019,7 +1399,9 @@ export function ScriptDeploymentDashboard() {
                 <select
                   value={logStreamFilter}
                   onChange={(e) =>
-                    setLogStreamFilter(e.target.value as "all" | "stdout" | "stderr" | "system")
+                    setLogStreamFilter(
+                      e.target.value as "all" | "stdout" | "stderr" | "system",
+                    )
                   }
                   className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2 py-2"
                 >
@@ -1034,7 +1416,9 @@ export function ScriptDeploymentDashboard() {
                 className="bg-slate-950 border border-slate-800 rounded-lg overflow-auto h-[60vh]"
               >
                 {parsedActiveLogs.length === 0 ? (
-                  <p className="text-slate-400 text-xs p-3">No log lines matching current filters.</p>
+                  <p className="text-slate-400 text-xs p-3">
+                    No log lines matching current filters.
+                  </p>
                 ) : (
                   <div
                     className="relative text-xs"
@@ -1044,15 +1428,22 @@ export function ScriptDeploymentDashboard() {
                   >
                     {logVirtualizer.getVirtualItems().map((virtualLog) => {
                       const line = parsedActiveLogs[virtualLog.index];
-                      const streamColor = STREAM_COLORS[line.stream] || "text-slate-200";
+                      const streamColor =
+                        STREAM_COLORS[line.stream] || "text-slate-200";
                       return (
                         <div
                           key={`${line.index}-${virtualLog.index}`}
                           className="absolute left-0 top-0 w-full px-3 py-1 font-mono border-b border-slate-900/70"
-                          style={{ transform: `translateY(${virtualLog.start}px)` }}
+                          style={{
+                            transform: `translateY(${virtualLog.start}px)`,
+                          }}
                         >
-                          <span className="text-slate-500 mr-2">{String(line.index + 1).padStart(4, " ")}</span>
-                          <span className={`mr-2 uppercase ${streamColor}`}>[{line.stream}]</span>
+                          <span className="text-slate-500 mr-2">
+                            {String(line.index + 1).padStart(4, " ")}
+                          </span>
+                          <span className={`mr-2 uppercase ${streamColor}`}>
+                            [{line.stream}]
+                          </span>
                           <span className={streamColor}>{line.message}</span>
                         </div>
                       );

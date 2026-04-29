@@ -60,6 +60,9 @@ public static class BuilderExtensions
         builder.Services.AddSingleton<ScriptTaskRegistry>();
         builder.Services.AddSingleton<SshSessionManager>();
 
+        builder.Services.AddScoped<ScheduledScriptService>();
+        builder.Services.AddHostedService<ScriptSchedulerWorker>();
+
         builder.Services.AddSignalR(options =>
         {
             options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10 MB

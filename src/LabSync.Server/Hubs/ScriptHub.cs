@@ -9,7 +9,16 @@ namespace LabSync.Server.Hubs;
 [Authorize(Policy = "RequireAdminRole")]
 public sealed class ScriptHub : Hub
 {
+    public const string GlobalGroupName = "all-scripts";
+
     public static string TaskGroupName(Guid taskId) => $"script-task:{taskId:N}";
+
+    public override async Task OnConnectedAsync()
+    {
+        // Automatically join global group to see all executions (including scheduled)
+        await Groups.AddToGroupAsync(Context.ConnectionId, GlobalGroupName);
+        await base.OnConnectedAsync();
+    }
 
     public Task SubscribeToTask(string taskId)
     {

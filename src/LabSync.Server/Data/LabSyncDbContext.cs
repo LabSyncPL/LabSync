@@ -15,6 +15,8 @@ public class LabSyncDbContext : DbContext
     public DbSet<Job> Jobs { get; set; }
     public DbSet<AdminUser> AdminUsers { get; set; }
     public DbSet<SavedScript> SavedScripts { get; set; }
+    public DbSet<ScheduledScript> ScheduledScripts { get; set; }
+    public DbSet<ScheduledScriptExecution> ScheduledScriptExecutions { get; set; }
     
 
     public DbSet<AgentLog> AgentLogs { get; set; }

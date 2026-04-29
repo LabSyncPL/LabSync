@@ -147,6 +147,9 @@ public class AgentHub(
 
         await scriptHubContext.Clients.Group(ScriptHub.TaskGroupName(taskId))
             .SendAsync("ScriptOutputTelemetry", telemetry);
+
+        await scriptHubContext.Clients.Group(ScriptHub.GlobalGroupName)
+            .SendAsync("ScriptOutputTelemetry", telemetry);
     }
 
     /// <summary>
@@ -174,6 +177,9 @@ public class AgentHub(
             return;
 
         await scriptHubContext.Clients.Group(ScriptHub.TaskGroupName(dto.TaskId))
+            .SendAsync("TaskCompleted", dto);
+
+        await scriptHubContext.Clients.Group(ScriptHub.GlobalGroupName)
             .SendAsync("TaskCompleted", dto);
     }
 
