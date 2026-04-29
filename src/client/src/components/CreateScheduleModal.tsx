@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import {
   ScheduledScriptTargetType,
@@ -51,6 +51,14 @@ export function CreateScheduleModal({
   );
   const [targetId, setTargetId] = useState("");
 
+  const filteredGroups = useMemo(
+    () =>
+      groups.filter(
+        (g: { id: string; name: string }) => g.id !== "__ungrouped__",
+      ),
+    [groups],
+  );
+
   useEffect(() => {
     if (editData) {
       setName(editData.name);
@@ -66,36 +74,66 @@ export function CreateScheduleModal({
     } else {
       setName(`Schedule for ${scriptTitle}`);
       setScheduleType("once");
-      setTargetType(
+      const initialTargetType =
         selectedDeviceIds.length === 1
           ? ScheduledScriptTargetType.SingleAgent
-          : ScheduledScriptTargetType.Group,
-      );
-      setTargetId(
-        selectedDeviceIds.length === 1
-          ? selectedDeviceIds[0]
-          : groups[0]?.id || "",
-      );
+          : ScheduledScriptTargetType.Group;
+      setTargetType(initialTargetType);
+
+      if (initialTargetType === ScheduledScriptTargetType.SingleAgent) {
+        setTargetId(selectedDeviceIds[0] || "");
+      } else {
+        setTargetId(filteredGroups[0]?.id || "");
+      }
     }
-  }, [editData, scriptTitle, isOpen, selectedDeviceIds, groups]);
+  }, [editData, scriptTitle, isOpen, selectedDeviceIds, filteredGroups]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      name,
-      targetType,
-      targetId,
-      runAt:
-        scheduleType === "once" ? new Date(runAt).toISOString() : undefined,
-      cronExpression: scheduleType === "recurring" ? cronExpression : undefined,
-    });
+
+    if (!name.trim()) {
+      alert("Please enter a name for the schedule.");
+      return;
+    }
+
+    if (scheduleType === "recurring" && !cronExpression.trim()) {
+      alert("Please enter a valid cron expression.");
+      return;
+    }
+
+    if (scheduleType === "once" && !runAt) {
+      alert("Please select a date and time for the execution.");
+      return;
+    }
+
+    if (!targetId) {
+      alert("Please select a target (agent or group)");
+      return;
+    }
+
+    try {
+      onSave({
+        name,
+        targetType,
+        targetId,
+        runAt:
+          scheduleType === "once" ? new Date(runAt).toISOString() : undefined,
+        cronExpression:
+          scheduleType === "recurring" ? cronExpression : undefined,
+      });
+    } catch (err) {
+      console.error("Failed to save schedule:", err);
+      alert(
+        "An error occurred while saving the schedule. Please check the console for details.",
+      );
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-xl border border-slate-800 bg-slate-900 shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg rounded-xl border border-slate-800 bg-slate-900 shadow-2xl overflow-y-auto max-h-[90vh]">
         <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/50 px-6 py-4">
           <h3 className="text-lg font-semibold text-slate-100">
             {editData ? "Edit Schedule" : "Schedule Script"}
@@ -113,7 +151,6 @@ export function CreateScheduleModal({
             <label className="text-sm font-medium text-slate-300">Name</label>
             <input
               type="text"
-              required
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-200 focus:border-blue-500 focus:outline-none"
@@ -140,7 +177,6 @@ export function CreateScheduleModal({
               </label>
               <input
                 type="datetime-local"
-                required
                 value={runAt}
                 onChange={(e) => setRunAt(e.target.value)}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-200 focus:border-blue-500 focus:outline-none"
@@ -153,7 +189,6 @@ export function CreateScheduleModal({
               </label>
               <input
                 type="text"
-                required
                 value={cronExpression}
                 onChange={(e) => setCronExpression(e.target.value)}
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-slate-200 focus:border-blue-500 focus:outline-none"
@@ -202,7 +237,6 @@ export function CreateScheduleModal({
                 : "Select Group"}
             </label>
             <select
-              required
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
               className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200 focus:border-blue-500 focus:outline-none"
@@ -216,7 +250,7 @@ export function CreateScheduleModal({
                       Agent {id.slice(0, 8)}
                     </option>
                   ))
-                : groups.map((g) => (
+                : filteredGroups.map((g: { id: string; name: string }) => (
                     <option key={g.id} value={g.id}>
                       {g.name}
                     </option>

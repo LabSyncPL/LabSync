@@ -17,7 +17,7 @@ public class ScheduledScriptService(LabSyncDbContext dbContext, ILogger<Schedule
             dto.Arguments,
             dto.TimeoutSeconds,
             dto.CronExpression,
-            dto.RunAt,
+            dto.RunAt?.ToUniversalTime(), // Ensure UTC
             dto.TargetType,
             dto.TargetId,
             createdBy);
@@ -42,7 +42,7 @@ public class ScheduledScriptService(LabSyncDbContext dbContext, ILogger<Schedule
             dto.Arguments,
             dto.TimeoutSeconds,
             dto.CronExpression,
-            dto.RunAt,
+            dto.RunAt?.ToUniversalTime(), // Ensure UTC
             dto.TargetType,
             dto.TargetId);
 
@@ -95,7 +95,7 @@ public class ScheduledScriptService(LabSyncDbContext dbContext, ILogger<Schedule
 
         if (script.RunAt.HasValue)
         {
-            // One-time execution
+            // One-time execution: only schedule if it's in the future and hasn't run yet
             if (script.RunAt > now && (script.LastRunAt == null || script.LastRunAt < script.RunAt))
             {
                 script.SetNextRunAt(script.RunAt);
@@ -105,19 +105,49 @@ public class ScheduledScriptService(LabSyncDbContext dbContext, ILogger<Schedule
                 script.SetNextRunAt(null);
             }
         }
-        else if (!string.IsNullOrEmpty(script.CronExpression))
+        else if (!string.IsNullOrWhiteSpace(script.CronExpression))
         {
             try
             {
-                var cronExpression = CronExpression.Parse(script.CronExpression);
+                var expression = script.CronExpression.Trim();
                 
-                // Get next occurrence using server's local time zone as requested
-                var next = cronExpression.GetNextOccurrence(now, TimeZoneInfo.Local);
-                script.SetNextRunAt(next);
+                // Try to parse as Standard first, then with Seconds
+                CronExpression? cronExpression = null;
+                try
+                {
+                    cronExpression = CronExpression.Parse(expression, CronFormat.Standard);
+                }
+                catch
+                {
+                    try
+                    {
+                        cronExpression = CronExpression.Parse(expression, CronFormat.IncludeSeconds);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to parse cron expression '{Cron}' for script {ScriptId} in any supported format.", expression, script.Id);
+                    }
+                }
+
+                if (cronExpression != null)
+                {
+                    // Get next occurrence strictly after 'now'
+                    // Use server's local time, with a fallback to UTC if Local is problematic
+                    TimeZoneInfo tz;
+                    try { tz = TimeZoneInfo.Local; } catch { tz = TimeZoneInfo.Utc; }
+
+                    var next = cronExpression.GetNextOccurrence(now, tz);
+                    // Crucial: Npgsql requires UTC for 'timestamp with time zone'
+                    script.SetNextRunAt(next?.ToUniversalTime());
+                }
+                else
+                {
+                    script.SetNextRunAt(null);
+                }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to parse cron expression '{Cron}' for script {ScriptId}", script.CronExpression, script.Id);
+                logger.LogError(ex, "Unexpected error calculating next run for script {ScriptId}", script.Id);
                 script.SetNextRunAt(null);
             }
         }

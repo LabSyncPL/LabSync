@@ -22,7 +22,14 @@ public class ScheduledScriptConfiguration : IEntityTypeConfiguration<ScheduledSc
 
         builder.Property(s => s.Arguments)
             .IsRequired()
-            .HasColumnType("text[]");
+            .HasColumnType("text")
+            .HasConversion(
+                v => string.Join(';', v),
+                v => v.Split(';', StringSplitOptions.RemoveEmptyEntries),
+                new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<string[]>(
+                    (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
+                    c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                    c => c.ToArray()));
 
         builder.Property(s => s.CronExpression)
             .HasMaxLength(100);

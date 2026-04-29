@@ -17,7 +17,10 @@ public class ScriptSchedulerWorker(
     {
         logger.LogInformation("Script Scheduler Worker is starting.");
 
-        while (!stoppingToken.IsCancellationRequested)
+        // Use a periodic timer for more reliable minute-based polling
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+
+        while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
         {
             try
             {
@@ -27,13 +30,6 @@ public class ScriptSchedulerWorker(
             {
                 logger.LogError(ex, "Error occurred while processing scheduled scripts.");
             }
-
-            // Wait until the start of the next minute to avoid drifting
-            var now = DateTimeOffset.UtcNow;
-            var nextMinute = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, now.Offset).AddMinutes(1);
-            var delay = nextMinute - now;
-            
-            await Task.Delay(delay, stoppingToken);
         }
     }
 
@@ -100,11 +96,14 @@ public class ScriptSchedulerWorker(
         }
         else if (script.TargetType == ScheduledScriptTargetType.Group)
         {
+            // Resolve all approved devices in the group
             var groupDevices = await dbContext.Devices
-                .Where(d => d.GroupId == script.TargetId)
+                .Where(d => d.GroupId == script.TargetId && d.IsApproved)
                 .Select(d => d.Id)
                 .ToListAsync(ct);
             targetDeviceIds.AddRange(groupDevices);
+            
+            logger.LogInformation("Resolved {Count} devices for group target {GroupId}", groupDevices.Count, script.TargetId);
         }
 
         if (targetDeviceIds.Count == 0)

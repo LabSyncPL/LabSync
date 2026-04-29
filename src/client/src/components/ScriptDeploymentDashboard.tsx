@@ -793,18 +793,27 @@ export function ScriptDeploymentDashboard() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <Clock3 className="h-3 w-3" />
+                        <span className="flex items-center gap-1.5 bg-slate-800/50 px-1.5 py-0.5 rounded">
+                          <Clock3 className="h-3 w-3 text-slate-500" />
                           {s.cronExpression
                             ? `Cron: ${s.cronExpression}`
-                            : `Once: ${new Date(s.runAt!).toLocaleString()}`}
+                            : `One-time`}
                         </span>
-                        {s.nextRunAt && (
-                          <span className="flex items-center gap-1">
+                        {s.isEnabled && s.nextRunAt ? (
+                          <span className="flex items-center gap-1.5 text-blue-400 font-medium">
                             <History className="h-3 w-3" />
-                            Next: {new Date(s.nextRunAt).toLocaleString()}
+                            Next run: {new Date(s.nextRunAt).toLocaleString()}
                           </span>
-                        )}
+                        ) : s.isEnabled && !s.nextRunAt ? (
+                          <span className="text-rose-400 italic flex items-center gap-1.5">
+                            <XCircle className="h-3 w-3" />
+                            Invalid schedule or no future runs
+                          </span>
+                        ) : !s.isEnabled ? (
+                          <span className="text-slate-500 italic">
+                            Schedule disabled
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

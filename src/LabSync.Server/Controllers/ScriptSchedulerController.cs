@@ -13,8 +13,15 @@ public class ScriptSchedulerController(ScheduledScriptService schedulerService) 
     [HttpPost]
     public async Task<ActionResult<ScheduledScriptDto>> Create([FromBody] CreateScheduledScriptDto dto)
     {
-        var result = await schedulerService.CreateAsync(dto, User.Identity?.Name);
-        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+        try
+        {
+            var result = await schedulerService.CreateAsync(dto, User.Identity?.Name);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     [HttpPut("{id}")]

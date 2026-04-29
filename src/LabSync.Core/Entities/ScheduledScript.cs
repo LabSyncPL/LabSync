@@ -40,7 +40,7 @@ public class ScheduledScript
         string name,
         string scriptContent,
         ScriptInterpreterType interpreterType,
-        string[] arguments,
+        string[]? arguments,
         int timeoutSeconds,
         string? cronExpression,
         DateTimeOffset? runAt,
@@ -52,7 +52,7 @@ public class ScheduledScript
         Name = name;
         ScriptContent = scriptContent;
         InterpreterType = interpreterType;
-        Arguments = arguments;
+        Arguments = arguments ?? [];
         TimeoutSeconds = timeoutSeconds;
         CronExpression = cronExpression;
         RunAt = runAt;
@@ -66,7 +66,7 @@ public class ScheduledScript
         string name,
         string scriptContent,
         ScriptInterpreterType interpreterType,
-        string[] arguments,
+        string[]? arguments,
         int timeoutSeconds,
         string? cronExpression,
         DateTimeOffset? runAt,
@@ -76,7 +76,7 @@ public class ScheduledScript
         Name = name;
         ScriptContent = scriptContent;
         InterpreterType = interpreterType;
-        Arguments = arguments;
+        Arguments = arguments ?? [];
         TimeoutSeconds = timeoutSeconds;
         CronExpression = cronExpression;
         RunAt = runAt;
