@@ -1,109 +1,219 @@
 <#
 .SYNOPSIS
-    Installs LabSync Agent as a Windows Service.
-    
-.PARAMETER ServerUrl
-    The URL of the LabSync Server (e.g., http://your-server:5038)
-    
-.PARAMETER InstallDir
-    Target installation directory. Default: C:\Program Files\LabSync Agent
+    Installs LabSync Agent as a Windows service.
+
+.DESCRIPTION
+    The script can install from:
+    - Published binaries folder (contains LabSync.Agent.exe or LabSync.Agent.dll), or
+    - Repository root (contains src/LabSync.Agent/LabSync.Agent.csproj), where it will publish automatically.
+
+    It also:
+    - configures AGENT_SERVER_URL (machine environment variable),
+    - updates appsettings.json ServerUrl for visibility,
+    - copies module DLL files to <InstallDir>\Modules.
+
+    If you see "running scripts is disabled", run as Administrator from this folder:
+      powershell -ExecutionPolicy Bypass -File ".\install-agent.ps1" -ServerUrl "http://SERVER:5038" -SourcePath "."
 #>
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $false)]
     [string]$ServerUrl,
-    
-    [string]$InstallDir = "C:\Program Files\LabSync Agent",
-    
-    [string]$SourcePath = ".", # Path to published files or project root
-    
-    [switch]$IncludeFfmpeg = $true
+
+    [Parameter(Mandatory = $false)]
+    [string]$InstallDir = "C:\Program Files\LabSync.Agent",
+
+    [Parameter(Mandatory = $false)]
+    [string]$SourcePath = ".",
+
+    [Parameter(Mandatory = $false)]
+    [string]$ServiceName = "LabSyncAgent"
 )
 
 $ErrorActionPreference = "Stop"
 
-function Write-Host-Color($message, $color = "Cyan") {
-    Write-Host "[LabSync] $message" -ForegroundColor $color
+function Write-Info([string]$Message) {
+    Write-Host "[LabSync] $Message" -ForegroundColor Cyan
 }
 
-# 1. Check for Admin
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Error "This script must be run as Administrator."
+function Write-Warn([string]$Message) {
+    Write-Host "[LabSync] $Message" -ForegroundColor Yellow
 }
 
-# 1b. Check for .NET 9 Runtime
-$dotnetVersion = & dotnet --list-runtimes | Select-String "Microsoft.NETCore.App 9."
-if (-not $dotnetVersion) {
-    Write-Host-Color "Warning: .NET 9 Runtime not detected. Please install it from https://dotnet.microsoft.com/download/dotnet/9.0" "Yellow"
+function Assert-Admin {
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).
+        IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $isAdmin) {
+        throw "Run this script as Administrator."
+    }
 }
 
-# 2. Prepare Directory
-if (-not (Test-Path $InstallDir)) {
-    New-Item -Path $InstallDir -ItemType Directory -Force
+function Resolve-PathSafe([string]$PathValue) {
+    return [System.IO.Path]::GetFullPath((Resolve-Path -LiteralPath $PathValue).Path)
 }
 
-# 2b. Copy or Build Binaries
-$agentExe = "LabSync.Agent.exe"
-$sourceExePath = Join-Path $SourcePath $agentExe
+function Build-AgentAndModulesFromRepo([string]$RepoRoot, [string]$PublishDir) {
+    $agentProject = Join-Path $RepoRoot "src\LabSync.Agent\LabSync.Agent.csproj"
+    if (-not (Test-Path -LiteralPath $agentProject)) {
+        throw "Could not find LabSync.Agent.csproj under $RepoRoot"
+    }
 
-if (-not (Test-Path $sourceExePath)) {
-    # If .exe not found in SourcePath, check if it's the project root and try to build
-    $projectPath = Join-Path $SourcePath "src\LabSync.Agent\LabSync.Agent.csproj"
-    if (Test-Path $projectPath) {
-        Write-Host-Color "Binaries not found. Attempting to build from source..."
-        dotnet publish $projectPath -c Release -o "$env:TEMP\LabSyncPublish" --self-contained false
-        $SourcePath = "$env:TEMP\LabSyncPublish"
+    Write-Info "Publishing agent from source..."
+    dotnet publish "$agentProject" -c Release -o "$PublishDir" --self-contained false
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet publish failed."
+    }
+
+    $modulesRoot = Join-Path $RepoRoot "src\Modules"
+    if (Test-Path -LiteralPath $modulesRoot) {
+        $moduleProjects = Get-ChildItem -LiteralPath $modulesRoot -Directory -Filter "LabSync.Modules.*"
+        foreach ($moduleDir in $moduleProjects) {
+            $proj = Join-Path $moduleDir.FullName "$($moduleDir.Name).csproj"
+            if (Test-Path -LiteralPath $proj) {
+                Write-Info "Building module: $($moduleDir.Name)"
+                dotnet build "$proj" -c Release
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Module build failed: $($moduleDir.Name)"
+                }
+            }
+        }
+    }
+}
+
+function Copy-ModuleDlls([string]$SourceRoot, [string]$InstallModulesDir) {
+    New-Item -ItemType Directory -Path $InstallModulesDir -Force | Out-Null
+
+    $copied = 0
+
+    $sourceModulesDir = Join-Path $SourceRoot "Modules"
+    if (Test-Path -LiteralPath $sourceModulesDir) {
+        Get-ChildItem -LiteralPath $sourceModulesDir -File -Filter "*.dll" | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $InstallModulesDir $_.Name) -Force
+            $copied++
+        }
+    }
+
+    $repoModules = Join-Path $SourceRoot "src\Modules"
+    if (Test-Path -LiteralPath $repoModules) {
+        $moduleDirs = Get-ChildItem -LiteralPath $repoModules -Directory -Filter "LabSync.Modules.*"
+        foreach ($moduleDir in $moduleDirs) {
+            $releaseDir = Join-Path $moduleDir.FullName "bin\Release\net9.0"
+            if (Test-Path -LiteralPath $releaseDir) {
+                Get-ChildItem -LiteralPath $releaseDir -File -Filter "*.dll" | ForEach-Object {
+                    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $InstallModulesDir $_.Name) -Force
+                    $copied++
+                }
+            }
+        }
+    }
+
+    if ($copied -eq 0) {
+        Write-Warn "No module DLLs copied. Agent will start, but dynamic modules may be unavailable."
     } else {
-        Write-Error "Could not find $agentExe in $SourcePath and no project found to build."
+        Write-Info "Copied $copied module DLL files into $InstallModulesDir"
     }
 }
 
-Write-Host-Color "Copying files to $InstallDir..."
-Copy-Item -Path "$SourcePath\*" -Destination $InstallDir -Recurse -Force -Exclude "bootstrap.json", "ffmpeg"
+if ([string]::IsNullOrWhiteSpace($ServerUrl)) {
+    $ServerUrl = Read-Host "Enter LabSync server URL (e.g. https://labsync.example.com or http://192.168.1.10:5038)"
+}
 
-# 3. Handle FFmpeg Dependency
-if ($IncludeFfmpeg) {
-    $ffmpegDir = Join-Path $InstallDir "ffmpeg"
-    if (-not (Test-Path $ffmpegDir)) {
-        Write-Host-Color "Downloading FFmpeg..."
-        $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
-        $zipPath = "$env:TEMP\ffmpeg.zip"
-        
-        Invoke-WebRequest -Uri $ffmpegUrl -OutFile $zipPath
-        Expand-Archive -Path $zipPath -DestinationPath "$env:TEMP\ffmpeg_temp" -Force
-        
-        $extractedDir = Get-ChildItem "$env:TEMP\ffmpeg_temp\ffmpeg-master*" | Select-Object -First 1
-        Move-Item -Path "$($extractedDir.FullName)\bin" -Destination $ffmpegDir -Force
-        
-        Remove-Item $zipPath -ErrorAction SilentlyContinue
-        Remove-Item "$env:TEMP\ffmpeg_temp" -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host-Color "FFmpeg installed to $ffmpegDir"
+if ([string]::IsNullOrWhiteSpace($ServerUrl)) {
+    throw "Server URL is required."
+}
+
+$ServerUrl = $ServerUrl.Trim().TrimEnd("/")
+if ($ServerUrl -notmatch '^(?i)https?://') {
+    $ServerUrl = "http://$ServerUrl"
+}
+
+Assert-Admin
+New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+
+$sourceResolved = Resolve-PathSafe $SourcePath
+$tempPublishDir = Join-Path $env:TEMP "LabSync.Agent.publish.$([Guid]::NewGuid().ToString('N'))"
+$effectiveSource = $sourceResolved
+$cleanupTempPublish = $false
+
+$sourceExe = Join-Path $sourceResolved "LabSync.Agent.exe"
+$sourceDll = Join-Path $sourceResolved "LabSync.Agent.dll"
+$repoProject = Join-Path $sourceResolved "src\LabSync.Agent\LabSync.Agent.csproj"
+
+if ((-not (Test-Path -LiteralPath $sourceExe)) -and (-not (Test-Path -LiteralPath $sourceDll)) -and (Test-Path -LiteralPath $repoProject)) {
+    New-Item -ItemType Directory -Path $tempPublishDir -Force | Out-Null
+    Build-AgentAndModulesFromRepo -RepoRoot $sourceResolved -PublishDir $tempPublishDir
+    $effectiveSource = $tempPublishDir
+    $cleanupTempPublish = $true
+}
+
+if ((-not (Test-Path -LiteralPath (Join-Path $effectiveSource "LabSync.Agent.exe"))) -and
+    (-not (Test-Path -LiteralPath (Join-Path $effectiveSource "LabSync.Agent.dll")))) {
+    throw "No LabSync.Agent executable found in $effectiveSource. Provide published binaries or repository root."
+}
+
+Write-Info "Copying agent binaries to $InstallDir"
+Copy-Item -Path (Join-Path $effectiveSource "*") -Destination $InstallDir -Recurse -Force
+
+$modulesInstallDir = Join-Path $InstallDir "Modules"
+Copy-ModuleDlls -SourceRoot $sourceResolved -InstallModulesDir $modulesInstallDir
+
+[Environment]::SetEnvironmentVariable("AGENT_SERVER_URL", $ServerUrl, "Machine")
+Write-Info "Set machine environment variable AGENT_SERVER_URL=$ServerUrl"
+
+$configPath = Join-Path $InstallDir "appsettings.json"
+if (Test-Path -LiteralPath $configPath) {
+    try {
+        $configObj = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+        if ($configObj.PSObject.Properties.Name -contains "ServerUrl") {
+            $configObj.ServerUrl = $ServerUrl
+        } else {
+            $configObj | Add-Member -NotePropertyName "ServerUrl" -NotePropertyValue $ServerUrl
+        }
+        $configObj | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $configPath -Encoding UTF8
+        Write-Info "Updated ServerUrl in $configPath"
+    } catch {
+        Write-Warn "Failed to update appsettings.json automatically: $($_.Exception.Message)"
     }
 }
 
-# 4. Configure Bootstrap
-$bootstrap = @{
-    initialServerUrl = $ServerUrl
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    Write-Info "Stopping existing service $ServiceName"
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    sc.exe delete $ServiceName | Out-Null
+    Start-Sleep -Seconds 1
 }
-$bootstrapPath = Join-Path $InstallDir "bootstrap.json"
-$bootstrap | ConvertTo-Json | Out-File -FilePath $bootstrapPath -Encoding utf8
-Write-Host-Color "Configuration saved to $bootstrapPath"
 
-# 5. Setup Windows Service
-$serviceName = "LabSyncAgent"
 $exePath = Join-Path $InstallDir "LabSync.Agent.exe"
+$dllPath = Join-Path $InstallDir "LabSync.Agent.dll"
 
-if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
-    Write-Host-Color "Stopping existing service..."
-    Stop-Service $serviceName -ErrorAction SilentlyContinue
-    Remove-Service $serviceName -ErrorAction SilentlyContinue
+if (Test-Path -LiteralPath $exePath) {
+    $binaryPath = "`"$exePath`""
+} elseif (Test-Path -LiteralPath $dllPath) {
+    $dotnetCmd = (Get-Command dotnet).Source
+    $binaryPath = "`"$dotnetCmd`" `"$dllPath`""
+} else {
+    throw "Installed agent executable was not found."
 }
 
-Write-Host-Color "Registering Windows Service..."
-New-Service -Name $serviceName `
-            -BinaryPathName "`"$exePath`"" `
-            -DisplayName "LabSync Agent" `
-            -Description "Provides LabSync background monitoring and management services." `
-            -StartupType Automatic
+Write-Info "Creating Windows service $ServiceName"
+New-Service -Name $ServiceName `
+    -BinaryPathName $binaryPath `
+    -DisplayName "LabSync Agent" `
+    -Description "LabSync managed endpoint agent." `
+    -StartupType Automatic
 
-Start-Service $serviceName
-Write-Host-Color "LabSync Agent installed and started successfully!" "Green"
+try {
+    Start-Service -Name $ServiceName
+    Write-Info "Service started successfully."
+} catch {
+    Write-Warn "Start-Service failed: $($_.Exception.Message)"
+    Write-Warn "Check Windows Logs -> Application (from LabSync Agent / .NET Runtime)."
+    Write-Warn "Framework-dependent builds need .NET 9 runtime installed for this RID."
+    Write-Warn "Try running manually: & $binaryPath (quote dotnet path if service uses dotnet.exe)."
+    throw
+}
+
+if ($cleanupTempPublish -and (Test-Path -LiteralPath $tempPublishDir)) {
+    Remove-Item -LiteralPath $tempPublishDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+Write-Host "[LabSync] Installation completed." -ForegroundColor Green

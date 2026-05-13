@@ -4,6 +4,10 @@ using LabSync.Agent.Services;
 using LabSync.Core.Interfaces;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+// Windows Service starts with CurrentDirectory = System32; config files live next to the binary.
+builder.Environment.ContentRootPath = AppContext.BaseDirectory;
+
 if (builder.Environment.IsDevelopment())
 {
     var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env");
@@ -14,6 +18,7 @@ if (builder.Environment.IsDevelopment())
 builder.Configuration.AddEnvironmentVariables();
 
 var serverUrl = builder.Configuration["AGENT_SERVER_URL"]
+    ?? builder.Configuration["ServerUrl"]
     ?? throw new InvalidOperationException("ServerUrl is not configured. Please set it in appsettings.json or an environment variable.");
 
 
@@ -36,6 +41,14 @@ builder.Services.AddHttpClient<ServerClient>(client =>
 });
 
 builder.Services.AddHostedService<Worker>();
+
+if (OperatingSystem.IsWindows())
+{
+    builder.Services.AddWindowsService(options =>
+    {
+        options.ServiceName = "LabSyncAgent";
+    });
+}
 
 var host = builder.Build();
 host.Run();

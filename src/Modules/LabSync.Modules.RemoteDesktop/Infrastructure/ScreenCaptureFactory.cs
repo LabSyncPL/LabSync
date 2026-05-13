@@ -238,11 +238,9 @@ internal sealed class WindowsScreenCaptureService : IScreenCaptureService
         {
             if (frameInfo.LastPresentTime == 0) return null;
 
-            using (var texture = resource as ID3D11Texture2D)
-            {
-                if (texture == null) return null;
-                _d3dContext.CopyResource(_stagingTexture, texture);
-            }
+            var texture = resource as ID3D11Texture2D;
+            if (texture == null) return null;
+            _d3dContext.CopyResource(_stagingTexture, texture);
 
             D3D11_MAPPED_SUBRESOURCE mapped = default;
             _d3dContext.Map(_stagingTexture, 0, 1, 0, out mapped);

@@ -2,6 +2,7 @@ using LabSync.Modules.RemoteDesktop.Abstractions;
 using LabSync.Modules.RemoteDesktop.Input;
 using Microsoft.Extensions.Logging;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace LabSync.Modules.RemoteDesktop.Infrastructure;
 
@@ -22,6 +23,7 @@ public static class InputInjectionFactory
     }
 }
 
+[SupportedOSPlatform("windows")]
 internal sealed class WindowsInputInjectionFactory : IInputInjectionFactory
 {
     private readonly ILogger? _logger;
