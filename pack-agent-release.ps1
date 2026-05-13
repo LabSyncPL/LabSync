@@ -7,7 +7,7 @@
     1. dotnet publish agent
     2. dotnet build all LabSync.Modules.* projects
     3. copy *.dll from each module bin/Release/net9.0 into <output>/Modules
-    4. copy install-agent.ps1 and Linux install script template
+    4. copy install-agent.ps1 and install-linux.sh
 
     Output: folder (optional .zip) you copy to the target and run:
     install-agent.ps1 -SourcePath <folder> -ServerUrl ...
@@ -119,10 +119,10 @@ if (Test-Path -LiteralPath $installer) {
     Write-Info "Included install-agent.ps1"
 }
 
-$linuxInstall = Join-Path $RepoRoot "src\LabSync.Agent\scripts\install-linux.sh.example"
+$linuxInstall = Join-Path $RepoRoot "src\LabSync.Agent\scripts\install-linux.sh"
 if (Test-Path -LiteralPath $linuxInstall) {
-    Copy-Item -LiteralPath $linuxInstall -Destination (Join-Path $OutputDir "install-linux.sh.example") -Force
-    Write-Info "Included install-linux.sh.example (rename to install-linux.sh on Linux if needed)"
+    Copy-Item -LiteralPath $linuxInstall -Destination (Join-Path $OutputDir "install-linux.sh") -Force
+    Write-Info "Included install-linux.sh"
 }
 
 $reqLine = if (-not $SelfContained) {
@@ -145,9 +145,8 @@ If scripts are blocked (Execution Policy), use:
   powershell -ExecutionPolicy Bypass -File ".\install-agent.ps1" -ServerUrl "http://your-server:5038" -SourcePath "."
 
 Linux (build with -RuntimeIdentifier linux-x64):
-  sudo cp install-linux.sh.example install-linux.sh
   sudo chmod +x install-linux.sh
-  sudo ./install-linux.sh --server-url "https://your-server" --source-path "/full/path/to/extracted/folder"
+  sudo ./install-linux.sh --server-url "http://your-server:5038" --source-path "/full/path/to/extracted/folder"
 
 Installer sets AGENT_SERVER_URL.
 "@

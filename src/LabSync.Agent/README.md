@@ -35,6 +35,6 @@ When building an installer (e.g. .msi for Windows or a package for Linux):
 Example scripts (adapt to your installer):
 
 - **Windows:** `..\..\install-agent.ps1` (from repo root) or `scripts/install-windows.ps1.example`.
-- **Linux:** `scripts/install-linux.sh.example`.
+- **Linux:** `scripts/install-linux.sh`.
 
 After the URL is set, the agent will use it on startup to register and connect to the server.

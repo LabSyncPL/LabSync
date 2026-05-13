@@ -34,7 +34,7 @@ Run from the **repository root** (where `pack-agent-release.ps1` lives).
 
 - Folder: `dist/LabSync.Agent-release-<rid>-<fx-dep|self-contained>/`
 - Optional ZIP: same path with `.zip` if `-Zip` is used
-- Inside: published agent binaries, `Modules/*.dll`, `install-agent.ps1`, `install-linux.sh.example`, `README-DEPLOY.txt`
+- Inside: published agent binaries, `Modules/*.dll`, `install-agent.ps1`, `install-linux.sh`, `README-DEPLOY.txt`
 
 ### Parameters
 
@@ -143,7 +143,6 @@ Edit `C:\Program Files\LabSync.Agent\appsettings.json` → `ServerUrl` to match 
 
 - **Framework-dependent bundle:** install **.NET 9 runtime** for your distro (same major as the project, e.g. `dotnet-runtime-9.0` where available).
 - `sudo`, `bash`, `systemd`
-- For interactive prompts: copy `install-linux.sh.example` to `install-linux.sh` and `chmod +x`
 
 ### Configuration
 
@@ -151,10 +150,9 @@ Same as Windows: **`AGENT_SERVER_URL`** (written to an env file consumed by syst
 
 ### Installation commands
 
-From the bundle directory (or repo root if building on the fly):
+Use **`install-linux.sh`** from the release bundle or from `src/LabSync.Agent/scripts/` in the repository:
 
 ```bash
-sudo cp install-linux.sh.example install-linux.sh
 sudo chmod +x install-linux.sh
 sudo ./install-linux.sh --server-url "http://YOUR_SERVER:5038" --source-path "/full/path/to/bundle-or-repo"
 ```
@@ -204,4 +202,4 @@ Use dashboard filters **All** or **Pending** to see unapproved devices.
 |------|------|
 | `pack-agent-release.ps1` | Builds the deployment folder/ZIP. |
 | `install-agent.ps1` | Windows installer / service registration. |
-| `src/LabSync.Agent/scripts/install-linux.sh.example` | Linux installer template (systemd). |
+| `src/LabSync.Agent/scripts/install-linux.sh` | Linux installer (also copied into release bundles as `install-linux.sh`). |
