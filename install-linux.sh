@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# LabSync Agent Linux installer (same role as install-agent.ps1 on Windows).
+# LabSync Agent Linux installer
 #
 # Installs agent binaries, copies module DLLs into Modules/,
 # configures AGENT_SERVER_URL in an environment file,
@@ -66,14 +66,19 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-if ! command -v dotnet >/dev/null 2>&1; then
-  echo "Error: dotnet runtime/sdk not found." >&2
-  exit 1
-fi
-
 SOURCE_PATH="$(cd "$SOURCE_PATH" && pwd)"
 TMP_PUBLISH_DIR=""
 EFFECTIVE_SOURCE="$SOURCE_PATH"
+
+NEEDS_DOTNET=false
+if [[ ! -f "$SOURCE_PATH/LabSync.Agent" ]]; then
+  NEEDS_DOTNET=true
+fi
+
+if [[ "$NEEDS_DOTNET" == "true" ]] && ! command -v dotnet >/dev/null 2>&1; then
+  echo "Error: dotnet runtime/sdk not found. It is required to build from source or run a framework-dependent DLL." >&2
+  exit 1
+fi
 
 build_from_repo() {
   local repo_root="$1"
@@ -159,10 +164,12 @@ if [[ -f "$CONFIG_FILE" ]]; then
   fi
 fi
 
-if [[ -x "$INSTALL_DIR/LabSync.Agent" ]]; then
+if [[ -f "$INSTALL_DIR/LabSync.Agent" ]]; then
+  chmod +x "$INSTALL_DIR/LabSync.Agent"
   EXEC_START="$INSTALL_DIR/LabSync.Agent"
 elif [[ -f "$INSTALL_DIR/LabSync.Agent.dll" ]]; then
-  EXEC_START="/usr/bin/dotnet $INSTALL_DIR/LabSync.Agent.dll"
+  DOTNET_BIN="$(command -v dotnet || echo '/usr/bin/dotnet')"
+  EXEC_START="$DOTNET_BIN $INSTALL_DIR/LabSync.Agent.dll"
 else
   echo "Error: installed binary not found." >&2
   exit 1
