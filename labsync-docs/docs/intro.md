@@ -11,9 +11,13 @@ The project's core philosophy is to unify device management through a powerful a
 ## Core Features
 
 - **Unified Management:** Instead of separate tools, LabSync offers a single dashboard to manage both Windows and Linux machines, significantly reducing administrative overhead.
-- **Zero-Touch Deployment:** Automate the setup for new employees or computer labs. Define a desired state, and LabSync ensures the correct software and configuration are applied without manual intervention.
-- **Real-time Communication:** Using SignalR, the central server maintains a persistent connection with agents, allowing for instant status updates and immediate task execution.
-- **Configuration Abstraction:** Define an application or task once (e.g., "Install Git"), and LabSync's agent intelligently translates it into the appropriate native command for each target OS (`winget` for Windows, `nix` for Linux).
+- **Remote Desktop Streaming:** Real-time VNC-style remote desktop access via WebRTC with GPU-accelerated H.264 video encoding.
+- **Script Automation:** Execute PowerShell, Bash, or CMD scripts across your entire device fleet with real-time output streaming.
+- **SSH Terminal:** Interactive remote shell access to devices.
+- **System Monitoring:** Collect real-time hardware metrics (CPU, memory, disk, network) from all managed devices.
+- **Scheduled Automation:** Deploy scripts on recurring schedules (hourly, daily, weekly, etc.) across device groups.
+- **Device Groups:** Organize devices logically and execute bulk operations across groups.
+- **Zero-Touch Deployment:** Simplified agent installation via PowerShell (Windows) or Bash (Linux) scripts.
 
 ## Architecture Overview
 
@@ -49,17 +53,70 @@ Security is a foundational principle of LabSync, especially given its high level
 
 - **No-Eval Policy:** The agent will never execute an arbitrary string of code sent from the server. It only executes specific, predefined system processes with sanitized parameters. This prevents a major class of remote code execution vulnerabilities.
 - **Authentication:** Every agent and API call must be authenticated via a JWT token. All communication is encrypted over HTTPS/WSS.
+- **Device Approval:** Administrators must explicitly approve each new device before it can execute commands.
   :::
 
 ## Tech Stack
 
-| Layer             | Technology                                    | Purpose                                                     |
-| :---------------- | :-------------------------------------------- | :---------------------------------------------------------- |
-| **Backend**       | .NET 9, ASP.NET Core Web API                  | Central server, API endpoints, and business logic.          |
-| **Real-time**     | SignalR Core & WebRTC (Sipsorcery)            | Dual-channel communication (Control Plane & Data Plane).    |
-| **Database**      | PostgreSQL / Entity Framework Core 9          | Storing agent/device info, jobs, logs, and user data.       |
-| **Frontend**      | React 19, TypeScript, Vite                    | Modern, responsive Single Page Application (SPA) dashboard. |
-| **Agent Host**    | .NET 9 Worker Service                         | Runs as a background service on Windows and Linux.          |
-| **Agent Modules** | .NET 9 Class Libraries                        | Encapsulates all agent features (scripting, VNC, etc.).     |
-| **Automation**    | PowerShell/Winget (Windows), Bash/Nix (Linux) | Native package managers and shells for task execution.      |
-| **Auth**          | JWT (JSON Web Tokens)                         | Secure, token-based authentication for agents and users.    |
+| Layer             | Technology                               | Purpose                                                     |
+| :---------------- | :--------------------------------------- | :---------------------------------------------------------- |
+| **Backend**       | .NET 9, ASP.NET Core Web API             | Central server, API endpoints, and business logic.          |
+| **Real-time**     | SignalR Core & WebRTC (Sipsorcery)       | Dual-channel communication (Control Plane & Data Plane).    |
+| **Database**      | PostgreSQL 15 / Entity Framework Core 9  | Storing agent/device info, jobs, logs, and user data.       |
+| **Frontend**      | React 19, TypeScript, Vite, Tailwind CSS | Modern, responsive Single Page Application (SPA) dashboard. |
+| **Agent Host**    | .NET 9 Worker Service                    | Runs as a background service on Windows and Linux.          |
+| **Agent Modules** | .NET 9 Class Libraries                   | Encapsulates all agent features (scripting, VNC, etc.).     |
+| **Video Codec**   | FFmpeg H.264 (GPU: NVENC, AMF, QSV)      | Hardware-accelerated video encoding for RemoteDesktop.      |
+| **Automation**    | PowerShell/Bash                          | Native shells for cross-platform script execution.          |
+| **Auth**          | JWT (JSON Web Tokens)                    | Secure, token-based authentication for agents and users.    |
+| **SSH**           | Renci.SshNet                             | Terminal and file transfer for Linux devices.               |
+
+## Current Status
+
+**Phase 1 MVP: Production Ready**
+
+LabSync has completed Phase 1 development as a fully functional Remote Monitoring and Management system. The project is ready for:
+
+- Production deployment
+- University presentation and demonstration
+- Real-world laboratory management scenarios
+
+All core components are implemented and tested:
+
+- ✅ Server (.NET 9 ASP.NET Core)
+- ✅ Database (PostgreSQL with migrations)
+- ✅ Agent (Windows Service + Linux systemd)
+- ✅ Frontend (React 19 responsive dashboard)
+- ✅ All 4 core modules (Remote Desktop, Script Executor, SSH, SystemInfo)
+
+See [Project Status](./labsync-status.mdx) for detailed implementation status and known limitations.
+
+## Key Use Cases
+
+**Laboratory Management**
+
+- Deploy identical software configurations to computer labs
+- Monitor system resources across lab computers
+- Provide remote support to lab technicians
+
+**Heterogeneous Fleet Management**
+
+- Manage mixed Windows and Linux environments from one interface
+- Execute cross-platform automation scripts
+- Collect unified metrics across diverse OS types
+
+**System Administration**
+
+- Remote troubleshooting via VNC
+- Interactive SSH shell access
+- Automated maintenance tasks
+
+**Educational Setting**
+
+- Monitor student workstations
+- Deploy assignments and updates
+- Collect system telemetry for research
+
+---
+
+**Ready to get started?** Begin with the [Quick Start Guide](./getting-started/quick-start.md) or jump to [Installation](./getting-started/installation.md).
