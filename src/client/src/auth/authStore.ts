@@ -26,3 +26,24 @@ export function clearToken(): void {
 export function isAuthenticated(): boolean {
   return getToken() !== null;
 }
+
+export function getAdminUsername(): string | null {
+  const accessToken = getToken();
+  if (!accessToken) return null;
+
+  const parts = accessToken.split('.');
+  if (parts.length !== 3) return null;
+
+  const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+
+  try {
+    const payload = JSON.parse(atob(padded)) as {
+      sub?: string;
+      unique_name?: string;
+    };
+    return payload.unique_name ?? payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}

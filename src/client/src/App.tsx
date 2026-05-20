@@ -12,6 +12,18 @@ import { RemoteViewPage } from "./pages/RemoteViewPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ScriptDeploymentDashboard } from "./components/ScriptDeploymentDashboard";
 
+function AuthBrandLogo() {
+  return (
+    <div className="mb-8 flex justify-center">
+      <img
+        src="/LabSyncLogoH.svg"
+        alt="LabSync"
+        className="h-10 w-auto max-w-full object-contain"
+      />
+    </div>
+  );
+}
+
 function App() {
   const [token, setTokenState] = useState<string | null>(() => getToken());
   const [statusLoading, setStatusLoading] = useState(true);
@@ -50,12 +62,7 @@ function App() {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center font-bold text-white text-xl mx-auto mb-4">
-              LS
-            </div>
-            <h1 className="text-2xl font-bold text-white">LabSync</h1>
-          </div>
+          <AuthBrandLogo />
           <SetupWizard onSetupComplete={loadSystemStatus} />
         </div>
       </div>
@@ -73,12 +80,7 @@ function App() {
             ) : (
               <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
                 <div className="w-full max-w-md">
-                  <div className="mb-8 text-center">
-                    <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center font-bold text-white text-xl mx-auto mb-4">
-                      LS
-                    </div>
-                    <h1 className="text-2xl font-bold text-white">LabSync</h1>
-                  </div>
+                  <AuthBrandLogo />
                   <Login onSetupRequired={loadSystemStatus} />
                 </div>
               </div>

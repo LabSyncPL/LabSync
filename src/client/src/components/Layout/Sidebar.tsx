@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { getToken } from '../../auth/authStore';
+import { getAdminUsername, getToken } from '../../auth/authStore';
 
 interface NavItem {
   path: string;
@@ -50,16 +50,18 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const location = useLocation();
   const token = getToken();
+  const username = getAdminUsername();
 
   if (!token) return null;
 
   return (
     <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col flex-shrink-0">
       <div className="h-16 flex items-center px-4 lg:px-6 border-b border-slate-800">
-        <div className="w-8 h-8 bg-primary-600 rounded flex items-center justify-center font-bold text-white shrink-0">
-          LS
-        </div>
-        <span className="ml-3 font-bold text-lg tracking-wide hidden lg:block">LabSync</span>
+        <img
+          src="/LabSyncLogoH.svg"
+          alt="LabSync"
+          className="h-8 w-auto max-w-full object-contain"
+        />
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -82,14 +84,10 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
-        <div className="flex items-center">
-          <div className="w-8 h-8 rounded-full bg-slate-700"></div>
-          <div className="ml-3">
-            <p className="text-xs font-medium text-white">Admin User</p>
-            <p className="text-xs text-slate-500">System Admin</p>
-          </div>
-        </div>
+      <div className="px-4 py-3 border-t border-slate-800">
+        <p className="text-sm font-medium text-white truncate" title={username ?? undefined}>
+          {username ?? 'Admin'}
+        </p>
       </div>
     </aside>
   );
