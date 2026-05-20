@@ -14,3 +14,23 @@ export interface LoginResponse {
   expiresInSeconds: number;
   tokenType: string;
 }
+
+export interface RegisterRequest {
+  username: string;
+  password: string;
+}
+
+export interface AccountProfile {
+  username: string;
+  createdAt: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangeUsernameRequest {
+  newUsername: string;
+  currentPassword: string;
+}

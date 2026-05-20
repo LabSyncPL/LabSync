@@ -5,9 +5,10 @@ import { setToken } from "../auth/authStore";
 
 interface LoginProps {
   onSetupRequired?: () => void;
+  onCreateAccount?: () => void;
 }
 
-export function Login({ onSetupRequired }: LoginProps) {
+export function Login({ onSetupRequired, onCreateAccount }: LoginProps) {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -98,6 +99,18 @@ export function Login({ onSetupRequired }: LoginProps) {
             {isSubmitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
+        {onCreateAccount && (
+          <p className="text-center text-slate-400 text-sm mt-6">
+            Need an account?{" "}
+            <button
+              type="button"
+              onClick={onCreateAccount}
+              className="text-primary-400 hover:text-primary-300 font-medium"
+            >
+              Create one
+            </button>
+          </p>
+        )}
       </div>
     </div>
   );

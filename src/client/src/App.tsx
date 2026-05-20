@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { getToken } from "./auth/authStore";
 import { getSystemStatus } from "./api/system";
 import { Layout } from "./components/Layout/Layout";
-import { Login } from "./components/Login";
+import { AuthPage } from "./components/AuthPage";
 import { SetupWizard } from "./components/SetupWizard";
 import { Dashboard } from "./pages/Dashboard";
 import { DeviceDetails } from "./pages/DeviceDetails";
@@ -81,7 +81,7 @@ function App() {
               <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
                 <div className="w-full max-w-md">
                   <AuthBrandLogo />
-                  <Login onSetupRequired={loadSystemStatus} />
+                  <AuthPage onSetupRequired={loadSystemStatus} />
                 </div>
               </div>
             )

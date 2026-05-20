@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getAdminUsername, getToken } from '../../auth/authStore';
+import { AccountSettingsModal } from '../AccountSettingsModal';
 
 interface NavItem {
   path: string;
@@ -50,11 +52,19 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const location = useLocation();
   const token = getToken();
-  const username = getAdminUsername();
+  const [displayUsername, setDisplayUsername] = useState(() => getAdminUsername());
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+
+  useEffect(() => {
+    const syncUsername = () => setDisplayUsername(getAdminUsername());
+    window.addEventListener('auth-change', syncUsername);
+    return () => window.removeEventListener('auth-change', syncUsername);
+  }, []);
 
   if (!token) return null;
 
   return (
+    <>
     <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col flex-shrink-0">
       <div className="h-16 flex items-center px-4 lg:px-6 border-b border-slate-800">
         <img
@@ -85,10 +95,19 @@ export function Sidebar() {
       </nav>
 
       <div className="px-4 py-3 border-t border-slate-800">
-        <p className="text-sm font-medium text-white truncate" title={username ?? undefined}>
-          {username ?? 'Admin'}
-        </p>
+        <button
+          type="button"
+          onClick={() => setAccountModalOpen(true)}
+          className="w-full text-left text-sm font-medium text-white truncate rounded-lg px-2 py-1.5 -mx-2 hover:bg-slate-900 transition-colors"
+          title="Account settings"
+        >
+          {displayUsername ?? 'Admin'}
+        </button>
       </div>
     </aside>
+    {accountModalOpen && (
+      <AccountSettingsModal onClose={() => setAccountModalOpen(false)} />
+    )}
+    </>
   );
 }

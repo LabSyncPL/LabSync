@@ -67,6 +67,7 @@ public class TokenService
         {
             new Claim(JwtRegisteredClaimNames.Sub, username),
             new Claim(JwtRegisteredClaimNames.UniqueName, username),
+            new Claim(ClaimTypes.Name, username),
             new Claim(ClaimTypes.Role, "Admin")
         };
 
