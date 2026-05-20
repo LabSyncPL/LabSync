@@ -74,26 +74,16 @@ public class RemoteSessionManager : IRemoteSessionManager
             CaptureFrame? firstFrame = null;
             IAsyncEnumerator<CaptureFrame>? enumerator = null;
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            capture = _captureFactory.Create();
+            await capture.StartCaptureAsync(cts.Token);
+            
+            enumerator = capture.EnumerateFramesAsync(cts.Token).GetAsyncEnumerator(cts.Token);
+            if (await enumerator.MoveNextAsync())
             {
-                capture = _captureFactory.Create();
-                await capture.StartCaptureAsync(cts.Token);
-                
-                enumerator = capture.EnumerateFramesAsync(cts.Token).GetAsyncEnumerator(cts.Token);
-                if (await enumerator.MoveNextAsync())
-                {
-                    firstFrame = enumerator.Current;
-                    sourceWidth = firstFrame.Width;
-                    sourceHeight = firstFrame.Height;
-                }
+                firstFrame = enumerator.Current;
+                sourceWidth = firstFrame.Width;
+                sourceHeight = firstFrame.Height;
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-             {
-                 var sessionType = Environment.GetEnvironmentVariable("XDG_SESSION_TYPE");
-                 _logger.LogInformation("Linux Session Type: {SessionType}", sessionType ?? "Unknown");
-                 
-                 (sourceWidth, sourceHeight) = await LinuxDisplayHelper.GetScreenResolutionAsync(cts.Token);
-             }
             
             _logger.LogInformation("Detected screen resolution: {Width}x{Height}", sourceWidth, sourceHeight);
 

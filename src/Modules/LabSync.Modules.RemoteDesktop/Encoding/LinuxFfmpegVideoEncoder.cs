@@ -5,15 +5,11 @@ using LabSync.Modules.RemoteDesktop.Configuration;
 
 namespace LabSync.Modules.RemoteDesktop.Encoding;
 
-/// <summary>
-/// Linux-only H.264 encoder using ffmpeg with x11grab.
-/// Acts as both screen capturer and encoder.
-/// </summary>
 public sealed class LinuxFfmpegVideoEncoder : BaseFfmpegEncoder
 {
     private readonly RemoteDesktopConfiguration _config;
 
-    public override bool HandlesCapture => true;
+    public override bool HandlesCapture => false;
 
     public LinuxFfmpegVideoEncoder(
         ILogger<LinuxFfmpegVideoEncoder> logger,
@@ -33,16 +29,8 @@ public sealed class LinuxFfmpegVideoEncoder : BaseFfmpegEncoder
         
         int fps = options.TargetFps > 0 ? options.TargetFps : _config.Encoding.DefaultFps;
         if (fps <= 0) fps = 30;
-        
-        var display = Environment.GetEnvironmentVariable("DISPLAY");
-        if (string.IsNullOrWhiteSpace(display))
-        {
-            display = ":0.0";
-        }
-        
-        var args = $"-f x11grab -draw_mouse 1 -framerate {fps} -s {options.SourceWidth}x{options.SourceHeight} -i {display} ";
 
-        string scaleFilter = "";
+        string scaleFilter = string.Empty;
         if (options.OutputWidth != options.SourceWidth || options.OutputHeight != options.SourceHeight)
         {
             scaleFilter = $"-vf scale={options.OutputWidth}:{options.OutputHeight}";
@@ -52,11 +40,11 @@ public sealed class LinuxFfmpegVideoEncoder : BaseFfmpegEncoder
         string tune = settings.Tune ?? "zerolatency";
         string profile = settings.Profile ?? "baseline";
 
-        int gopSize = fps;   
+        int gopSize = fps;
         string encoderArgs = $"-c:v libx264 -pix_fmt yuv420p -profile:v {profile} -preset {preset} -tune {tune} " +
                              $"-b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k " +
                              $"-g {gopSize} -keyint_min {gopSize} -sc_threshold 0 -bf 0 -slices 1 -threads 0";
    
-        return $"{args} {scaleFilter} {encoderArgs} -f h264 -an -";
+        return $"-hide_banner -loglevel warning -f rawvideo -pix_fmt bgra -s {options.SourceWidth}x{options.SourceHeight} -r {fps} -i - {scaleFilter} {encoderArgs} -f h264 -an -";
     }
 }

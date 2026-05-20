@@ -50,4 +50,11 @@ public class ScreenCaptureConfiguration
     public int ChannelCapacity { get; set; } = 3;
     public int TargetFps { get; set; } = 20;
     public int PlaceholderDelayMs { get; set; } = 33;
+    public string PixelFormat { get; set; } = "bgra";
+    public string WindowsCaptureMode { get; set; } = "gdigrab";
+    public bool UseWaylandPipewire { get; set; } = false;
+    public string? PipewireSource { get; set; }
+    public string? X11Display { get; set; }
+    public int CaptureWidth { get; set; }
+    public int CaptureHeight { get; set; }
 }
