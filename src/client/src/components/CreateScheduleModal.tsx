@@ -59,7 +59,11 @@ export function CreateScheduleModal({
     [groups],
   );
 
+  const hasGroups = filteredGroups.length > 0;
+
   useEffect(() => {
+    if (!isOpen) return;
+
     if (editData) {
       setName(editData.name);
       setScheduleType(editData.cronExpression ? "recurring" : "once");
@@ -71,22 +75,32 @@ export function CreateScheduleModal({
       }
       setTargetType(editData.targetType);
       setTargetId(editData.targetId);
-    } else {
-      setName(`Schedule for ${scriptTitle}`);
-      setScheduleType("once");
-      const initialTargetType =
-        selectedDeviceIds.length === 1
-          ? ScheduledScriptTargetType.SingleAgent
-          : ScheduledScriptTargetType.Group;
-      setTargetType(initialTargetType);
-
-      if (initialTargetType === ScheduledScriptTargetType.SingleAgent) {
-        setTargetId(selectedDeviceIds[0] || "");
-      } else {
-        setTargetId(filteredGroups[0]?.id || "");
-      }
+      return;
     }
-  }, [editData, scriptTitle, isOpen, selectedDeviceIds, filteredGroups]);
+
+    setName(`Schedule for ${scriptTitle}`);
+    setScheduleType("once");
+    const initialTargetType =
+      selectedDeviceIds.length === 1 || !hasGroups
+        ? ScheduledScriptTargetType.SingleAgent
+        : ScheduledScriptTargetType.Group;
+    setTargetType(initialTargetType);
+    setTargetId(
+      initialTargetType === ScheduledScriptTargetType.SingleAgent
+        ? selectedDeviceIds[0] || ""
+        : filteredGroups[0]?.id || "",
+    );
+  }, [editData, isOpen, scriptTitle, selectedDeviceIds, filteredGroups, hasGroups]);
+
+  useEffect(() => {
+    if (editData) return;
+
+    if (targetType === ScheduledScriptTargetType.SingleAgent) {
+      setTargetId(selectedDeviceIds[0] || "");
+    } else if (targetType === ScheduledScriptTargetType.Group) {
+      setTargetId(filteredGroups[0]?.id || "");
+    }
+  }, [targetType, selectedDeviceIds, filteredGroups, editData]);
 
   if (!isOpen) return null;
 
@@ -208,6 +222,7 @@ export function CreateScheduleModal({
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
+                  name="schedule-target-type"
                   checked={targetType === ScheduledScriptTargetType.SingleAgent}
                   onChange={() =>
                     setTargetType(ScheduledScriptTargetType.SingleAgent)
@@ -219,13 +234,24 @@ export function CreateScheduleModal({
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
+                  name="schedule-target-type"
                   checked={targetType === ScheduledScriptTargetType.Group}
-                  onChange={() =>
-                    setTargetType(ScheduledScriptTargetType.Group)
-                  }
+                  onChange={() => {
+                    if (hasGroups) {
+                      setTargetType(ScheduledScriptTargetType.Group);
+                    }
+                  }}
+                  disabled={!hasGroups}
                   className="text-blue-500 focus:ring-blue-500"
                 />
-                <span className="text-sm text-slate-300">Group</span>
+                <span className="text-sm text-slate-300">
+                  Group
+                  {!hasGroups && (
+                    <span className="ml-2 text-xs text-slate-500">
+                      (no groups available)
+                    </span>
+                  )}
+                </span>
               </label>
             </div>
           </div>
@@ -239,10 +265,13 @@ export function CreateScheduleModal({
             <select
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
+              disabled={targetType === ScheduledScriptTargetType.Group && !hasGroups}
               className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-200 focus:border-blue-500 focus:outline-none"
             >
               <option value="" disabled>
-                Select target...
+                {hasGroups
+                  ? "Select target..."
+                  : "No groups available. Choose a single agent."}
               </option>
               {targetType === ScheduledScriptTargetType.SingleAgent
                 ? selectedDeviceIds.map((id) => (

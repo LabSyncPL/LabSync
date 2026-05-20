@@ -18,6 +18,10 @@ public class ScriptSchedulerController(ScheduledScriptService schedulerService) 
             var result = await schedulerService.CreateAsync(dto, User.Identity?.Name);
             return Ok(result);
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message, stackTrace = ex.StackTrace });
@@ -27,9 +31,20 @@ public class ScriptSchedulerController(ScheduledScriptService schedulerService) 
     [HttpPut("{id}")]
     public async Task<ActionResult<ScheduledScriptDto>> Update(Guid id, [FromBody] UpdateScheduledScriptDto dto)
     {
-        var result = await schedulerService.UpdateAsync(id, dto);
-        if (result == null) return NotFound();
-        return Ok(result);
+        try
+        {
+            var result = await schedulerService.UpdateAsync(id, dto);
+            if (result == null) return NotFound();
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     [HttpDelete("{id}")]

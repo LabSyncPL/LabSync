@@ -10,6 +10,11 @@ public class ScheduledScriptService(LabSyncDbContext dbContext, ILogger<Schedule
 {
     public async Task<ScheduledScriptDto> CreateAsync(CreateScheduledScriptDto dto, string? createdBy = null)
     {
+        if (dto.TargetId == Guid.Empty)
+        {
+            throw new ArgumentException("TargetId must be a valid device or group identifier.", nameof(dto.TargetId));
+        }
+
         var script = new ScheduledScript(
             dto.Name,
             dto.ScriptContent,
@@ -32,6 +37,11 @@ public class ScheduledScriptService(LabSyncDbContext dbContext, ILogger<Schedule
 
     public async Task<ScheduledScriptDto?> UpdateAsync(Guid id, UpdateScheduledScriptDto dto)
     {
+        if (dto.TargetId == Guid.Empty)
+        {
+            throw new ArgumentException("TargetId must be a valid device or group identifier.", nameof(dto.TargetId));
+        }
+
         var script = await dbContext.ScheduledScripts.FindAsync(id);
         if (script == null) return null;
 
