@@ -205,4 +205,4 @@ Estimate bandwidth per stream:
 
 ---
 
-Next: Learn about [SSH Terminal](./ssh-terminal.md) or [Scheduling](./scheduling.md)
+Next: Learn about [SSH Terminal](./ssh-terminal) or [Scheduling](./scheduling)

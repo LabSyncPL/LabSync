@@ -127,6 +127,6 @@ The device will appear as "Online" within 10 seconds.
 
 ## What's Next?
 
-- Explore [Features](../features/overview.md)
-- Read [Architecture Overview](../architecture/overview.md)
-- Check [Troubleshooting](../troubleshooting.md) if issues arise
+- Explore [Features](../features/overview)
+- Read [Architecture Overview](../architecture/overview)
+- Check [Troubleshooting](../troubleshooting) if issues arise

@@ -204,4 +204,4 @@ lscpu
 dmidecode
 ```
 
-Next: Learn about [Scheduling](./scheduling.md) or [Remote Desktop](./remote-desktop.md)
+Next: Learn about [Scheduling](./scheduling) or [Remote Desktop](./remote-desktop)

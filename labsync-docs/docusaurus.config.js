@@ -12,7 +12,7 @@ import { themes as prismThemes } from "prism-react-renderer";
 const config = {
   title: "LabSync",
   tagline: "Unified Remote Management for Heterogeneous Environments",
-  favicon: "img/favicon.ico",
+  favicon: "img/LabSyncLogo.svg",
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -76,7 +76,7 @@ const config = {
         title: "LabSync Docs",
         logo: {
           alt: "LabSync Logo",
-          src: "img/logo.svg",
+          src: "img/LabSyncLogo.svg",
         },
         items: [
           {
@@ -123,6 +123,12 @@ const config = {
             ],
           },
         ],
+        logo: {
+          alt: "LabSync Logo",
+          src: "img/LabSyncLogo.svg",
+          width: 64,
+          height: 64,
+        },
         copyright: `Copyright © ${new Date().getFullYear()} LabSync.`,
       },
       prism: {

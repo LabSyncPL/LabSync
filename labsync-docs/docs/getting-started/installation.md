@@ -310,6 +310,5 @@ echo $DB_PORT
 
 After installation, proceed to:
 
-- [Getting Started Guide](./quick-start.md)
-- [User Guide](../features/overview.md)
-- [Deployment Guide](../deployment/production.md)
+- [Getting Started Guide](./quick-start)
+- [User Guide](../features/overview)

@@ -46,6 +46,42 @@ const sidebars = {
           id: "features/overview",
           label: "Features Overview",
         },
+        {
+          type: "category",
+          label: "User Guide",
+          items: [
+            {
+              type: "doc",
+              id: "user-guide/dashboard",
+              label: "Dashboard",
+            },
+            {
+              type: "doc",
+              id: "user-guide/device-management",
+              label: "Device Management",
+            },
+            {
+              type: "doc",
+              id: "user-guide/remote-desktop",
+              label: "Remote Desktop",
+            },
+            {
+              type: "doc",
+              id: "user-guide/script-execution",
+              label: "Script Execution",
+            },
+            {
+              type: "doc",
+              id: "user-guide/ssh-terminal",
+              label: "SSH Terminal",
+            },
+            {
+              type: "doc",
+              id: "user-guide/scheduling",
+              label: "Scheduling",
+            },
+          ],
+        },
       ],
     },
     {
@@ -56,6 +92,28 @@ const sidebars = {
           type: "doc",
           id: "architecture/overview",
           label: "System Architecture",
+        },
+      ],
+    },
+    {
+      type: "category",
+      label: "Business",
+      items: [
+        {
+          type: "doc",
+          id: "business/potential",
+          label: "Business Potential",
+        },
+      ],
+    },
+    {
+      type: "category",
+      label: "Development",
+      items: [
+        {
+          type: "doc",
+          id: "development/modules",
+          label: "Module Development",
         },
       ],
     },

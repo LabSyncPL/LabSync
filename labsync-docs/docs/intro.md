@@ -119,4 +119,4 @@ See [Project Status](./labsync-status.mdx) for detailed implementation status an
 
 ---
 
-**Ready to get started?** Begin with the [Quick Start Guide](./getting-started/quick-start.md) or jump to [Installation](./getting-started/installation.md).
+**Ready to get started?** Begin with the [Quick Start Guide](./getting-started/quick-start) or jump to [Installation](./getting-started/installation).

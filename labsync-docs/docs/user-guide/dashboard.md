@@ -163,4 +163,4 @@ For devices requiring SSH access:
 - Metrics: 5 minutes
 - Job results: Real-time
 
-Next: Learn about [Device Management](./device-management.md) or [Remote Desktop](./remote-desktop.md)
+Next: Learn about [Device Management](./device-management) or [Remote Desktop](./remote-desktop)

@@ -21,3 +21,18 @@
   align-items: center;
   justify-content: center;
 }
+
+.heroLogo {
+  max-width: 240px;
+  width: 35%;
+  height: auto;
+  margin: 0 auto 1rem auto;
+  display: block;
+}
+
+.logoWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
