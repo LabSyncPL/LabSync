@@ -5,12 +5,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import * as signalR from "@microsoft/signalr";
 import { getToken } from "../../auth/authStore";
-
-const DEFAULT_BASE_URL = "http://localhost:5038";
-const BASE_URL =
-  (typeof import.meta !== "undefined" &&
-    (import.meta as any)?.env?.VITE_API_BASE_URL) ||
-  DEFAULT_BASE_URL;
+import { BASE_URL } from "../../utils/baseUrl";
 
 interface DeviceTerminalProps {
   deviceId: string;

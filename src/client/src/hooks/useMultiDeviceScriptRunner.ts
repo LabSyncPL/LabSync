@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { getToken } from "../auth/authStore";
 import { fetchDevices } from "../api/devices";
+import { BASE_URL } from "../utils/baseUrl";
 import {
   cancelTask,
   executeScript,
@@ -15,12 +16,6 @@ import {
   type ScriptOutputTelemetryPayload,
   type ScriptTaskCompletedPayload,
 } from "../types/scriptRunner";
-
-const DEFAULT_BASE_URL = "http://localhost:5038";
-const BASE_URL =
-  (typeof import.meta !== "undefined" &&
-    (import.meta as any)?.env?.VITE_API_BASE_URL) ||
-  DEFAULT_BASE_URL;
 
 /** While script is running, heuristic progress never exceeds this until TaskCompleted. */
 const MAX_INFERRED_PROGRESS = 95;

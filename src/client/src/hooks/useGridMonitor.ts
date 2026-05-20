@@ -2,12 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 import { MessagePackHubProtocol } from "@microsoft/signalr-protocol-msgpack";
 import { getToken } from "../auth/authStore";
-
-const DEFAULT_BASE_URL = "http://localhost:5038";
-const BASE_URL =
-  (typeof import.meta !== "undefined" &&
-    (import.meta as any)?.env?.VITE_API_BASE_URL) ||
-  DEFAULT_BASE_URL;
+import { BASE_URL } from "../utils/baseUrl";
 
 export interface MonitorSettings {
   width: number;

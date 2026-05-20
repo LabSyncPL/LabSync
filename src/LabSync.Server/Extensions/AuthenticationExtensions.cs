@@ -19,6 +19,14 @@ public static class AuthenticationExtensions
             .AddScheme<AuthenticationSchemeOptions, DeviceKeyAuthenticationHandler>(DeviceKeyAuthenticationHandler.SchemeName, null)
             .AddJwtBearer(options =>
             {
+                var jwtKey = builder.Configuration["Jwt:Key"]
+                    ?? throw new InvalidOperationException("JWT Key not configured.");
+                var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
+                if (keyBytes.Length < 32)
+                {
+                    throw new InvalidOperationException("JWT Key must be at least 32 bytes long. Set Jwt:Key in environment/appsettings to a secure 32+ character secret.");
+                }
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -27,8 +35,7 @@ public static class AuthenticationExtensions
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]
-                        ?? throw new InvalidOperationException("JWT Key not configured.")))
+                    IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
                 };
                 /// SignalR sends the token via query string (access_token), not Authorization header
                 options.Events = new JwtBearerEvents

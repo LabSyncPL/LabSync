@@ -3,12 +3,7 @@ import * as signalR from "@microsoft/signalr";
 import { MessagePackHubProtocol } from "@microsoft/signalr-protocol-msgpack";
 import { getToken } from "../../auth/authStore";
 import { useRemoteDesktopSettings } from "../../settings/remoteDesktopSettings";
-
-const DEFAULT_BASE_URL = "http://localhost:5038";
-const BASE_URL =
-  (typeof import.meta !== "undefined" &&
-    (import.meta as any)?.env?.VITE_API_BASE_URL) ||
-  DEFAULT_BASE_URL;
+import { BASE_URL } from "../../utils/baseUrl";
 
 interface RemoteDesktopPreferences {
   initialWidth?: number;
@@ -498,11 +493,24 @@ export function RemoteControlModal({
                 ? "bg-primary-600/90 hover:bg-primary-500 text-white ring-1 ring-primary-400/50"
                 : "bg-black/40 hover:bg-white/20 text-slate-300"
             }`}
-            title={controlEnabled ? "Disable remote control (Shift+C)" : "Enable remote control (Shift+C)"}
+            title={
+              controlEnabled
+                ? "Disable remote control (Shift+C)"
+                : "Enable remote control (Shift+C)"
+            }
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"
+              />
             </svg>
           </button>
           <button

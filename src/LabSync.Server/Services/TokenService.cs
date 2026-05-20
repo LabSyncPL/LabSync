@@ -24,9 +24,20 @@ public class TokenService
             ?? throw new ArgumentNullException(nameof(configuration), "JWT configuration 'Jwt:Audience' is missing.");
     }
 
+    private SymmetricSecurityKey CreateSecurityKey()
+    {
+        var keyBytes = Encoding.UTF8.GetBytes(_jwtKey);
+        if (keyBytes.Length < 32)
+        {
+            throw new InvalidOperationException("Jwt:Key must be at least 32 bytes long. Set Jwt:Key in environment/appsettings to a secure 32+ character secret.");
+        }
+
+        return new SymmetricSecurityKey(keyBytes);
+    }
+
     public string GenerateAgentToken(Device device)
     {
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtKey));
+        var securityKey = CreateSecurityKey();
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]

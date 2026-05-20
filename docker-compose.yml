@@ -28,6 +28,52 @@ services:
       - labsync_network
     restart: unless-stopped
 
+  server:
+    build:
+      context: ./src
+      dockerfile: LabSync.Server/Dockerfile
+    image: labsync_server
+    container_name: labsync_server
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-LabSyncDb}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT__Key=${JWT__Key:-PLEASE_CHANGE_THIS_SECRET_TO_32_BYTES_OR_MORE!!!}
+      - JWT__Issuer=${JWT__Issuer:-LabSyncServer}
+      - JWT__Audience=${JWT__Audience:-LabSyncAgent}
+      - AUTH__AdminUsername=${AUTH__AdminUsername:-admin}
+      - AUTH__AdminPassword=${AUTH__AdminPassword:-admin123}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - ASPNETCORE_URLS=http://+:80
+    ports:
+      - "${SERVER_PORT:-5000}:80"
+    depends_on:
+      - postgres
+    networks:
+      - labsync_network
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./src/client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /
+    image: labsync_client
+    container_name: labsync_client
+    environment:
+      - VITE_API_BASE_URL=/
+    ports:
+      - "${CLIENT_PORT:-3000}:80"
+    depends_on:
+      - server
+    networks:
+      - labsync_network
+    restart: unless-stopped
+
 networks:
   labsync_network:
     driver: bridge
