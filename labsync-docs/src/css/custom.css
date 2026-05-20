@@ -6,25 +6,69 @@
 
 /* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-color-primary: #1939fe; /* logo deep blue */
+  --ifm-color-primary-dark: #152edd;
+  --ifm-color-primary-darker: #1126b3;
+  --ifm-color-primary-darkest: #0e1d8c;
+
+  --ifm-color-primary-light: #b9a5fe; /* soft purple */
+  --ifm-color-primary-lighter: #ddd2fe; /* very light lavender */
+  --ifm-color-primary-lightest: #f5f3ff;
+
+  --ifm-color-secondary: #b9a5fe;
+  --ifm-color-emphasis: var(--ifm-color-primary);
+  --ifm-color-link: var(--ifm-color-primary);
+
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-code-background: #f6f7ff;
+  --docusaurus-highlighted-code-line-bg: rgba(25, 57, 254, 0.06);
+  --ifm-blockquote-border-color: rgba(25, 57, 254, 0.12);
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
-[data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+[data-theme="dark"] {
+  /* Dark-mode friendly variants — lighter, desaturated blues for contrast */
+  --ifm-color-primary: #8ea6ff;
+  --ifm-color-primary-dark: #7b92ff;
+  --ifm-color-primary-darker: #667aff;
+  --ifm-color-primary-darkest: #4f5fd6;
+
+  --ifm-color-primary-light: #b9a5fe;
+  --ifm-color-primary-lighter: #ddd2fe;
+  --ifm-color-primary-lightest: #eef0ff;
+
+  --ifm-color-secondary: #b9a5fe;
+  --ifm-color-emphasis: var(--ifm-color-primary);
+
+  --ifm-code-background: #07102a;
+  --docusaurus-highlighted-code-line-bg: rgba(142, 166, 255, 0.06);
+  --ifm-blockquote-border-color: rgba(142, 166, 255, 0.14);
+}
+
+/* Accent tweaks for common components */
+.navbar__brand img {
+  /* keep logo color intact; ensure spacing */
+  height: 42px;
+}
+
+.navbar__items .navbar__link--active,
+.navbar__items .navbar__link:hover {
+  color: var(--ifm-color-primary) !important;
+}
+
+/* Footer tweaks to blend with brand */
+.footer {
+  --ifm-footer-background: var(--ifm-color-primary-darker);
+}
+
+/* Code block backgrounds */
+.theme-highlight pre,
+.theme-code-block code,
+.markdown pre {
+  background: var(--ifm-code-background) !important;
+}
+
+/* Blockquote border color */
+blockquote {
+  border-left: 4px solid var(--ifm-blockquote-border-color);
 }
