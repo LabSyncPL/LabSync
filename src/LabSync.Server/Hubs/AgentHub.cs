@@ -36,8 +36,7 @@ public class AgentHub(
         var device = await dbContext.Devices.FindAsync(deviceId);
         if (device != null)
         {
-            var ipAddress = Context.GetHttpContext()?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-            device.RecordHeartbeat(ipAddress);
+            device.RecordHeartbeat(device.IpAddress ?? "Unknown");
         }
 
         var pendingJobs = await dbContext.Jobs
@@ -227,8 +226,7 @@ public class AgentHub(
         var device = await dbContext.Devices.FindAsync(deviceId);
         if (device != null)
         {
-            var ipAddress = Context.GetHttpContext()?.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-            device.RecordHeartbeat(ipAddress);
+            device.RecordHeartbeat(device.IpAddress ?? "Unknown");
             await dbContext.SaveChangesAsync();
         }
     }
