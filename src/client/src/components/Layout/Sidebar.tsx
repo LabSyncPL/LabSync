@@ -70,7 +70,7 @@ export function Sidebar() {
         <img
           src="/LabSyncLogoH.svg"
           alt="LabSync"
-          className="h-8 w-auto max-w-full object-contain"
+          className="h-16 w-auto max-w-full object-contain"
         />
       </div>
 
