@@ -53,15 +53,15 @@ systemctl restart labsync
 #### Port Already in Use
 
 ```
-Error: "Port 5038 already in use"
+Error: "Port 5000 already in use"
 ```
 
 **Solution:**
 
 ```bash
 # Find process using the port
-netstat -tlnp | grep 5038
-sudo lsof -i :5038
+netstat -tlnp | grep 5000
+sudo lsof -i :5000
 
 # Kill the process
 sudo kill -9 <PID>
@@ -169,7 +169,7 @@ Get-EventLog -LogName Application -Source "LabSync*" -Newest 50
 $env:AGENT_SERVER_URL
 
 # Test network connectivity
-Test-NetConnection -ComputerName your-server -Port 5038 -InformationLevel Detailed
+Test-NetConnection -ComputerName your-server -Port 5000 -InformationLevel Detailed
 
 # Check firewall
 Get-NetFirewallRule -Direction Outbound -Name "*LabSync*" -ErrorAction SilentlyContinue
@@ -191,10 +191,10 @@ echo $AGENT_SERVER_URL
 cat /etc/labsync-agent/labsync-agent.env
 
 # Test connectivity
-curl -I https://your-server:5038
+curl -I https://your-server:5000
 
 # Check firewall
-sudo iptables -L -n | grep 5038
+sudo iptables -L -n | grep 5000
 ```
 
 **Common Causes & Solutions:**
@@ -203,12 +203,12 @@ sudo iptables -L -n | grep 5038
 
 ```bash
 # Windows
-[Environment]::SetEnvironmentVariable("AGENT_SERVER_URL", "https://your-server:5038", "Machine")
+[Environment]::SetEnvironmentVariable("AGENT_SERVER_URL", "https://your-server:5000", "Machine")
 Restart-Service LabSyncAgent
 
 # Linux
 sudo nano /etc/labsync-agent/labsync-agent.env
-# Update AGENT_SERVER_URL=https://your-server:5038
+# Update AGENT_SERVER_URL=https://your-server:5000
 sudo systemctl restart labsync-agent
 ```
 
@@ -216,11 +216,11 @@ sudo systemctl restart labsync-agent
 
 ```bash
 # Windows - Check firewall
-New-NetFirewallRule -DisplayName "LabSync Agent" -Direction Outbound -Action Allow -Protocol TCP -RemotePort 5038
+New-NetFirewallRule -DisplayName "LabSync Agent" -Direction Outbound -Action Allow -Protocol TCP -RemotePort 5000
 
 # Linux - Check firewall
-sudo ufw allow out to any port 5038
-sudo iptables -A OUTPUT -p tcp --dport 5038 -j ACCEPT
+sudo ufw allow out to any port 5000
+sudo iptables -A OUTPUT -p tcp --dport 5000 -j ACCEPT
 ```
 
 #### Certificate Not Trusted
@@ -248,14 +248,14 @@ sudo update-ca-certificates
 
 ```bash
 # Test from Windows machine
-netstat -an | findstr :5038
+netstat -an | findstr :5000
 
 # Test from Linux
-netstat -an | grep :5038
+netstat -an | grep :5000
 
 # Enable through firewall
 Windows: Settings → Privacy & Security → Windows Defender Firewall → Allow app through firewall
-Linux: sudo ufw allow out 5038/tcp
+Linux: sudo ufw allow out 5000/tcp
 ```
 
 ### Agent Offline After Registration

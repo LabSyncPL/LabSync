@@ -139,14 +139,14 @@ $reqLine
 
 Windows (PowerShell as Administrator):
   cd <extracted_folder>
-  .\install-agent.ps1 -ServerUrl "http://your-server:5038" -SourcePath "."
+  .\install-agent.ps1 -ServerUrl "http://your-server:5000" -SourcePath "."
 
 If scripts are blocked (Execution Policy), use:
-  powershell -ExecutionPolicy Bypass -File ".\install-agent.ps1" -ServerUrl "http://your-server:5038" -SourcePath "."
+  powershell -ExecutionPolicy Bypass -File ".\install-agent.ps1" -ServerUrl "http://your-server:5000" -SourcePath "."
 
 Linux (build with -RuntimeIdentifier linux-x64):
   sudo chmod +x install-linux.sh
-  sudo ./install-linux.sh --server-url "http://your-server:5038" --source-path "/full/path/to/extracted/folder"
+  sudo ./install-linux.sh --server-url "http://your-server:5000" --source-path "/full/path/to/extracted/folder"
 
 Installer sets AGENT_SERVER_URL.
 "@

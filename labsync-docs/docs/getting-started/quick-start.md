@@ -20,6 +20,13 @@ If you are running the server locally, you can also use:
 http://localhost:3000
 ```
 
+If you already have a saved Docker image archive, load it first:
+
+```bash
+docker load -i labsync.tar
+docker compose up -d --no-build
+```
+
 The frontend connects to the backend API on port `5000`.
 
 ## 2. Create Administrator Account

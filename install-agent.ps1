@@ -13,7 +13,7 @@
     - copies module DLL files to <InstallDir>\Modules.
 
     If you see "running scripts is disabled", run as Administrator from this folder:
-      powershell -ExecutionPolicy Bypass -File ".\install-agent.ps1" -ServerUrl "http://SERVER:5038" -SourcePath "."
+      powershell -ExecutionPolicy Bypass -File ".\install-agent.ps1" -ServerUrl "http://SERVER:5000" -SourcePath "."
 #>
 param(
     [Parameter(Mandatory = $false)]
@@ -114,7 +114,7 @@ function Copy-ModuleDlls([string]$SourceRoot, [string]$InstallModulesDir) {
 }
 
 if ([string]::IsNullOrWhiteSpace($ServerUrl)) {
-    $ServerUrl = Read-Host "Enter LabSync server URL (e.g. https://labsync.example.com or http://192.168.1.10:5038)"
+    $ServerUrl = Read-Host "Enter LabSync server URL (e.g. https://labsync.example.com or http://192.168.1.10:5000)"
 }
 
 if ([string]::IsNullOrWhiteSpace($ServerUrl)) {

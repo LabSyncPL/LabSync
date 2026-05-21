@@ -54,6 +54,13 @@ This starts:
 
 Access the application at: `http://your-server-address:3000` (or `http://localhost:3000` if running locally)
 
+If you already have a saved Docker image archive, load it before starting the stack:
+
+```bash
+docker load -i labsync.tar
+docker compose up -d --no-build
+```
+
 ### 2. Manual Installation
 
 #### Prerequisites
@@ -309,7 +316,7 @@ cat "C:\Program Files\LabSync.Agent\appsettings.json"
 
 **Check 3: Firewall Rules**
 
-- Ensure firewall allows outbound connections on port 5038
+- Ensure firewall allows outbound connections on port 5000
 - Windows: Check Windows Defender Firewall
 - Linux: Check iptables/firewalld
 

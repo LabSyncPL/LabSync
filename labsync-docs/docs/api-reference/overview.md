@@ -609,5 +609,5 @@ Authorization: Bearer <token>
 
 ## API Base URL
 
-Development: `http://localhost:5038`
+Development: `http://localhost:5000`
 Production: `https://your-domain.com`

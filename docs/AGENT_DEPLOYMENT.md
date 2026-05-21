@@ -12,7 +12,7 @@ This guide describes how to **build a deployment bundle** on a developer or CI m
 | **Target machine** | PC where the agent runs; receives only the extracted bundle (or ZIP). |
 | **Framework-dependent (fx-dep)** | Smaller bundle; **.NET 9 runtime** must be installed on the target. |
 | **Self-contained** | Larger bundle; includes the .NET runtime; **no separate dotnet install** on the target. |
-| **`AGENT_SERVER_URL`** | Base URL of the LabSync **Server API** (HTTP(S) only, no path suffix). Example: `http://192.168.0.12:5038`. |
+| **`AGENT_SERVER_URL`** | Base URL of the LabSync **Server API** (HTTP(S) only, no path suffix). Example: `http://192.168.0.12:5000`. |
 | **`ServerUrl`** | Optional fallback in `appsettings.json`; prefer **`AGENT_SERVER_URL`** for services. |
 
 The agent registers at `POST {AGENT_SERVER_URL}/api/agents/register` and connects to SignalR at `{AGENT_SERVER_URL}/agentHub`.
@@ -87,7 +87,7 @@ Run from the **repository root** (where `pack-agent-release.ps1` lives).
 Use the **LabSync Server base URL**, including scheme and port, for example:
 
 ```text
-http://192.168.0.12:5038
+http://192.168.0.12:5000
 https://labsync.example.com
 ```
 
@@ -101,14 +101,14 @@ Open **PowerShell as Administrator**, go to the bundle folder, then either:
 
 ```powershell
 cd <path-to-extracted-bundle>
-.\install-agent.ps1 -ServerUrl "http://YOUR_SERVER:5038" -SourcePath "."
+.\install-agent.ps1 -ServerUrl "http://YOUR_SERVER:5000" -SourcePath "."
 ```
 
 **If scripts are blocked (Execution Policy):**
 
 ```powershell
 cd <path-to-extracted-bundle>
-powershell -ExecutionPolicy Bypass -File ".\install-agent.ps1" -ServerUrl "http://YOUR_SERVER:5038" -SourcePath "."
+powershell -ExecutionPolicy Bypass -File ".\install-agent.ps1" -ServerUrl "http://YOUR_SERVER:5000" -SourcePath "."
 ```
 
 Optional parameters:
@@ -129,7 +129,7 @@ The script:
 ### Changing the server URL later
 
 ```powershell
-[Environment]::SetEnvironmentVariable("AGENT_SERVER_URL", "http://NEW_SERVER:5038", "Machine")
+[Environment]::SetEnvironmentVariable("AGENT_SERVER_URL", "http://NEW_SERVER:5000", "Machine")
 Restart-Service LabSyncAgent
 ```
 
@@ -154,7 +154,7 @@ Use **`install-linux.sh`** from the release bundle or from `src/LabSync.Agent/sc
 
 ```bash
 sudo chmod +x install-linux.sh
-sudo ./install-linux.sh --server-url "http://YOUR_SERVER:5038" --source-path "/full/path/to/bundle-or-repo"
+sudo ./install-linux.sh --server-url "http://YOUR_SERVER:5000" --source-path "/full/path/to/bundle-or-repo"
 ```
 
 Useful options:
