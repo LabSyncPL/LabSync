@@ -8,11 +8,19 @@ Get started with LabSync in 5 minutes.
 
 ## 1. Access the Dashboard
 
-After server installation, open your browser:
+After starting the server, open your browser:
 
 ```
-http://localhost:5038
+http://your-server-address:3000
 ```
+
+If you are running the server locally, you can also use:
+
+```
+http://localhost:3000
+```
+
+The frontend connects to the backend API on port `5000`.
 
 ## 2. Create Administrator Account
 
@@ -35,7 +43,7 @@ On the Windows machine:
 
 ```powershell
 # As Administrator
-.\install-agent.ps1 -ServerUrl "http://your-server-ip:5038"
+.\install-agent.ps1 -ServerUrl "http://your-server-address:5000"
 ```
 
 ### Option B: Linux Device
@@ -43,7 +51,7 @@ On the Windows machine:
 On the Linux machine:
 
 ```bash
-sudo ./install-linux.sh --server-url "http://your-server-ip:5038"
+sudo ./install-linux.sh --server-url "http://your-server-address:5000"
 ```
 
 ## 5. Approve Device
