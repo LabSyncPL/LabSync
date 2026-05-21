@@ -54,11 +54,14 @@ This starts:
 
 Access the application at: `http://your-server-address:3000` (or `http://localhost:3000` if running locally)
 
-If you already have a saved Docker image archive, load it before starting the stack:
+If you already have a saved Docker image archive, follow these steps to prepare your configuration and run the application:
+
+1. **Configure Environment Variables:** Rename the `env.example` file to `.env` in your project directory. Open the file and configure your custom settings, or leave the default values intact for a quick setup.
+2. **Load and Run:** Execute the following commands in your terminal:
 
 ```bash
 docker load -i labsync.tar
-docker compose up -d --no-build
+docker compose up -d
 ```
 
 ### 2. Manual Installation
