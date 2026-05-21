@@ -10,12 +10,13 @@ This guide covers installing and configuring LabSync for both server and agent d
 
 ### Server Requirements
 
-- .NET 9 Runtime (or SDK for development)
+- Docker and Docker Compose (for containerized deployment) OR .NET 9 Runtime (for manual installation)
 - PostgreSQL 15 or later
 - 2GB RAM minimum (4GB recommended)
 - 10GB disk space (for database and logs)
-- Port 5038 (or configurable) for API
+- Port 5000 (or configurable) for API
 - Port 443 for HTTPS (production)
+- Port 3000 for Frontend (with Nginx)
 
 ### Agent Requirements
 
@@ -41,13 +42,17 @@ The easiest way to run LabSync server is with Docker:
 
 ```bash
 cd LabSync
-docker-compose up -d
+docker compose up --build
 ```
 
 This starts:
 
+- API Server on port 5000
 - PostgreSQL database (TimescaleDB) on port 5432
 - PgAdmin 4 on port 8080 (for database management)
+- Frontend (React + Nginx) on port 3000
+
+Access the application at: `http://your-server-address:3000` (or `http://localhost:3000` if running locally)
 
 ### 2. Manual Installation
 
@@ -92,20 +97,20 @@ DB_USER=postgres
 DB_PASSWORD=your_secure_password
 
 # CORS (for frontend access)
-CORS_ALLOWED_ORIGINS=http://localhost:5173;http://localhost:3000
+CORS_ALLOWED_ORIGINS=http://localhost:5173;http://localhost:3000;http://your-server-address:3000
 
 # Server URLs
-ASPNETCORE_URLS=http://0.0.0.0:5038;https://0.0.0.0:5039
+ASPNETCORE_URLS=http://0.0.0.0:5000;https://0.0.0.0:5001
 
 # Frontend URL (for React app)
-REACT_APP_API_URL=http://localhost:5038
+REACT_APP_API_URL=http://your-server-address:5000
 ```
 
 ### 4. Initial Setup
 
 When the server starts:
 
-1. Navigate to `http://localhost:5038`
+1. Navigate to `http://your-server-address:5000` (or `http://localhost:5000` if running locally)
 2. You will see the setup wizard
 3. Create the first administrator account
 4. Log in with your credentials
@@ -125,14 +130,14 @@ When the server starts:
 
 # Run the installation script as Administrator
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
-.\install-agent.ps1 -ServerUrl "http://192.168.1.100:5038"
+.\install-agent.ps1 -ServerUrl "http://your-server-address:5000"
 ```
 
 Optional parameters:
 
 ```powershell
 .\install-agent.ps1 `
-  -ServerUrl "http://192.168.1.100:5038" `
+  -ServerUrl "http://your-server-address:5000" `
   -InstallDir "C:\Program Files\LabSync.Agent" `
   -SourcePath "." `
   -ServiceName "LabSyncAgent"
@@ -171,14 +176,14 @@ cd LabSync.Agent-release-linux-x64
 
 # Run the installation script
 sudo chmod +x install-linux.sh
-sudo ./install-linux.sh --server-url "http://192.168.1.100:5038"
+sudo ./install-linux.sh --server-url "http://your-server-address:5000"
 ```
 
 Optional parameters:
 
 ```bash
 sudo ./install-linux.sh \
-  --server-url "http://192.168.1.100:5038" \
+  --server-url "http://your-server-address:5000" \
   --install-dir "/opt/labsync-agent" \
   --service-name "labsync-agent"
 ```
@@ -219,7 +224,7 @@ The agent looks for `AGENT_SERVER_URL` in this order:
 
 ```powershell
 # Update environment variable
-[Environment]::SetEnvironmentVariable("AGENT_SERVER_URL", "http://new-server:5038", "Machine")
+[Environment]::SetEnvironmentVariable("AGENT_SERVER_URL", "http://your-server-address:5000", "Machine")
 
 # Restart service
 Restart-Service LabSyncAgent
@@ -232,13 +237,26 @@ Restart-Service LabSyncAgent
 sudo nano /etc/labsync-agent/labsync-agent.env
 
 # Update or add
-AGENT_SERVER_URL=http://new-server:5038
+AGENT_SERVER_URL=http://your-server-address:5000
 
 # Restart service
 sudo systemctl restart labsync-agent
 ```
 
 ## Frontend Installation
+
+### Docker Deployment (Recommended)
+
+The frontend is automatically deployed with Docker Compose:
+
+```bash
+cd LabSync
+docker compose up --build
+```
+
+Access the frontend at: `http://your-server-address:3000` (or `http://localhost:3000` if running locally)
+
+The frontend runs behind Nginx reverse proxy in a container.
 
 ### Development
 
@@ -273,10 +291,10 @@ npm run build
 
 ```bash
 # Verify server is reachable
-ping server-ip
+ping your-server-address
 
 # Check port
-telnet server-ip 5038
+telnet your-server-address 5000
 ```
 
 **Check 2: Server URL Configuration**
@@ -305,6 +323,114 @@ docker ps | grep postgres
 echo $DB_HOST
 echo $DB_PORT
 ```
+
+## Uninstalling the Agent
+
+### Linux Uninstallation
+
+#### 1. Stop and Disable the Service
+
+```bash
+# Stop the service
+sudo systemctl stop labsync-agent
+
+# Disable automatic startup
+sudo systemctl disable labsync-agent
+```
+
+#### 2. Remove Systemd Service File
+
+```bash
+# Remove the service file
+sudo rm -f /etc/systemd/system/labsync-agent.service
+
+# Reload systemd configuration
+sudo systemctl daemon-reload
+sudo systemctl reset-failed
+```
+
+#### 3. Remove Agent Files and Configuration
+
+```bash
+# Remove agent installation directory
+sudo rm -rf /opt/labsync-agent
+
+# Remove configuration directory
+sudo rm -rf /etc/labsync-agent
+```
+
+#### 4. Clean Up (Optional)
+
+```bash
+# View remaining processes (if any)
+ps aux | grep labsync
+
+# Remove any remaining logs
+sudo rm -rf /var/log/labsync-agent
+```
+
+### Windows Uninstallation
+
+#### 1. Stop and Remove the Service
+
+```powershell
+# Stop the service
+Stop-Service -Name LabSyncAgent -Force
+
+# Remove the service
+sc.exe delete LabSyncAgent
+```
+
+#### 2. Remove Agent Files
+
+```powershell
+# Remove installation directory
+Remove-Item -Path "C:\Program Files\LabSync.Agent" -Recurse -Force
+```
+
+#### 3. Remove Environment Variable
+
+```powershell
+# Remove the AGENT_SERVER_URL environment variable
+[Environment]::SetEnvironmentVariable("AGENT_SERVER_URL", $null, "Machine")
+```
+
+#### 4. Clean Up Registry (Optional)
+
+```powershell
+# View installed applications (optional verification)
+Get-WmiObject -Class Win32_Product | Where-Object {$_.Name -like "*LabSync*"}
+```
+
+## Agent Configuration for Remote Desktop Display
+
+When using the RemoteDesktop module on Linux systems with X11, you may need to configure display environment variables:
+
+### Linux Display Configuration
+
+Edit the systemd service environment:
+
+```bash
+sudo nano /etc/labsync-agent/labsync-agent.env
+```
+
+Add the following lines:
+
+```env
+# Display server for remote desktop capture
+DISPLAY=:0
+XAUTHORITY=/home/username/.Xauthority
+```
+
+Replace `username` with the actual user running the service.
+
+Then restart the service:
+
+```bash
+sudo systemctl restart labsync-agent
+```
+
+**Note:** The user running the service must have permission to access the X11 display.
 
 ## Next Steps
 
