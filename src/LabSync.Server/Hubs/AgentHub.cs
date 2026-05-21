@@ -241,10 +241,9 @@ public class AgentHub(
     public Task PushLog(string level, string message)
     {
         var deviceId = GetDeviceIdFromContext();
+        Console.WriteLine($"[AgentHub.PushLog] deviceId={deviceId} level={level} msg={message}");
         if (deviceId == Guid.Empty) return Task.CompletedTask;
-
-        var entry = new AgentLogEntry(DateTime.UtcNow, level, message);
-        agentLogBuffer.Push(deviceId, entry);
+        agentLogBuffer.Push(deviceId, new AgentLogEntry(DateTime.UtcNow, level, message));
         return Task.CompletedTask;
     }
 }

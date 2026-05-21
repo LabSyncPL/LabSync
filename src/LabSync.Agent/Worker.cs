@@ -247,7 +247,11 @@ public class Worker(
             {
                 break;
             }
+
+            var buffered = loggerProvider.Forwarder.DrainBuffer();
             await serverClient.SendHeartbeatAsync(stoppingToken);
+            await serverClient.FlushLogBufferAsync(buffered);
+            logger.LogInformation("Heartbeat sent.");
         }
     }
 }
