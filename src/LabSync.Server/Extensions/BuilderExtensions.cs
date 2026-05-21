@@ -62,6 +62,7 @@ public static class BuilderExtensions
 
         builder.Services.AddScoped<ScheduledScriptService>();
         builder.Services.AddHostedService<ScriptSchedulerWorker>();
+        builder.Services.AddSingleton<AgentLogBuffer>();
 
         builder.Services.AddSignalR(options =>
         {
@@ -72,5 +73,8 @@ public static class BuilderExtensions
         builder.Services.AddControllers();
 
         return builder;
+
+
+
     }
 }

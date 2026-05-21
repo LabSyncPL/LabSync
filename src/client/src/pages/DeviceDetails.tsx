@@ -146,7 +146,7 @@ export function DeviceDetails() {
               />
             </div>
             <div className="lg:col-span-7 h-full">
-              <DeviceAgentLogsCard />
+              <DeviceAgentLogsCard deviceId={device.id} />
             </div>
           </div>
         </div>

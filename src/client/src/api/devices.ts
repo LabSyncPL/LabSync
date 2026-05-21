@@ -50,3 +50,16 @@ export async function removeDeviceFromGroup(deviceId: string): Promise<ApiRespon
   const { data } = await apiClient.delete<ApiResponse>(`/api/devices/${deviceId}/group`);
   return data;
 }
+
+export interface AgentLogEntry {
+  timestamp: string;
+  level: string;
+  message: string;
+}
+
+export async function fetchAgentLogs(deviceId: string): Promise<AgentLogEntry[]> {
+  const { data } = await apiClient.get<AgentLogEntry[]>(
+    `/api/devices/${deviceId}/logs`
+  );
+  return data;
+}

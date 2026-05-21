@@ -144,4 +144,41 @@ public class ServerClient : IAsyncDisposable
         if (_hubConnection is not null) await _hubConnection.DisposeAsync();
     }
 
+    //public async Task PushLogAsync(string level, string message)
+    //{
+    //    if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+    //        return;
+    //    try { await _hubConnection.InvokeAsync("PushLog", level, message); }
+    //    catch (Exception ex) { _logger.LogDebug(ex, "PushLog failed."); }
+    //}
+
+    //public async Task PushLogAsync(string level, string message)
+    //{
+    //    if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+    //    {
+    //        Console.WriteLine($"[PushLog] HUB NOT CONNECTED, dropping: {message}");
+    //        return;
+    //    }
+    //    Console.WriteLine($"[PushLog] SENDING: {level} | {message}");
+    //    try { await _hubConnection.InvokeAsync("PushLog", level, message); }
+    //    catch (Exception ex) { Console.WriteLine($"[PushLog] ERROR: {ex.Message}"); }
+    //}
+
+    public bool IsConnected =>
+    _hubConnection is not null &&
+    _hubConnection.State == HubConnectionState.Connected;
+
+    public async Task PushLogAsync(string level, string message)
+    {
+        if (!IsConnected) return;
+        try { await _hubConnection!.InvokeAsync("PushLog", level, message); }
+        catch (Exception ex) { _logger.LogDebug(ex, "PushLog failed."); }
+    }
+
+    public async Task FlushLogBufferAsync(IEnumerable<(string level, string message)> buffered)
+    {
+        foreach (var (level, message) in buffered)
+            await PushLogAsync(level, message);
+    }
+
 }

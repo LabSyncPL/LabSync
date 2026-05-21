@@ -8,7 +8,8 @@ public class Worker(
     ILogger<Worker> logger,
     AgentIdentityService identityService,
     ServerClient serverClient,
-    ModuleLoader moduleLoader) : BackgroundService
+    ModuleLoader moduleLoader,
+    SignalRLoggerProvider loggerProvider) : BackgroundService
 {
     private static readonly TimeSpan DefaultJobTimeout = TimeSpan.FromMinutes(30);
 
@@ -64,6 +65,10 @@ public class Worker(
                 serverClient.OnReceiveJob += HandleJobAsync;
 
                 await serverClient.ConnectAsync(token!, internalToken);
+                //logger.LogInformation("TEST: Agent log pipeline is working.");
+                await serverClient.PushLogAsync("INFO", "Agent connected to SignalR Hub.");          //<=====DZIA£A!!! (LOGI AGENTA)
+                var buffered = loggerProvider.Forwarder.DrainBuffer();
+                await serverClient.FlushLogBufferAsync(buffered);
 
                 var heartbeatCts = CancellationTokenSource.CreateLinkedTokenSource(internalToken);
                 var heartbeatTask = RunHeartbeatLoopAsync(heartbeatCts.Token);

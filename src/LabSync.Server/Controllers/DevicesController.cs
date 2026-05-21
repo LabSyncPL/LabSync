@@ -17,18 +17,22 @@ public class DevicesController : ControllerBase
     private readonly JobDispatchService jobDispatch;
     private readonly ISecretProvider secretProvider;
     private readonly ILogger<DevicesController> logger;
+    private readonly AgentLogBuffer agentLogBuffer;
 
     public DevicesController(
         LabSyncDbContext context,
         JobDispatchService jobDispatch,
         ISecretProvider secretProvider,
+        AgentLogBuffer agentLogBuffer,
         ILogger<DevicesController> logger)
     {
         this.context = context;
         this.jobDispatch = jobDispatch;
         this.secretProvider = secretProvider;
+        this.agentLogBuffer = agentLogBuffer;
         this.logger = logger;
     }
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DeviceDto>>> GetAll(CancellationToken cancellationToken)
     {
@@ -245,6 +249,16 @@ public class DevicesController : ControllerBase
         await context.SaveChangesAsync(cancellationToken);
         return Ok(new ApiResponse("SSH Credentials saved successfully."));
     }
+
+    [HttpGet("{deviceId}/logs")]
+    public ActionResult<IEnumerable<AgentLogEntryDto>> GetAgentLogs(Guid deviceId)
+    {
+        var logs = agentLogBuffer.GetLogs(deviceId)
+            .Select(e => new AgentLogEntryDto(e.Timestamp, e.Level, e.Message))
+            .ToList();
+        return Ok(logs);
+    }
 }
 
 public record SetSshCredentialsRequest(string Username, string? Password, string? PrivateKey, bool? UseKeyAuthentication);
+public record AgentLogEntryDto(DateTime Timestamp, string Level, string Message);

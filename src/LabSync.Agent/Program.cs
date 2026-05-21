@@ -34,6 +34,7 @@ builder.Services.AddSingleton<LabSync.Core.Interfaces.IAgentHubInvoker, AgentHub
 builder.Services.AddSingleton<ServerClient>();
 builder.Services.AddSingleton<ModuleLoader>();
 builder.Services.AddSingleton<InputInjectionHubHandler>();
+builder.Services.AddSingleton<SignalRLoggerProvider>();
 
 builder.Services.AddHttpClient<ServerClient>(client =>
 {
@@ -51,4 +52,12 @@ if (OperatingSystem.IsWindows())
 }
 
 var host = builder.Build();
+
+//var serverClient = host.Services.GetRequiredService<ServerClient>();
+//host.Services.GetRequiredService<ILoggerFactory>()
+//    .AddProvider(new SignalRLoggerProvider(serverClient));
+
+var provider = host.Services.GetRequiredService<SignalRLoggerProvider>();
+host.Services.GetRequiredService<ILoggerFactory>().AddProvider(provider);
+
 host.Run();

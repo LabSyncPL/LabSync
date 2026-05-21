@@ -19,6 +19,7 @@ public class AgentHub(
     GridMonitorTracker _gridMonitorTracker,
     IHubContext<RemoteDesktopHub> remoteDesktopHubContext,
     IHubContext<ScriptHub> scriptHubContext,
+    AgentLogBuffer agentLogBuffer,
     ILogger<AgentHub> logger)
     : Hub<IAgentClient>
 {
@@ -235,5 +236,15 @@ public class AgentHub(
     {
         var deviceIdClaim = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(deviceIdClaim, out var deviceId) ? deviceId : Guid.Empty;
+    }
+
+    public Task PushLog(string level, string message)
+    {
+        var deviceId = GetDeviceIdFromContext();
+        if (deviceId == Guid.Empty) return Task.CompletedTask;
+
+        var entry = new AgentLogEntry(DateTime.UtcNow, level, message);
+        agentLogBuffer.Push(deviceId, entry);
+        return Task.CompletedTask;
     }
 }
