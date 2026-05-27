@@ -24,6 +24,8 @@ public class Device
 
     public DeviceCredentials? Credentials { get; private set; }
 
+    public string? HardwareSpecs { get; private set; }
+
     private readonly List<Job> _jobs = new();
     public IReadOnlyCollection<Job> Jobs => _jobs.AsReadOnly();
 
@@ -41,6 +43,11 @@ public class Device
         Status        = DeviceStatus.Pending;
         IsApproved    = false;
         IsOnline      = false;
+    }
+
+    public void UpdateHardwareSpecs(string specs)
+    {
+        HardwareSpecs = specs;
     }
 
     public void Approve()

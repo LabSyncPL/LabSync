@@ -1,4 +1,4 @@
-﻿using LabSync.Core.Dto;
+using LabSync.Core.Dto;
 using LabSync.Core.Interfaces;
 using LabSync.Server.Data;
 using LabSync.Server.Services;
@@ -59,7 +59,8 @@ public class DevicesController : ControllerBase
             GroupId      = d.GroupId,
             GroupName    = d.Group?.Name,
             HasSshCredentials = d.Credentials != null,
-            UseKeyAuthentication = d.Credentials?.UseKeyAuthentication ?? false
+            UseKeyAuthentication = d.Credentials?.UseKeyAuthentication ?? false,
+            HardwareSpecs = d.HardwareSpecs
         }).ToList();
 
         return Ok(devices);

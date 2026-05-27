@@ -21,4 +21,5 @@ public record DeviceDto
     public string? GroupName { get; init; }
     public bool HasSshCredentials { get; init; }
     public bool UseKeyAuthentication { get; init; }
+    public string? HardwareSpecs { get; init; }
 }

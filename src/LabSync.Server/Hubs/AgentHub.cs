@@ -215,6 +215,20 @@ public class AgentHub(
         logger.LogInformation("Job {JobId} completed. ExitCode: {ExitCode}", result.JobId, result.ExitCode);
     }
 
+    public async Task UpdateHardwareSpecs(string specs)
+    {
+        var deviceId = GetDeviceIdFromContext();
+        if (deviceId == Guid.Empty) return;
+
+        var device = await dbContext.Devices.FindAsync(deviceId);
+        if (device != null)
+        {
+            device.UpdateHardwareSpecs(specs);
+            await dbContext.SaveChangesAsync();
+            logger.LogInformation("Hardware specs updated for device {DeviceId}", deviceId);
+        }
+    }
+
     public async Task Heartbeat()
     {
         var deviceId = GetDeviceIdFromContext();

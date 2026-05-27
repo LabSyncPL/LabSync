@@ -61,7 +61,34 @@ public class Worker(
                 serverClient.OnReceiveJob += HandleJobAsync;
 
                 await serverClient.ConnectAsync(token!, internalToken);
-                await serverClient.PushLogAsync("INFO", "Agent connected to SignalR Hub.");          //<=====DZIA�A!!! (LOGI AGENTA)
+                await serverClient.PushLogAsync("INFO", "Agent connected to SignalR Hub.");
+
+                // Collect and push hardware specs once on startup
+                var systemInfoModule = moduleLoader.LoadedModules
+                    .Select(m => m.Module)
+                    .FirstOrDefault(m => m.Name == "SystemInfo");
+
+                if (systemInfoModule != null)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            var result = await systemInfoModule.ExecuteAsync(new Dictionary<string, string> { { "__Command", "Get-HardwareSpecs" } }, internalToken);
+                            if (result.IsSuccess && result.Data != null)
+                            {
+                                var specsJson = JsonSerializer.Serialize(result.Data);
+                                await serverClient.PushHardwareSpecsAsync(specsJson);
+                                logger.LogInformation("Initial hardware specs pushed to server.");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogWarning(ex, "Failed to collect initial hardware specs.");
+                        }
+                    }, internalToken);
+                }
+
                 var buffered = loggerProvider.Forwarder.DrainBuffer();
                 await serverClient.FlushLogBufferAsync(buffered);
 

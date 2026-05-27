@@ -129,6 +129,13 @@ public class ServerClient : IAsyncDisposable
         await _hubConnection.InvokeAsync("UploadJobResult", result);
     }
 
+    public async Task PushHardwareSpecsAsync(string specs)
+    {
+        if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+            return;
+        await _hubConnection.InvokeAsync("UpdateHardwareSpecs", specs);
+    }
+
     public async Task SendHeartbeatAsync(CancellationToken cancellationToken = default)
     {
         if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)

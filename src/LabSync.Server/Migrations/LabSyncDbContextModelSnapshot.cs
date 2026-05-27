@@ -85,6 +85,9 @@ namespace LabSync.Server.Migrations
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("HardwareSpecs")
+                        .HasColumnType("text");
+
                     b.Property<string>("Hostname")
                         .IsRequired()
                         .HasMaxLength(100)

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LabSync.Server.Migrations
 {
     [DbContext(typeof(LabSyncDbContext))]
-    [Migration("20260318205517_SupportSshKeys")]
-    partial class SupportSshKeys
+    [Migration("20260527202843_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -88,6 +88,9 @@ namespace LabSync.Server.Migrations
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("HardwareSpecs")
+                        .HasColumnType("text");
+
                     b.Property<string>("Hostname")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -145,12 +148,13 @@ namespace LabSync.Server.Migrations
                     b.Property<Guid>("DeviceId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("SshKeyReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("SshPassword")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
-
-                    b.Property<string>("SshPrivateKey")
-                        .HasColumnType("text");
 
                     b.Property<string>("SshUsername")
                         .IsRequired()
@@ -175,6 +179,9 @@ namespace LabSync.Server.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -235,6 +242,135 @@ namespace LabSync.Server.Migrations
                     b.ToTable("Jobs", (string)null);
                 });
 
+            modelBuilder.Entity("LabSync.Core.Entities.SavedScript", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Interpreter")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SavedScripts", (string)null);
+                });
+
+            modelBuilder.Entity("LabSync.Core.Entities.ScheduledScript", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string[]>("Arguments")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CronExpression")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("InterpreterType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastRunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("NextRunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("RunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ScriptContent")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TargetType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ScheduledScripts", (string)null);
+                });
+
+            modelBuilder.Entity("LabSync.Core.Entities.ScheduledScriptExecution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ScheduledScriptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ScheduledTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScheduledScriptId");
+
+                    b.ToTable("ScheduledScriptExecutions", (string)null);
+                });
+
             modelBuilder.Entity("LabSync.Core.Entities.AgentLog", b =>
                 {
                     b.HasOne("LabSync.Core.Entities.Device", "Device")
@@ -278,6 +414,17 @@ namespace LabSync.Server.Migrations
                     b.Navigation("Device");
                 });
 
+            modelBuilder.Entity("LabSync.Core.Entities.ScheduledScriptExecution", b =>
+                {
+                    b.HasOne("LabSync.Core.Entities.ScheduledScript", "ScheduledScript")
+                        .WithMany("Executions")
+                        .HasForeignKey("ScheduledScriptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ScheduledScript");
+                });
+
             modelBuilder.Entity("LabSync.Core.Entities.Device", b =>
                 {
                     b.Navigation("Credentials");
@@ -288,6 +435,11 @@ namespace LabSync.Server.Migrations
             modelBuilder.Entity("LabSync.Core.Entities.DeviceGroup", b =>
                 {
                     b.Navigation("Devices");
+                });
+
+            modelBuilder.Entity("LabSync.Core.Entities.ScheduledScript", b =>
+                {
+                    b.Navigation("Executions");
                 });
 #pragma warning restore 612, 618
         }
