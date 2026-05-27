@@ -14,7 +14,7 @@ interface AccountSettingsModalProps {
 }
 
 const inputClassName =
-  "w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500";
+  "w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors";
 
 export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
   const navigate = useNavigate();
@@ -148,26 +148,34 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
       aria-labelledby="account-modal-title"
     >
       <div
-        className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={handleClose}
         aria-hidden="true"
       />
       <div
-        className={`relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto transform transition-all duration-300 ${
+        className={`relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto transform transition-all duration-300 ${
           isVisible ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
         }`}
       >
-        <div className="sticky top-0 z-10 flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-900">
-          <h2 id="account-modal-title" className="text-xl font-semibold text-white">
+        <div className="sticky top-0 z-10 flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <h2
+            id="account-modal-title"
+            className="text-xl font-semibold text-slate-900 dark:text-white"
+          >
             Account
           </h2>
           <button
             type="button"
             onClick={handleClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
             aria-label="Close"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -180,7 +188,9 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
 
         <div className="p-6 space-y-8">
           <section>
-            <h3 className="text-sm font-medium text-slate-300 mb-3">Profile</h3>
+            <h3 className="text-sm font-medium text-slate-500 dark:text-slate-300 mb-3 uppercase tracking-wider">
+              Profile
+            </h3>
             {profileLoading ? (
               <p className="text-slate-500 text-sm">Loading…</p>
             ) : profileError ? (
@@ -189,12 +199,16 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between gap-4">
                   <dt className="text-slate-500">Username</dt>
-                  <dd className="text-white font-medium truncate">{profile.username}</dd>
+                  <dd className="text-slate-900 dark:text-white font-medium truncate">
+                    {profile.username}
+                  </dd>
                 </div>
                 {createdAtLabel && (
                   <div className="flex justify-between gap-4">
                     <dt className="text-slate-500">Member since</dt>
-                    <dd className="text-slate-300">{createdAtLabel}</dd>
+                    <dd className="text-slate-600 dark:text-slate-300">
+                      {createdAtLabel}
+                    </dd>
                   </div>
                 )}
               </dl>
@@ -202,12 +216,14 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
           </section>
 
           <section>
-            <h3 className="text-sm font-medium text-slate-300 mb-3">Change username</h3>
+            <h3 className="text-sm font-medium text-slate-500 dark:text-slate-300 mb-3 uppercase tracking-wider">
+              Change username
+            </h3>
             <form className="space-y-3" onSubmit={handleChangeUsername}>
               <div>
                 <label
                   htmlFor="account-new-username"
-                  className="block text-slate-400 text-xs font-medium mb-1.5"
+                  className="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-1.5"
                 >
                   New username
                 </label>
@@ -225,7 +241,7 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
               <div>
                 <label
                   htmlFor="account-username-password"
-                  className="block text-slate-400 text-xs font-medium mb-1.5"
+                  className="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-1.5"
                 >
                   Current password
                 </label>
@@ -248,7 +264,7 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
               <button
                 type="submit"
                 disabled={usernameSubmitting}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 transition-colors disabled:opacity-50"
+                className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-700 transition-colors disabled:opacity-50"
               >
                 {usernameSubmitting ? "Saving…" : "Update username"}
               </button>
@@ -256,12 +272,14 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
           </section>
 
           <section>
-            <h3 className="text-sm font-medium text-slate-300 mb-3">Change password</h3>
+            <h3 className="text-sm font-medium text-slate-500 dark:text-slate-300 mb-3 uppercase tracking-wider">
+              Change password
+            </h3>
             <form className="space-y-3" onSubmit={handleChangePassword}>
               <div>
                 <label
                   htmlFor="account-current-password"
-                  className="block text-slate-400 text-xs font-medium mb-1.5"
+                  className="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-1.5"
                 >
                   Current password
                 </label>
@@ -278,7 +296,7 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
               <div>
                 <label
                   htmlFor="account-new-password"
-                  className="block text-slate-400 text-xs font-medium mb-1.5"
+                  className="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-1.5"
                 >
                   New password
                 </label>
@@ -297,7 +315,7 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
               <div>
                 <label
                   htmlFor="account-confirm-password"
-                  className="block text-slate-400 text-xs font-medium mb-1.5"
+                  className="block text-slate-500 dark:text-slate-400 text-xs font-medium mb-1.5"
                 >
                   Confirm new password
                 </label>
@@ -313,25 +331,27 @@ export function AccountSettingsModal({ onClose }: AccountSettingsModalProps) {
                   required
                 />
               </div>
-              {passwordError && <p className="text-danger text-sm">{passwordError}</p>}
+              {passwordError && (
+                <p className="text-danger text-sm">{passwordError}</p>
+              )}
               {passwordSuccess && (
                 <p className="text-success text-sm">{passwordSuccess}</p>
               )}
               <button
                 type="submit"
                 disabled={passwordSubmitting}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 transition-colors disabled:opacity-50"
+                className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-700 transition-colors disabled:opacity-50"
               >
                 {passwordSubmitting ? "Saving…" : "Update password"}
               </button>
             </form>
           </section>
 
-          <section className="pt-2 border-t border-slate-800">
+          <section className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full text-slate-300 hover:text-white hover:bg-slate-800 px-4 py-2.5 rounded-lg text-sm font-medium border border-slate-700 transition-colors"
+              className="w-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 px-4 py-2.5 rounded-lg text-sm font-medium border border-slate-200 dark:border-slate-700 transition-colors"
             >
               Log out
             </button>

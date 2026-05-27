@@ -11,6 +11,7 @@ import { TasksPage } from "./pages/TasksPage";
 import { RemoteViewPage } from "./pages/RemoteViewPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ScriptDeploymentDashboard } from "./components/ScriptDeploymentDashboard";
+import { applyTheme, getStoredThemeMode } from "./theme/theme";
 
 function AuthBrandLogo() {
   return (
@@ -45,6 +46,23 @@ function App() {
   }, [loadSystemStatus]);
 
   useEffect(() => {
+    const syncTheme = () => applyTheme(getStoredThemeMode());
+    syncTheme();
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onSystemThemeChange = () => {
+      if (getStoredThemeMode() === "system") {
+        syncTheme();
+      }
+    };
+    media.addEventListener("change", onSystemThemeChange);
+    window.addEventListener("theme-change", syncTheme);
+    return () => {
+      media.removeEventListener("change", onSystemThemeChange);
+      window.removeEventListener("theme-change", syncTheme);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleAuthChange = () => setTokenState(getToken());
     window.addEventListener("auth-change", handleAuthChange);
     return () => window.removeEventListener("auth-change", handleAuthChange);
@@ -52,15 +70,15 @@ function App() {
 
   if (statusLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-900">
-        <p className="text-slate-400">Loading…</p>
+      <div className="flex items-center justify-center h-screen bg-slate-100 dark:bg-slate-900">
+        <p className="text-slate-600 dark:text-slate-400">Loading…</p>
       </div>
     );
   }
 
   if (setupComplete === false) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <AuthBrandLogo />
           <SetupWizard onSetupComplete={loadSystemStatus} />
@@ -78,7 +96,7 @@ function App() {
             token ? (
               <Navigate to="/" replace />
             ) : (
-              <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+              <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-4">
                 <div className="w-full max-w-md">
                   <AuthBrandLogo />
                   <AuthPage onSetupRequired={loadSystemStatus} />

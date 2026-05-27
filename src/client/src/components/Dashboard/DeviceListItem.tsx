@@ -33,13 +33,13 @@ export function DeviceListItem({
   return (
     <div
       onClick={() => navigate(`/devices/${device.id}`)}
-      className={`group bg-slate-800 rounded-xl border border-slate-700 p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-700/30 hover:border-slate-600 transition-all active:scale-[0.99] relative overflow-visible ${
+      className={`group bg-white dark:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-700 p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/30 hover:border-slate-400 dark:hover:border-slate-600 transition-all active:scale-[0.99] relative overflow-visible ${
         !device.isApproved ? "border-l-4 border-l-warning" : ""
       }`}
     >
       <div className="flex items-center gap-4 min-w-[280px]">
         <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 border border-slate-600/30 group-hover:bg-slate-700 group-hover:text-white transition-colors ${
+          className={`w-10 h-10 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600/30 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 group-hover:text-slate-900 dark:group-hover:text-white transition-colors ${
             device.isOnline
               ? "bg-success/5 text-success border-success/20"
               : "bg-slate-700/50"
@@ -48,7 +48,7 @@ export function DeviceListItem({
           {getPlatformIcon(device.platform)}
         </div>
         <div>
-          <h3 className="font-bold text-white text-sm truncate group-hover:text-primary-400 transition-colors flex items-center gap-2">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm truncate group-hover:text-primary-500 dark:group-hover:text-primary-400 transition-colors flex items-center gap-2">
             {device.hostname}
             {!device.isApproved && (
               <span
@@ -59,37 +59,37 @@ export function DeviceListItem({
           </h3>
           <div className="flex items-center gap-2 mt-0.5">
             {device.groupName ? (
-              <span className="text-[10px] font-bold uppercase bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600">
+              <span className="text-[10px] font-bold uppercase bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600">
                 {device.groupName}
               </span>
             ) : (
-              <span className="text-[10px] font-medium text-slate-600 uppercase border border-dashed border-slate-700 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-600 uppercase border border-dashed border-slate-400 dark:border-slate-700 px-1.5 py-0.5 rounded">
                 No Group
               </span>
             )}
-            <span className="text-slate-600 text-[10px]">•</span>
-            <span className="text-xs text-slate-500 font-medium truncate">
+            <span className="text-slate-500 text-[10px]">•</span>
+            <span className="text-xs text-slate-600 dark:text-slate-500 font-medium truncate">
               {DEVICE_PLATFORM_LABELS[device.platform]}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="hidden lg:flex items-center gap-6 flex-1 justify-center text-xs text-slate-400 font-mono">
+      <div className="hidden lg:flex items-center gap-6 flex-1 justify-center text-xs text-slate-600 dark:text-slate-400 font-mono">
         <div className="flex flex-col items-center">
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">
             IP Address
           </span>
-          <span className="bg-slate-900/50 px-2 py-0.5 rounded border border-slate-800 text-slate-300">
+          <span className="bg-slate-100 dark:bg-slate-900/50 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300">
             {device.ipAddress ?? "—"}
           </span>
         </div>
-        <div className="w-px h-6 bg-slate-700/50"></div>
+        <div className="w-px h-6 bg-slate-300 dark:bg-slate-700/50"></div>
         <div className="flex flex-col items-center">
           <span className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">
             Last Seen
           </span>
-          <span className="text-slate-300">
+          <span className="text-slate-700 dark:text-slate-300">
             {formatLastSeen(device.lastSeenAt)}
           </span>
         </div>
@@ -148,7 +148,7 @@ export function DeviceListItem({
               className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
                 device.isOnline
                   ? "bg-success/10 text-success border-success/20"
-                  : "bg-slate-700/50 text-slate-400 border-slate-600"
+                  : "bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-600"
               }`}
             >
               {device.isOnline ? "Active" : "Offline"}
@@ -156,7 +156,7 @@ export function DeviceListItem({
 
             <div className="relative">
               <button
-                className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors ml-1"
+                className="p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors ml-1"
                 onClick={(e) => {
                   e.stopPropagation();
                   setMenuOpen((prev) => !prev);
@@ -179,10 +179,10 @@ export function DeviceListItem({
               </button>
               {menuOpen && (
                 <div
-                  className="absolute right-0 top-8 z-20 w-44 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden"
+                  className="absolute right-0 top-8 z-20 w-44 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-b border-slate-300 dark:border-slate-800">
                     General
                   </div>
                   <button
@@ -191,7 +191,7 @@ export function DeviceListItem({
                       setMenuOpen(false);
                       onViewDetails(device);
                     }}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-2"
                   >
                     View details
                   </button>
@@ -201,11 +201,11 @@ export function DeviceListItem({
                       setMenuOpen(false);
                       onCopyDeviceId(device);
                     }}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-2"
                   >
                     Copy device ID
                   </button>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-300 dark:border-slate-800">
                     Group
                   </div>
                   <button
@@ -214,7 +214,7 @@ export function DeviceListItem({
                       setMenuOpen(false);
                       onAssignToGroup(device);
                     }}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-2"
                   >
                     Assign to group
                   </button>
@@ -225,11 +225,11 @@ export function DeviceListItem({
                       onRemoveFromGroup(device);
                     }}
                     disabled={!device.groupId}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
                   >
                     Remove from group
                   </button>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-300 dark:border-slate-800">
                     Execution
                   </div>
                   <button
@@ -239,11 +239,11 @@ export function DeviceListItem({
                       onRunQuickDiagnostics(device);
                     }}
                     disabled={!device.isApproved || !device.isOnline}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
                   >
                     Run quick diagnostics
                   </button>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-300 dark:border-slate-800">
                   Management
                   </div>
                   <button
@@ -252,7 +252,7 @@ export function DeviceListItem({
                       setMenuOpen(false);
                       onDeleteDevice(device);
                     }}
-                    className="w-full text-left text-xs text-rose-300 hover:bg-rose-600/20 px-3 py-2"
+                    className="w-full text-left text-xs text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-600/20 px-3 py-2"
                   >
                     Delete device
                   </button>

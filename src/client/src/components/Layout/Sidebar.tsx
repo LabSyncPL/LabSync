@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { getAdminUsername, getToken } from '../../auth/authStore';
-import { AccountSettingsModal } from '../AccountSettingsModal';
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { getAdminUsername, getToken } from "../../auth/authStore";
+import { AccountSettingsModal } from "../AccountSettingsModal";
+import {
+  getStoredThemeMode,
+  setThemeMode,
+  type ThemeMode,
+} from "../../theme/theme";
 
 interface NavItem {
   path: string;
@@ -11,39 +16,84 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    path: '/',
-    label: 'Dashboard',
+    path: "/",
+    label: "Dashboard",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+        ></path>
       </svg>
     ),
   },
   {
-    path: '/vnc',
-    label: 'Remote View',
+    path: "/vnc",
+    label: "Remote View",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+        ></path>
       </svg>
     ),
   },
   {
-    path: '/scripts',
-    label: 'Scripts',
+    path: "/scripts",
+    label: "Scripts",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+        ></path>
       </svg>
     ),
   },
   {
-    path: '/settings',
-    label: 'Settings',
+    path: "/settings",
+    label: "Settings",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        ></path>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        ></path>
       </svg>
     ),
   },
@@ -52,62 +102,94 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const location = useLocation();
   const token = getToken();
-  const [displayUsername, setDisplayUsername] = useState(() => getAdminUsername());
+  const [displayUsername, setDisplayUsername] = useState(() =>
+    getAdminUsername(),
+  );
   const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() =>
+    getStoredThemeMode(),
+  );
 
   useEffect(() => {
     const syncUsername = () => setDisplayUsername(getAdminUsername());
-    window.addEventListener('auth-change', syncUsername);
-    return () => window.removeEventListener('auth-change', syncUsername);
+    window.addEventListener("auth-change", syncUsername);
+    return () => window.removeEventListener("auth-change", syncUsername);
+  }, []);
+
+  useEffect(() => {
+    const syncTheme = () => setThemeModeState(getStoredThemeMode());
+    window.addEventListener("theme-change", syncTheme);
+    return () => window.removeEventListener("theme-change", syncTheme);
   }, []);
 
   if (!token) return null;
 
   return (
     <>
-    <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col flex-shrink-0">
-      <div className="h-16 flex items-center px-4 lg:px-6 border-b border-slate-800">
-        <img
-          src="/LabSyncLogoH.svg"
-          alt="LabSync"
-          className="h-12 w-auto max-w-full object-contain"
-        />
-      </div>
+      <aside className="w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col flex-shrink-0">
+        <div className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-slate-200 dark:border-slate-800">
+          <img
+            src="/LabSyncLogoH.svg"
+            alt="LabSync"
+            className="h-12 w-auto max-w-full object-contain"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const nextMode: ThemeMode =
+                themeMode === "dark" ? "light" : "dark";
+              setThemeMode(nextMode);
+              setThemeModeState(nextMode);
+            }}
+            className="ml-2 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+            title="Toggle theme"
+          >
+            {themeMode === "dark" ? "Light" : "Dark"}
+          </button>
+        </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center px-4 py-3 rounded-lg group transition-colors ${
-                isActive
-                  ? 'bg-slate-800 text-white border-l-4 border-primary-500'
-                  : 'text-slate-400 hover:bg-slate-900 hover:text-white'
-              }`}
-            >
-              <span className={isActive ? 'text-primary-500' : ''}>{item.icon}</span>
-              <span className="ml-3">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+        <nav className="flex-1 p-4 space-y-1">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center px-4 py-3 rounded-lg group transition-all duration-200 ${
+                  isActive
+                    ? "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 border-l-4 border-primary-600 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <span
+                  className={
+                    isActive
+                      ? "text-primary-600 dark:text-primary-500"
+                      : "text-slate-500 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400"
+                  }
+                >
+                  {item.icon}
+                </span>
+                <span className="ml-3">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      <div className="px-4 py-3 border-t border-slate-800">
-        <button
-          type="button"
-          onClick={() => setAccountModalOpen(true)}
-          className="w-full text-left text-sm font-medium text-white truncate rounded-lg px-2 py-1.5 -mx-2 hover:bg-slate-900 transition-colors"
-          title="Account settings"
-        >
-          {displayUsername ?? 'Admin'}
-        </button>
-      </div>
-    </aside>
-    {accountModalOpen && (
-      <AccountSettingsModal onClose={() => setAccountModalOpen(false)} />
-    )}
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setAccountModalOpen(true)}
+            className="w-full text-left text-sm font-medium text-slate-900 dark:text-white truncate rounded-lg px-2 py-1.5 -mx-2 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+            title="Account settings"
+          >
+            {displayUsername ?? "Admin"}
+          </button>
+        </div>
+      </aside>
+      {accountModalOpen && (
+        <AccountSettingsModal onClose={() => setAccountModalOpen(false)} />
+      )}
     </>
   );
 }

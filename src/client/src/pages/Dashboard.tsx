@@ -264,19 +264,19 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900 shrink-0">
+      <header className="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-slate-100 dark:bg-slate-900 shrink-0">
         <div className="flex items-center gap-8">
-          <h1 className="text-xl font-semibold text-white">Overview</h1>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Overview</h1>
 
-          <div className="hidden lg:flex items-center gap-6 border-l border-slate-800 pl-6 h-8">
+          <div className="hidden lg:flex items-center gap-6 border-l border-slate-300 dark:border-slate-800 pl-6 h-8">
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-slate-400">Devices</span>
-              <span className="text-white font-semibold bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+              <span className="text-slate-600 dark:text-slate-400">Devices</span>
+              <span className="text-slate-900 dark:text-white font-semibold bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700">
                 {totalDevices}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-slate-400">Online</span>
+              <span className="text-slate-600 dark:text-slate-400">Online</span>
               <span className="text-success font-semibold bg-success/10 px-2 py-0.5 rounded border border-success/20">
                 {onlineDevices}
               </span>
@@ -296,22 +296,22 @@ export function Dashboard() {
           <button
             type="button"
             onClick={() => setGroupsModalOpen(true)}
-            className="text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-700 bg-slate-800/60 hover:bg-slate-700/70"
+            className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-300 dark:border-slate-700 bg-slate-200/60 dark:bg-slate-800/60 hover:bg-slate-300/70 dark:hover:bg-slate-700/70"
           >
             Groups
           </button>
-          <div className="h-6 w-px bg-slate-800"></div>
+          <div className="h-6 w-px bg-slate-300 dark:bg-slate-800"></div>
           <button
             type="button"
             onClick={handleLogout}
-            className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
+            className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
           >
             Log out
           </button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900 p-8">
+      <div className="flex-1 overflow-y-auto scrollbar-dark p-8">
         <div className="max-w-[1600px] mx-auto space-y-6">
           <DeviceFilterControls
             filters={filters}
@@ -321,11 +321,11 @@ export function Dashboard() {
             isRefreshing={isFetching}
           />
           {deviceActionError && (
-            <p className="text-xs text-rose-300 -mt-2">{deviceActionError}</p>
+            <p className="text-xs text-rose-600 dark:text-rose-300 -mt-2">{deviceActionError}</p>
           )}
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+            <div className="flex flex-col items-center justify-center py-20 text-slate-600 dark:text-slate-500">
               <svg
                 className="w-10 h-10 animate-spin mb-4 text-primary-500/50"
                 fill="none"
@@ -362,10 +362,10 @@ export function Dashboard() {
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
-              <h3 className="text-lg font-bold text-white mb-2">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
                 Failed to load devices
               </h3>
-              <p className="text-slate-400 mb-6 text-sm">
+              <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm">
                 {error instanceof Error
                   ? error.message
                   : "An unknown error occurred while fetching device data."}
@@ -378,10 +378,10 @@ export function Dashboard() {
               </button>
             </div>
           ) : filteredDevices.length === 0 ? (
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-16 text-center">
-              <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700">
+            <div className="bg-slate-200/60 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700/50 rounded-2xl p-16 text-center">
+              <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-300 dark:border-slate-700">
                 <svg
-                  className="w-8 h-8 text-slate-500"
+                  className="w-8 h-8 text-slate-600 dark:text-slate-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -394,8 +394,8 @@ export function Dashboard() {
                   />
                 </svg>
               </div>
-              <h3 className="text-white font-medium mb-1">No devices found</h3>
-              <p className="text-slate-500 text-sm">
+              <h3 className="text-slate-900 dark:text-white font-medium mb-1">No devices found</h3>
+              <p className="text-slate-600 dark:text-slate-500 text-sm">
                 {devices.length === 0
                   ? "No devices have registered with the server yet."
                   : "Try adjusting your filters to see more results."}
@@ -411,7 +411,7 @@ export function Dashboard() {
                       viewMode: filters.viewMode,
                     })
                   }
-                  className="mt-4 text-primary-400 hover:text-primary-300 text-sm font-medium"
+                  className="mt-4 text-primary-500 dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 text-sm font-medium"
                 >
                   Clear all filters
                 </button>
@@ -465,39 +465,39 @@ export function Dashboard() {
           onClick={() => setGroupsModalOpen(false)}
         >
           <div
-            className="w-full max-w-5xl bg-slate-900 border border-slate-700 rounded-2xl shadow-xl p-4 md:p-5 space-y-4"
+            className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl shadow-xl p-4 md:p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-2">
               <div>
-                <h2 className="text-white text-sm font-semibold">Device Groups</h2>
-                <p className="text-xs text-slate-400">{groups.length} groups</p>
+                <h2 className="text-slate-900 dark:text-white text-sm font-semibold">Device Groups</h2>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{groups.length} groups</p>
               </div>
               <button
                 type="button"
                 onClick={() => setGroupsModalOpen(false)}
-                className="text-xs text-slate-300 hover:text-white bg-slate-800 border border-slate-700 rounded px-2 py-1"
+                className="text-xs text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1"
               >
                 Close
               </button>
             </div>
             <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-              <div className="border border-slate-700 rounded-xl p-3 space-y-2 bg-slate-900/60">
-                <p className="text-xs text-slate-400">
+              <div className="border border-slate-300 dark:border-slate-700 rounded-xl p-3 space-y-2 bg-slate-100 dark:bg-slate-900/60">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   {editingGroupId ? "Edit group" : "Create group"}
                 </p>
                 <input
                   value={groupFormName}
                   onChange={(e) => setGroupFormName(e.target.value)}
                   placeholder="Group name"
-                  className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-2"
                 />
                 <textarea
                   value={groupFormDescription}
                   onChange={(e) => setGroupFormDescription(e.target.value)}
                   placeholder="Description (optional)"
                   rows={3}
-                  className="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 resize-none"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-2 resize-none"
                 />
                 <div className="flex gap-2">
                   <button
@@ -516,7 +516,7 @@ export function Dashboard() {
                         setGroupFormName("");
                         setGroupFormDescription("");
                       }}
-                      className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-2 rounded-lg"
+                      className="bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-xs px-3 py-2 rounded-lg"
                     >
                       Cancel
                     </button>
@@ -524,11 +524,11 @@ export function Dashboard() {
                 </div>
               </div>
               <div className="space-y-3">
-                <div className="border border-slate-700 rounded-xl divide-y divide-slate-700 bg-slate-900/40 max-h-56 overflow-auto">
+                <div className="border border-slate-300 dark:border-slate-700 rounded-xl divide-y divide-slate-300 dark:divide-slate-700 bg-slate-100 dark:bg-slate-900/40 max-h-56 overflow-auto">
                   {groupsQuery.isLoading ? (
-                    <p className="p-3 text-sm text-slate-400">Loading groups…</p>
+                    <p className="p-3 text-sm text-slate-600 dark:text-slate-400">Loading groups…</p>
                   ) : groups.length === 0 ? (
-                    <p className="p-3 text-sm text-slate-400">No groups created yet.</p>
+                    <p className="p-3 text-sm text-slate-600 dark:text-slate-400">No groups created yet.</p>
                   ) : (
                     groups.map((group) => (
                       <div
@@ -542,11 +542,11 @@ export function Dashboard() {
                           onClick={() => setActiveGroupId(group.id)}
                           className="text-left flex-1"
                         >
-                          <p className="text-sm text-white font-medium">{group.name}</p>
+                          <p className="text-sm text-slate-900 dark:text-white font-medium">{group.name}</p>
                           {group.description && (
-                            <p className="text-xs text-slate-400 mt-0.5">{group.description}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{group.description}</p>
                           )}
-                          <p className="text-[11px] text-slate-500 mt-1">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-500 mt-1">
                             {group.deviceCount} device(s)
                           </p>
                         </button>
@@ -554,7 +554,7 @@ export function Dashboard() {
                           <button
                             type="button"
                             onClick={() => beginEditGroup(group)}
-                            className="text-xs text-slate-300 hover:text-white"
+                            className="text-xs text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                           >
                             Edit
                           </button>
@@ -574,32 +574,32 @@ export function Dashboard() {
                     ))
                   )}
                 </div>
-                <div className="border border-slate-700 rounded-xl p-3 bg-slate-900/40">
-                  <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                <div className="border border-slate-300 dark:border-slate-700 rounded-xl p-3 bg-slate-100 dark:bg-slate-900/40">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-500 mb-2">
                     Group devices
                   </p>
                   {activeGroup ? (
                     activeGroup.devices.length > 0 ? (
                       <ul className="space-y-1 max-h-28 overflow-auto pr-1">
                         {activeGroup.devices.map((device) => (
-                          <li key={device.id} className="text-xs text-slate-300 flex justify-between">
+                          <li key={device.id} className="text-xs text-slate-700 dark:text-slate-300 flex justify-between">
                             <span>{device.hostname}</span>
-                            <span className={device.isOnline ? "text-success" : "text-slate-500"}>
+                            <span className={device.isOnline ? "text-success" : "text-slate-500 dark:text-slate-500"}>
                               {device.isOnline ? "Online" : "Offline"}
                             </span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-xs text-slate-400">No devices in selected group.</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">No devices in selected group.</p>
                     )
                   ) : (
-                    <p className="text-xs text-slate-400">Select a group to view its devices.</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">Select a group to view its devices.</p>
                   )}
                 </div>
               </div>
             </div>
-            {groupsError && <p className="text-xs text-rose-300">{groupsError}</p>}
+            {groupsError && <p className="text-xs text-rose-600 dark:text-rose-300">{groupsError}</p>}
           </div>
         </div>
       )}
@@ -610,18 +610,18 @@ export function Dashboard() {
           onClick={() => setAssigningDevice(null)}
         >
           <div
-            className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-xl shadow-xl"
+            className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 py-3 border-b border-slate-800">
-              <h3 className="text-sm font-semibold text-white">Assign to group</h3>
-              <p className="text-xs text-slate-400 mt-1">{assigningDevice.hostname}</p>
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Assign to group</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{assigningDevice.hostname}</p>
             </div>
             <div className="p-4 space-y-3">
               <select
                 value={assignTargetGroupId}
                 onChange={(e) => setAssignTargetGroupId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2"
+                className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-2"
               >
                 <option value="">Select a group</option>
                 {groups.map((group) => (
@@ -634,7 +634,7 @@ export function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setAssigningDevice(null)}
-                  className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg"
+                  className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs px-3 py-2 rounded-lg"
                 >
                   Cancel
                 </button>

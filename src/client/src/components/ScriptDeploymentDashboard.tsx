@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -46,6 +46,7 @@ import {
   ScheduledScriptTargetType,
   type ScheduledScriptDto,
 } from "../types/scheduledScripts";
+import { getStoredThemeMode, type ThemeMode } from "../theme/theme";
 
 const DEFAULT_SCRIPT = ["# Write your deployment script here", ""].join("\n");
 
@@ -53,12 +54,35 @@ const STATUS_STYLE: Record<
   ScriptExecutionStatus,
   { badge: string; icon: typeof Activity }
 > = {
-  pending: { badge: "bg-slate-700 text-slate-200", icon: Clock3 },
-  running: { badge: "bg-blue-600/20 text-blue-300", icon: LoaderCircle },
-  success: { badge: "bg-emerald-600/20 text-emerald-300", icon: CheckCircle2 },
-  error: { badge: "bg-rose-600/20 text-rose-300", icon: XCircle },
-  timeout: { badge: "bg-amber-600/20 text-amber-300", icon: AlertTriangle },
-  cancelled: { badge: "bg-orange-600/20 text-orange-300", icon: Ban },
+  pending: {
+    badge: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200",
+    icon: Clock3,
+  },
+  running: {
+    badge:
+      "bg-blue-600/10 dark:bg-blue-600/20 text-blue-600 dark:text-blue-300",
+    icon: LoaderCircle,
+  },
+  success: {
+    badge:
+      "bg-emerald-600/10 dark:bg-emerald-600/20 text-emerald-600 dark:text-emerald-300",
+    icon: CheckCircle2,
+  },
+  error: {
+    badge:
+      "bg-rose-600/10 dark:bg-rose-600/20 text-rose-600 dark:text-rose-300",
+    icon: XCircle,
+  },
+  timeout: {
+    badge:
+      "bg-amber-600/10 dark:bg-amber-600/20 text-amber-600 dark:text-amber-300",
+    icon: AlertTriangle,
+  },
+  cancelled: {
+    badge:
+      "bg-orange-600/10 dark:bg-orange-600/20 text-orange-600 dark:text-orange-300",
+    icon: Ban,
+  },
 };
 
 const STATUS_LABEL: Record<ScriptExecutionStatus, string> = {
@@ -104,9 +128,9 @@ const buildDeviceGroups = (devices: DeviceDto[]) => {
 };
 
 const STREAM_COLORS: Record<string, string> = {
-  stdout: "text-slate-200",
-  stderr: "text-rose-300",
-  system: "text-amber-300",
+  stdout: "text-slate-700 dark:text-slate-200",
+  stderr: "text-rose-600 dark:text-rose-300",
+  system: "text-amber-600 dark:text-amber-300",
 };
 
 const parseLogLine = (line: string) => {
@@ -118,6 +142,16 @@ const parseLogLine = (line: string) => {
 
 export function ScriptDeploymentDashboard() {
   const queryClient = useQueryClient();
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() =>
+    getStoredThemeMode(),
+  );
+
+  useEffect(() => {
+    const syncTheme = () => setThemeModeState(getStoredThemeMode());
+    window.addEventListener("theme-change", syncTheme);
+    return () => window.removeEventListener("theme-change", syncTheme);
+  }, []);
+
   const [scriptContent, setScriptContent] = useState(DEFAULT_SCRIPT);
   const [interpreter, setInterpreter] =
     useState<ScriptInterpreter>("powershell");
@@ -552,10 +586,10 @@ export function ScriptDeploymentDashboard() {
 
   return (
     <>
-      <header className="border-b border-slate-800/80 px-6 md:px-8 py-3 bg-slate-900/80 shrink-0 space-y-3 backdrop-blur-sm">
+      <header className="border-b border-slate-200 dark:border-slate-800/80 px-6 md:px-8 py-3 bg-white dark:bg-slate-900/80 shrink-0 space-y-3 backdrop-blur-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold text-white">
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-white">
               Script Deployment
             </h1>
             <p className="text-slate-500 text-xs">
@@ -566,17 +600,17 @@ export function ScriptDeploymentDashboard() {
             <span
               className={`text-[11px] px-2 py-1 rounded-full border ${
                 connectionState === "connected"
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
                   : connectionState === "connecting"
-                    ? "border-blue-500/40 bg-blue-500/10 text-blue-300"
-                    : "border-rose-500/40 bg-rose-500/10 text-rose-300"
+                    ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-300"
+                    : "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-300"
               }`}
             >
               SignalR: {connectionState}
             </span>
             <button
               type="button"
-              className="bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 disabled:opacity-50 text-white px-2.5 py-1.5 rounded-lg text-[11px]"
+              className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/80 disabled:opacity-50 text-slate-700 dark:text-white px-2.5 py-1.5 rounded-lg text-[11px] transition-colors"
               onClick={clearFinished}
               disabled={rows.length === 0}
             >
@@ -584,7 +618,7 @@ export function ScriptDeploymentDashboard() {
             </button>
             <button
               type="button"
-              className="bg-rose-600/90 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-[11px] font-medium"
+              className="bg-rose-600/90 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-95 shadow-lg shadow-rose-500/20"
               onClick={handleStopAll}
               disabled={activeCount === 0}
               title="Stop all running and pending executions"
@@ -623,19 +657,21 @@ export function ScriptDeploymentDashboard() {
                 className={`rounded-md border px-2.5 py-1.5 text-left transition ${
                   statusFilter === status
                     ? "border-primary-500/60 bg-primary-500/10"
-                    : "border-slate-800 bg-slate-900/70 hover:bg-slate-800/60"
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                 }`}
                 title={`Filter executions by ${label.toLowerCase()}`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400">{label}</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {label}
+                  </span>
                   <Icon
-                    className={`h-3.5 w-3.5 ${STATUS_STYLE[status].badge.split(" ").at(-1) || "text-slate-300"} ${
+                    className={`h-3.5 w-3.5 ${STATUS_STYLE[status].badge.split(" ").at(-1) || "text-slate-400 dark:text-slate-300"} ${
                       status === "running" && count > 0 ? "animate-spin" : ""
                     }`}
                   />
                 </div>
-                <div className="text-sm font-semibold text-white leading-tight">
+                <div className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
                   {count}
                 </div>
               </button>
@@ -644,29 +680,31 @@ export function ScriptDeploymentDashboard() {
         </div>
         <div className="min-h-[16px] flex items-center justify-between">
           {lastInvokeError && (
-            <span className="text-[11px] text-amber-300 inline-flex items-center gap-1.5">
+            <span className="text-[11px] text-amber-600 dark:text-amber-300 inline-flex items-center gap-1.5">
               <AlertTriangle className="h-3 w-3" />
               {lastInvokeError}
             </span>
           )}
           {!lastInvokeError && <span />}
           {connectionError && (
-            <span className="text-[11px] text-rose-300">{connectionError}</span>
+            <span className="text-[11px] text-rose-600 dark:text-rose-300">
+              {connectionError}
+            </span>
           )}
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto p-6 md:p-8 space-y-6">
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+      <div className="flex-1 overflow-auto p-6 md:p-8 space-y-6 bg-slate-50 dark:bg-slate-900">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3 shadow-sm">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <div className="flex gap-4 border-b border-slate-800 mb-2">
+              <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 mb-2">
                 <button
                   onClick={() => setActiveTab("library")}
                   className={`pb-2 text-sm font-semibold transition-colors ${
                     activeTab === "library"
-                      ? "text-primary-500 border-b-2 border-primary-500"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "text-primary-600 dark:text-primary-500 border-b-2 border-primary-500"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
                 >
                   Script Library
@@ -675,14 +713,14 @@ export function ScriptDeploymentDashboard() {
                   onClick={() => setActiveTab("schedules")}
                   className={`pb-2 text-sm font-semibold transition-colors ${
                     activeTab === "schedules"
-                      ? "text-primary-500 border-b-2 border-primary-500"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "text-primary-600 dark:text-primary-500 border-b-2 border-primary-500"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
                 >
                   Schedules
                 </button>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {activeTab === "library"
                   ? "Quickly pick, open, and run reusable scripts."
                   : "Manage automated script executions."}
@@ -702,27 +740,27 @@ export function ScriptDeploymentDashboard() {
                     ? "Search library..."
                     : "Search schedules..."
                 }
-                className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-60"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs rounded-lg pl-7 pr-2 py-2 w-60 focus:outline-none focus:border-primary-500 transition-colors"
               />
             </div>
           </div>
 
-          <div className="border border-slate-800 rounded-lg max-h-64 overflow-auto bg-slate-950/40">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-lg max-h-64 overflow-auto bg-slate-50/50 dark:bg-slate-950/40">
             {activeTab === "library" ? (
               savedScriptsQuery.isLoading ? (
-                <p className="text-sm text-slate-400 p-4">
+                <p className="text-sm text-slate-500 dark:text-slate-400 p-4">
                   Loading saved scripts…
                 </p>
               ) : savedScriptsQuery.isError ? (
-                <p className="text-sm text-rose-300 p-4">
+                <p className="text-sm text-rose-600 dark:text-rose-300 p-4">
                   Failed to load saved scripts.
                 </p>
               ) : filteredSavedScripts.length === 0 ? (
-                <p className="text-sm text-slate-400 p-4">
+                <p className="text-sm text-slate-500 dark:text-slate-400 p-4">
                   No saved scripts found.
                 </p>
               ) : (
-                <ul className="divide-y divide-slate-800">
+                <ul className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredSavedScripts.map((script) => {
                     const isSelected = activeSavedScriptId === script.id;
                     return (
@@ -732,25 +770,25 @@ export function ScriptDeploymentDashboard() {
                           onClick={() => setActiveSavedScriptId(script.id)}
                           className={`w-full px-4 py-3 text-left transition ${
                             isSelected
-                              ? "bg-primary-600/15 border-l-2 border-primary-500"
-                              : "hover:bg-slate-900/80 border-l-2 border-transparent"
+                              ? "bg-primary-600/10 dark:bg-primary-600/15 border-l-2 border-primary-500"
+                              : "hover:bg-slate-100 dark:hover:bg-slate-900/80 border-l-2 border-transparent"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p
-                                className={`text-sm font-medium ${isSelected ? "text-white" : "text-slate-200"}`}
+                                className={`text-sm font-medium ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-200"}`}
                               >
                                 {script.title}
                               </p>
                               {script.description && (
-                                <p className="text-xs text-slate-400 mt-1 line-clamp-1">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
                                   {script.description}
                                 </p>
                               )}
                             </div>
                             <div className="text-right">
-                              <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
+                              <span className="text-[11px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase">
                                 {script.interpreter}
                               </span>
                               <p className="text-[11px] text-slate-500 mt-1">
@@ -767,15 +805,19 @@ export function ScriptDeploymentDashboard() {
                 </ul>
               )
             ) : scheduledScriptsQuery.isLoading ? (
-              <p className="text-sm text-slate-400 p-4">Loading schedules…</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 p-4">
+                Loading schedules…
+              </p>
             ) : scheduledScriptsQuery.isError ? (
-              <p className="text-sm text-rose-300 p-4">
+              <p className="text-sm text-rose-600 dark:text-rose-300 p-4">
                 Failed to load schedules.
               </p>
             ) : scheduledScripts.length === 0 ? (
-              <p className="text-sm text-slate-400 p-4">No schedules found.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 p-4">
+                No schedules found.
+              </p>
             ) : (
-              <ul className="divide-y divide-slate-800">
+              <ul className="divide-y divide-slate-200 dark:divide-slate-800">
                 {scheduledScripts.map((s) => (
                   <li
                     key={s.id}
@@ -783,29 +825,29 @@ export function ScriptDeploymentDashboard() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-slate-200 truncate">
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
                           {s.name}
                         </p>
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${s.isEnabled ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-800 text-slate-400"}`}
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${s.isEnabled ? "bg-emerald-600/10 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}
                         >
                           {s.isEnabled ? "Active" : "Disabled"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-400">
-                        <span className="flex items-center gap-1.5 bg-slate-800/50 px-1.5 py-0.5 rounded">
-                          <Clock3 className="h-3 w-3 text-slate-500" />
+                      <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1.5 bg-slate-200/50 dark:bg-slate-800/50 px-1.5 py-0.5 rounded">
+                          <Clock3 className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                           {s.cronExpression
                             ? `Cron: ${s.cronExpression}`
                             : `One-time`}
                         </span>
                         {s.isEnabled && s.nextRunAt ? (
-                          <span className="flex items-center gap-1.5 text-blue-400 font-medium">
+                          <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
                             <History className="h-3 w-3" />
                             Next run: {new Date(s.nextRunAt).toLocaleString()}
                           </span>
                         ) : s.isEnabled && !s.nextRunAt ? (
-                          <span className="text-rose-400 italic flex items-center gap-1.5">
+                          <span className="text-rose-600 dark:text-rose-400 italic flex items-center gap-1.5">
                             <XCircle className="h-3 w-3" />
                             Invalid schedule or no future runs
                           </span>
@@ -822,7 +864,7 @@ export function ScriptDeploymentDashboard() {
                           setEditingSchedule(s);
                           setIsScheduleModalOpen(true);
                         }}
-                        className="text-xs px-2 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+                        className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                       >
                         Edit
                       </button>
@@ -835,8 +877,8 @@ export function ScriptDeploymentDashboard() {
                         }
                         className={`text-xs px-2 py-1 rounded border transition ${
                           s.isEnabled
-                            ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                            : "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                            ? "border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                            : "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
                         }`}
                       >
                         {s.isEnabled ? "Disable" : "Enable"}
@@ -846,7 +888,7 @@ export function ScriptDeploymentDashboard() {
                           if (window.confirm("Delete this schedule?"))
                             deleteScheduleMutation.mutate(s.id);
                         }}
-                        className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition"
+                        className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -857,26 +899,26 @@ export function ScriptDeploymentDashboard() {
             )}
           </div>
 
-          <div className="border border-slate-800 rounded-lg p-3 bg-slate-900/70">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-slate-50/50 dark:bg-slate-900/70">
             {activeSavedScript ? (
               <div className="space-y-2">
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Selected:{" "}
-                  <span className="text-slate-200">
+                  <span className="text-slate-900 dark:text-slate-200">
                     {activeSavedScript.title}
                   </span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-xs px-3 py-1.5 rounded"
+                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-white text-xs px-3 py-1.5 rounded transition-colors"
                     onClick={() => loadSavedScript(activeSavedScript)}
                   >
                     Open in editor
                   </button>
                   <button
                     type="button"
-                    className="bg-primary-600/90 hover:bg-primary-500 text-white text-xs px-3 py-1.5 rounded disabled:opacity-50"
+                    className="bg-primary-600/90 hover:bg-primary-600 text-white text-xs px-3 py-1.5 rounded disabled:opacity-50 transition-colors shadow-sm"
                     onClick={() => runSavedScript(activeSavedScript)}
                     disabled={!selectedDeviceIds.length}
                   >
@@ -884,7 +926,7 @@ export function ScriptDeploymentDashboard() {
                   </button>
                   <button
                     type="button"
-                    className="bg-rose-700/80 hover:bg-rose-600 text-white text-xs px-3 py-1.5 rounded disabled:opacity-50"
+                    className="bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 dark:text-rose-400 text-xs px-3 py-1.5 rounded disabled:opacity-50 transition-colors border border-rose-600/20"
                     onClick={() => {
                       if (
                         window.confirm(
@@ -901,20 +943,22 @@ export function ScriptDeploymentDashboard() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Select a script to view available actions.
               </p>
             )}
           </div>
           {savedScriptsError && (
-            <p className="text-xs text-rose-300">{savedScriptsError}</p>
+            <p className="text-xs text-rose-600 dark:text-rose-300">
+              {savedScriptsError}
+            </p>
           )}
         </section>
 
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-4 shadow-sm">
           <div className="flex flex-wrap gap-3 items-end">
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">
+              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
                 Interpreter
               </label>
               <select
@@ -922,7 +966,7 @@ export function ScriptDeploymentDashboard() {
                 onChange={(e) =>
                   setInterpreter(e.target.value as ScriptInterpreter)
                 }
-                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary-500"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary-500 transition-colors"
               >
                 <option value="powershell">PowerShell</option>
                 <option value="bash">Bash</option>
@@ -931,7 +975,7 @@ export function ScriptDeploymentDashboard() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">
+              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
                 Upload Script File
               </label>
               <input
@@ -949,7 +993,7 @@ export function ScriptDeploymentDashboard() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-sm rounded-lg px-3 py-2"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-white text-sm rounded-lg px-3 py-2 transition-colors"
               >
                 Upload Script File
               </button>
@@ -957,7 +1001,7 @@ export function ScriptDeploymentDashboard() {
 
             <button
               type="button"
-              className="bg-slate-800 border border-slate-700 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm"
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-white px-3 py-2 rounded-lg text-sm transition-colors"
               disabled={
                 !scriptContent.trim() ||
                 createSavedScriptMutation.isPending ||
@@ -1007,29 +1051,33 @@ export function ScriptDeploymentDashboard() {
             </button>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span className="text-slate-400">{selectedSummary}</span>
-            <span className="text-slate-500">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">
+              {selectedSummary}
+            </span>
+            <span className="text-slate-500 dark:text-slate-400">
               Active executions:{" "}
-              <span className="text-slate-300">{activeCount}</span>
+              <span className="text-slate-900 dark:text-slate-200 font-semibold">
+                {activeCount}
+              </span>
             </span>
           </div>
           {loadedScriptMeta && (
-            <div className="border border-slate-800 rounded-lg bg-slate-950/40 px-3 py-2">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-950/40 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-500 font-bold">
                 Loaded Saved Script
               </p>
-              <p className="text-sm text-white font-medium">
+              <p className="text-sm text-slate-900 dark:text-white font-semibold">
                 {loadedScriptMeta.title}
               </p>
               {loadedScriptMeta.description && (
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">
                   {loadedScriptMeta.description}
                 </p>
               )}
             </div>
           )}
 
-          <div className="h-[280px] border border-slate-700 rounded-lg overflow-hidden">
+          <div className="h-[280px] border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
             <Editor
               height="100%"
               language={monacoLanguage(interpreter)}
@@ -1041,7 +1089,7 @@ export function ScriptDeploymentDashboard() {
                 automaticLayout: true,
                 wordWrap: "on",
               }}
-              theme="vs-dark"
+              theme={themeMode === "dark" ? "vs-dark" : "light"}
             />
           </div>
         </section>
@@ -1059,13 +1107,13 @@ export function ScriptDeploymentDashboard() {
           editData={editingSchedule}
         />
 
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
           <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
             <div>
-              <h2 className="text-sm font-semibold text-white">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Target Selection
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Filter and bulk-select devices quickly.
               </p>
             </div>
@@ -1076,29 +1124,33 @@ export function ScriptDeploymentDashboard() {
                   value={deviceSearch}
                   onChange={(e) => setDeviceSearch(e.target.value)}
                   placeholder="Search devices..."
-                  className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-52"
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs rounded-lg pl-7 pr-2 py-2 w-52 focus:outline-none focus:border-primary-500 transition-colors"
                 />
               </div>
               <button
                 type="button"
                 onClick={toggleSelectAllFiltered}
-                className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-xs rounded-lg px-3 py-2"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-white text-xs rounded-lg px-3 py-2 transition-colors"
               >
                 Toggle All Filtered
               </button>
             </div>
           </div>
           {devicesQuery.isLoading ? (
-            <p className="text-slate-400 text-sm">Loading devices…</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              Loading devices…
+            </p>
           ) : devicesQuery.isError ? (
-            <p className="text-rose-300 text-sm">Failed to load devices.</p>
+            <p className="text-rose-600 dark:text-rose-300 text-sm">
+              Failed to load devices.
+            </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="border border-slate-800 rounded-lg p-3">
-                <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-slate-50/30 dark:bg-slate-900/40">
+                <h3 className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-500 font-bold mb-2">
                   Groups
                 </h3>
-                <div className="space-y-2 max-h-52 overflow-auto pr-1">
+                <div className="space-y-2 max-h-52 overflow-auto pr-1 scrollbar-light dark:scrollbar-dark">
                   {groups.map((group) => {
                     const groupIdsInFilter = group.deviceIds.filter((id) =>
                       filteredDeviceIdSet.has(id),
@@ -1113,17 +1165,18 @@ export function ScriptDeploymentDashboard() {
                     return (
                       <label
                         key={group.id}
-                        className="flex items-center justify-between text-sm text-slate-200 bg-slate-800/70 rounded px-2 py-1.5"
+                        className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/50 rounded px-2 py-1.5 hover:border-primary-500/50 transition-colors cursor-pointer"
                       >
                         <span>{group.name}</span>
                         <span className="flex items-center gap-2">
-                          <span className="text-xs text-slate-400">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                             {groupSelectedCount}/{groupIdsInFilter.length}
                           </span>
                           <input
                             type="checkbox"
                             checked={allSelected}
                             onChange={() => toggleGroup(groupIdsInFilter)}
+                            className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500 bg-white dark:bg-slate-700"
                           />
                         </span>
                       </label>
@@ -1132,19 +1185,19 @@ export function ScriptDeploymentDashboard() {
                 </div>
               </div>
 
-              <div className="border border-slate-800 rounded-lg p-3">
-                <h3 className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-slate-50/30 dark:bg-slate-900/40">
+                <h3 className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-500 font-bold mb-2">
                   Devices
                 </h3>
-                <div className="space-y-2 max-h-52 overflow-auto pr-1">
+                <div className="space-y-2 max-h-52 overflow-auto pr-1 scrollbar-light dark:scrollbar-dark">
                   {filteredDevices.map((device) => (
                     <label
                       key={device.id}
-                      className="flex items-center justify-between text-sm text-slate-200 bg-slate-800/70 rounded px-2 py-1.5"
+                      className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/50 rounded px-2 py-1.5 hover:border-primary-500/50 transition-colors cursor-pointer"
                     >
                       <span className="truncate pr-2">
                         {device.hostname}
-                        <span className="text-xs text-slate-400 ml-2">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 ml-2 font-normal">
                           ({device.groupName || "Ungrouped"})
                         </span>
                       </span>
@@ -1152,6 +1205,7 @@ export function ScriptDeploymentDashboard() {
                         type="checkbox"
                         checked={selectedIdSet.has(device.id)}
                         onChange={() => toggleDevice(device.id)}
+                        className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500 bg-white dark:bg-slate-700"
                       />
                     </label>
                   ))}
@@ -1161,13 +1215,13 @@ export function ScriptDeploymentDashboard() {
           )}
         </section>
 
-        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-800 space-y-3">
+        <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-white">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                 Execution Monitor
               </h2>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {monitorRows.length} shown
               </span>
             </div>
@@ -1178,7 +1232,7 @@ export function ScriptDeploymentDashboard() {
                   value={monitorSearch}
                   onChange={(e) => setMonitorSearch(e.target.value)}
                   placeholder="Search machine / task / interpreter..."
-                  className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-72"
+                  className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs rounded-lg pl-7 pr-2 py-2 w-72 focus:outline-none focus:border-primary-500 transition-colors"
                 />
               </div>
               <select
@@ -1188,7 +1242,7 @@ export function ScriptDeploymentDashboard() {
                     e.target.value as "all" | ScriptExecutionStatus,
                   )
                 }
-                className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2 py-2"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-primary-500 transition-colors"
               >
                 <option value="all">All statuses</option>
                 <option value="running">Running</option>
@@ -1198,18 +1252,19 @@ export function ScriptDeploymentDashboard() {
                 <option value="cancelled">Cancelled</option>
                 <option value="success">Success</option>
               </select>
-              <label className="text-xs text-slate-300 inline-flex items-center gap-2 px-2 py-1.5 rounded border border-slate-700 bg-slate-800/80">
+              <label className="text-xs text-slate-700 dark:text-slate-300 inline-flex items-center gap-2 px-2 py-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                 <input
                   type="checkbox"
                   checked={showActiveOnly}
                   onChange={(e) => setShowActiveOnly(e.target.checked)}
+                  className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
                 />
                 Active only
               </label>
             </div>
           </div>
 
-          <div className="px-4 py-2 border-b border-slate-800 text-[11px] uppercase tracking-wide text-slate-400 grid grid-cols-[2fr_2fr_1fr_1.5fr_1.5fr_180px] gap-3">
+          <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-500 font-bold grid grid-cols-[2fr_2fr_1fr_1.5fr_1.5fr_180px] gap-3 bg-slate-50 dark:bg-slate-950/20">
             <span>Machine</span>
             <span>Task ID</span>
             <span>Interpreter</span>
@@ -1217,9 +1272,12 @@ export function ScriptDeploymentDashboard() {
             <span>Progress</span>
             <span className="text-right">Actions</span>
           </div>
-          <div ref={monitorContainerRef} className="h-[420px] overflow-auto">
+          <div
+            ref={monitorContainerRef}
+            className="h-[420px] overflow-auto scrollbar-light dark:scrollbar-dark bg-white dark:bg-slate-900/40"
+          >
             {monitorRows.length === 0 ? (
-              <div className="px-4 py-8 text-slate-400 text-sm">
+              <div className="px-4 py-8 text-slate-500 dark:text-slate-400 text-sm text-center">
                 No executions matching current filters.
               </div>
             ) : (
@@ -1236,50 +1294,50 @@ export function ScriptDeploymentDashboard() {
                   return (
                     <div
                       key={rowKey}
-                      className="absolute left-0 top-0 w-full border-b border-slate-800 px-4 py-2 grid grid-cols-[2fr_2fr_1fr_1.5fr_1.5fr_180px] gap-3 text-sm items-center"
+                      className="absolute left-0 top-0 w-full border-b border-slate-100 dark:border-slate-800 px-4 py-2 grid grid-cols-[2fr_2fr_1fr_1.5fr_1.5fr_180px] gap-3 text-sm items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                       style={{ transform: `translateY(${virtualRow.start}px)` }}
                     >
-                      <span className="text-white truncate">
+                      <span className="text-slate-900 dark:text-white font-medium truncate">
                         {row.machineName}
                       </span>
-                      <span className="text-slate-300 font-mono text-xs truncate">
+                      <span className="text-slate-500 dark:text-slate-400 font-mono text-xs truncate">
                         {row.taskId}
                       </span>
-                      <span className="text-slate-300 text-xs uppercase">
+                      <span className="text-slate-500 dark:text-slate-400 text-xs uppercase font-medium">
                         {row.interpreter || "-"}
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs w-fit ${STATUS_STYLE[row.status].badge}`}
+                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-bold w-fit border ${STATUS_STYLE[row.status].badge}`}
                       >
                         <StatusIcon
-                          className={`h-3.5 w-3.5 ${row.status === "running" ? "animate-spin" : ""}`}
+                          className={`h-3 w-3 ${row.status === "running" ? "animate-spin" : ""}`}
                         />
                         {STATUS_LABEL[row.status]}
                       </span>
                       <span>
-                        <div className="w-full h-2 bg-slate-800 rounded">
+                        <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded overflow-hidden">
                           <div
-                            className="h-2 bg-primary-500 rounded"
+                            className="h-full bg-primary-500 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]"
                             style={{
                               width: `${Math.max(0, Math.min(100, row.progress))}%`,
                             }}
                           />
                         </div>
-                        <span className="text-[11px] text-slate-400 mt-1 inline-block">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 inline-block font-medium">
                           {Math.round(row.progress)}%
                         </span>
                       </span>
                       <span className="flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-2.5 py-1.5 rounded"
+                          className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white text-xs px-2.5 py-1.5 rounded transition-colors shadow-sm"
                           onClick={() => setActiveLogRowKey(rowKey)}
                         >
                           Log
                         </button>
                         <button
                           type="button"
-                          className="bg-rose-600/80 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs px-2.5 py-1.5 rounded"
+                          className="bg-rose-600/10 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-600/20 disabled:opacity-50 disabled:cursor-not-allowed text-xs px-2.5 py-1.5 rounded transition-all active:scale-95"
                           onClick={() =>
                             cancelMachine(row.taskId, row.machineId)
                           }
@@ -1300,32 +1358,34 @@ export function ScriptDeploymentDashboard() {
       </div>
 
       {isSaveModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-xl shadow-xl">
-            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">Save Script</h3>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl">
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Save Script
+              </h3>
               <button
                 type="button"
                 onClick={() => setIsSaveModalOpen(false)}
-                className="text-xs text-slate-400 hover:text-white"
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
                 Close
               </button>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-4">
               <div>
-                <label className="block text-xs text-slate-400 mb-1.5">
+                <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
                   Script name *
                 </label>
                 <input
                   value={saveModalTitle}
                   onChange={(e) => setSaveModalTitle(e.target.value)}
                   placeholder="Enter script name"
-                  className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1.5">
+                <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
                   Description
                 </label>
                 <textarea
@@ -1333,17 +1393,19 @@ export function ScriptDeploymentDashboard() {
                   onChange={(e) => setSaveModalDescription(e.target.value)}
                   placeholder="Optional description"
                   rows={3}
-                  className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 resize-none"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-primary-500 transition-colors"
                 />
               </div>
               {savedScriptsError && (
-                <p className="text-xs text-rose-300">{savedScriptsError}</p>
+                <p className="text-xs text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/20 p-2 rounded border border-rose-200 dark:border-rose-800">
+                  {savedScriptsError}
+                </p>
               )}
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsSaveModalOpen(false)}
-                  className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white text-sm px-3 py-2 rounded-lg"
+                  className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white text-sm px-4 py-2 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -1354,7 +1416,7 @@ export function ScriptDeploymentDashboard() {
                     createSavedScriptMutation.isPending ||
                     updateSavedScriptMutation.isPending
                   }
-                  className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white text-sm px-3 py-2 rounded-lg"
+                  className="bg-primary-600 hover:bg-primary-500 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition-all active:scale-95 shadow-lg shadow-primary-500/20"
                 >
                   Save
                 </button>
@@ -1366,43 +1428,44 @@ export function ScriptDeploymentDashboard() {
 
       {activeLogRow && (
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
           onClick={() => setActiveLogRowKey(null)}
         >
           <div
-            className="w-full max-w-4xl bg-slate-900 border border-slate-700 rounded-xl shadow-xl"
+            className="w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
               <div>
-                <h3 className="text-white font-semibold text-sm">
+                <h3 className="text-slate-900 dark:text-white font-bold text-base">
                   Log Stream - {activeLogRow.machineName}
                 </h3>
-                <p className="text-slate-400 text-xs font-mono">
-                  {activeLogRow.taskId}
-                </p>
-                <p className="text-slate-500 text-xs mt-1">
-                  {parsedActiveLogs.length} matching lines shown (from{" "}
-                  {activeLogRow.logLines.length} retained).
-                </p>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-slate-500 dark:text-slate-400 text-xs font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                    {activeLogRow.taskId}
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-500 text-[11px] font-medium">
+                    {parsedActiveLogs.length} matching lines shown
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveLogRowKey(null)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
               >
-                Close
+                <XCircle className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-4 space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="p-6 space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="relative">
-                  <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2 top-1/2 -translate-y-1/2" />
+                  <Search className="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     value={logSearch}
                     onChange={(e) => setLogSearch(e.target.value)}
                     placeholder="Search logs..."
-                    className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg pl-7 pr-2 py-2 w-64"
+                    className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg pl-9 pr-3 py-2 w-80 focus:outline-none focus:border-primary-500 transition-colors"
                   />
                 </div>
                 <select
@@ -1412,7 +1475,7 @@ export function ScriptDeploymentDashboard() {
                       e.target.value as "all" | "stdout" | "stderr" | "system",
                     )
                   }
-                  className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2 py-2"
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-primary-500 transition-colors"
                 >
                   <option value="all">All streams</option>
                   <option value="stdout">stdout</option>
@@ -1422,15 +1485,18 @@ export function ScriptDeploymentDashboard() {
               </div>
               <div
                 ref={logContainerRef}
-                className="bg-slate-950 border border-slate-800 rounded-lg overflow-auto h-[60vh]"
+                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg overflow-auto h-[60vh] shadow-inner scrollbar-light dark:scrollbar-dark"
               >
                 {parsedActiveLogs.length === 0 ? (
-                  <p className="text-slate-400 text-xs p-3">
-                    No log lines matching current filters.
-                  </p>
+                  <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-500 space-y-2">
+                    <TerminalSquare className="h-8 w-8 opacity-20" />
+                    <p className="text-sm">
+                      No log lines matching current filters.
+                    </p>
+                  </div>
                 ) : (
                   <div
-                    className="relative text-xs"
+                    className="relative text-[11px]"
                     style={{
                       height: `${logVirtualizer.getTotalSize()}px`,
                     }}
@@ -1438,22 +1504,27 @@ export function ScriptDeploymentDashboard() {
                     {logVirtualizer.getVirtualItems().map((virtualLog) => {
                       const line = parsedActiveLogs[virtualLog.index];
                       const streamColor =
-                        STREAM_COLORS[line.stream] || "text-slate-200";
+                        STREAM_COLORS[line.stream] ||
+                        "text-slate-700 dark:text-slate-200";
                       return (
                         <div
                           key={`${line.index}-${virtualLog.index}`}
-                          className="absolute left-0 top-0 w-full px-3 py-1 font-mono border-b border-slate-900/70"
+                          className="absolute left-0 top-0 w-full px-4 py-1 font-mono border-b border-slate-200/50 dark:border-white/5 hover:bg-slate-200/30 dark:hover:bg-white/5 transition-colors group"
                           style={{
                             transform: `translateY(${virtualLog.start}px)`,
                           }}
                         >
-                          <span className="text-slate-500 mr-2">
-                            {String(line.index + 1).padStart(4, " ")}
+                          <span className="text-slate-400 dark:text-slate-600 mr-3 select-none inline-block w-10 text-right opacity-50 group-hover:opacity-100">
+                            {line.index + 1}
                           </span>
-                          <span className={`mr-2 uppercase ${streamColor}`}>
+                          <span
+                            className={`mr-3 uppercase font-bold tracking-tight ${streamColor}`}
+                          >
                             [{line.stream}]
                           </span>
-                          <span className={streamColor}>{line.message}</span>
+                          <span className={`${streamColor} break-all`}>
+                            {line.message}
+                          </span>
                         </div>
                       );
                     })}

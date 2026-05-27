@@ -59,10 +59,10 @@ export function DeviceHardwareInfoCard({
   }, [device.id]);
 
   return (
-    <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-slate-700/30 rounded-lg text-slate-400 border border-slate-700/50">
+          <div className="p-2.5 bg-slate-100 dark:bg-slate-700/30 rounded-lg text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50">
             <svg
               className="w-5 h-5"
               fill="none"
@@ -77,33 +77,33 @@ export function DeviceHardwareInfoCard({
               />
             </svg>
           </div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
             Hardware Specs
           </h3>
         </div>
         {!specs && !loading && (
           <button
             onClick={loadSpecs}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded transition-colors"
+            className="px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white text-xs font-medium rounded transition-colors shadow-lg shadow-primary-500/20"
           >
             Load Specs
           </button>
         )}
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto max-h-[400px] custom-scrollbar">
+      <div className="flex-1 space-y-4 overflow-y-auto max-h-[400px] scrollbar-light dark:scrollbar-dark">
         {loading && (
-          <div className="text-center py-8 text-slate-400 animate-pulse">
+          <div className="text-center py-8 text-slate-500 dark:text-slate-400 animate-pulse">
             Loading hardware information...
           </div>
         )}
 
         {error && (
-          <div className="text-center py-4 text-red-400 text-sm">
+          <div className="text-center py-4 text-danger text-sm">
             {error}
             <button
               onClick={loadSpecs}
-              className="block mx-auto mt-2 text-blue-400 hover:text-blue-300 underline"
+              className="block mx-auto mt-2 text-primary-600 dark:text-primary-400 hover:underline"
             >
               Retry
             </button>
@@ -112,46 +112,46 @@ export function DeviceHardwareInfoCard({
 
         {specs && (
           <div className="space-y-4">
-            <div className="border-b border-slate-700/50 pb-2">
-              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">
+            <div className="border-b border-slate-100 dark:border-slate-700/50 pb-2">
+              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
                 Processor
               </div>
-              <div className="text-white font-medium text-sm break-words">
+              <div className="text-slate-900 dark:text-white font-medium text-sm break-words">
                 {specs.CpuName}
               </div>
             </div>
 
-            <div className="border-b border-slate-700/50 pb-2">
-              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">
+            <div className="border-b border-slate-100 dark:border-slate-700/50 pb-2">
+              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
                 Memory
               </div>
-              <div className="text-white font-medium text-sm">
+              <div className="text-slate-900 dark:text-white font-medium text-sm">
                 {specs.TotalRam}
               </div>
             </div>
 
-            <div className="border-b border-slate-700/50 pb-2">
-              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">
+            <div className="border-b border-slate-100 dark:border-slate-700/50 pb-2">
+              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
                 Graphics
               </div>
-              <div className="text-white font-medium text-sm break-words">
+              <div className="text-slate-900 dark:text-white font-medium text-sm break-words">
                 {specs.GpuName || "N/A"}
               </div>
             </div>
 
-            <div className="border-b border-slate-700/50 pb-2">
-              <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">
+            <div className="border-b border-slate-100 dark:border-slate-700/50 pb-2">
+              <div className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
                 Storage
               </div>
               {specs.Disks.map((disk, i) => (
                 <div
                   key={i}
-                  className="text-white font-medium text-sm flex justify-between"
+                  className="text-slate-900 dark:text-white font-medium text-sm flex justify-between"
                 >
                   <span className="truncate pr-2" title={disk.Model}>
                     {disk.Model}
                   </span>
-                  <span className="text-slate-400 whitespace-nowrap">
+                  <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">
                     {disk.Size}
                   </span>
                 </div>

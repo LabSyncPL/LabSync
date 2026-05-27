@@ -88,14 +88,16 @@ export function DeviceDetails() {
 
   if (!device) {
     return (
-      <div className="flex flex-col h-full">
-        <header className="h-16 border-b border-slate-800 flex items-center px-8 bg-slate-900 shrink-0">
-          <h1 className="text-xl font-semibold text-white">Device Not Found</h1>
+      <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+        <header className="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center px-8 bg-white dark:bg-slate-900 shrink-0">
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+            Device Not Found
+          </h1>
         </header>
         <div className="flex-1 p-8">
           <button
             onClick={() => navigate("/")}
-            className="text-primary-400 hover:text-primary-300"
+            className="text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300"
           >
             ← Back to Dashboard
           </button>
@@ -105,7 +107,7 @@ export function DeviceDetails() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 relative">
+    <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 relative">
       <DeviceHeader
         device={device}
         onOpenTerminal={() => {
@@ -113,7 +115,7 @@ export function DeviceDetails() {
         }}
       />
 
-      <div className="flex-1 overflow-y-auto p-8 scrollbar-dark">
+      <div className="flex-1 overflow-y-auto p-8 scrollbar-light dark:scrollbar-dark">
         <div className="max-w-[1600px] mx-auto space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             {/* Left Column: System & Hardware */}
@@ -166,10 +168,10 @@ export function DeviceDetails() {
 
       {showTerminal && device && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-8">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col overflow-hidden relative">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col overflow-hidden relative">
             <button
               onClick={() => setShowTerminal(false)}
-              className="absolute top-2.5 right-2.5 text-slate-400 hover:text-white hover:bg-slate-800 z-10 p-1.5 rounded-md transition-colors"
+              className="absolute top-2.5 right-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 z-10 p-1.5 rounded-md transition-colors"
               aria-label="Close terminal"
             >
               <svg

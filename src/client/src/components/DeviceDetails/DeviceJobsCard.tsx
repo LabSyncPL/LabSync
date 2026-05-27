@@ -14,10 +14,10 @@ export function DeviceJobsCard({
   onNewJob,
 }: DeviceJobsCardProps) {
   return (
-    <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
-      <div className="px-6 py-5 border-b border-slate-700/50 flex justify-between items-center bg-slate-800">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
+      <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-white dark:bg-slate-800">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-slate-700/30 rounded-lg text-slate-400 border border-slate-700/50">
+          <div className="p-2 bg-slate-100 dark:bg-slate-700/30 rounded-lg text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50">
             <svg
               className="w-5 h-5"
               fill="none"
@@ -32,17 +32,17 @@ export function DeviceJobsCard({
               />
             </svg>
           </div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
             Recent Jobs
           </h3>
-          <span className="bg-slate-700/50 text-slate-300 px-2 py-0.5 rounded-full text-xs font-medium border border-slate-600/50">
+          <span className="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-xs font-medium border border-slate-200 dark:border-slate-600/50">
             {jobs.length}
           </span>
         </div>
         {device?.isApproved && (
           <button
             onClick={onNewJob}
-            className="bg-primary-600/10 hover:bg-primary-600/20 text-primary-400 hover:text-primary-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-primary-500/20 flex items-center transition-all hover:scale-105 active:scale-95"
+            className="bg-primary-600/10 hover:bg-primary-600/20 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-primary-500/20 flex items-center transition-all hover:scale-105 active:scale-95"
           >
             <svg
               className="w-3.5 h-3.5 mr-1.5"
@@ -62,12 +62,12 @@ export function DeviceJobsCard({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto max-h-[400px] scrollbar-dark bg-slate-800/50">
+      <div className="flex-1 overflow-y-auto max-h-[400px] scrollbar-light dark:scrollbar-dark bg-slate-50/30 dark:bg-slate-800/50">
         {jobs.length === 0 ? (
           <div className="p-8 text-center flex flex-col items-center justify-center h-48">
-            <div className="w-16 h-16 bg-slate-700/20 rounded-full flex items-center justify-center mb-4 border border-slate-700/30">
+            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700/20 rounded-full flex items-center justify-center mb-4 border border-slate-200 dark:border-slate-700/30">
               <svg
-                className="w-8 h-8 text-slate-500"
+                className="w-8 h-8 text-slate-400 dark:text-slate-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -80,29 +80,29 @@ export function DeviceJobsCard({
                 />
               </svg>
             </div>
-            <p className="text-slate-300 text-sm font-medium mb-1">
+            <p className="text-slate-700 dark:text-slate-300 text-sm font-medium mb-1">
               No jobs history
             </p>
-            <p className="text-slate-500 text-xs max-w-[200px]">
+            <p className="text-slate-500 dark:text-slate-500 text-xs max-w-[200px]">
               Create a new job to execute commands on this device.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-700/50">
+          <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
             {jobs.map((job) => {
               const statusColor =
                 job.status === 2
-                  ? "text-success bg-success/5 border-success/20 ring-success/10"
+                  ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 ring-emerald-500/10"
                   : job.status === 3
-                    ? "text-danger bg-danger/5 border-danger/20 ring-danger/10"
+                    ? "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 ring-red-500/10"
                     : job.status === 1
-                      ? "text-primary-400 bg-primary-500/5 border-primary-500/20 ring-primary-500/10"
-                      : "text-warning bg-warning/5 border-warning/20 ring-warning/10";
+                      ? "text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-500/10 border-primary-200 dark:border-primary-500/20 ring-primary-500/10"
+                      : "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 ring-amber-500/10";
 
               return (
                 <div
                   key={job.id}
-                  className="px-6 py-4 hover:bg-slate-700/30 transition-colors group border-l-2 border-l-transparent hover:border-l-primary-500"
+                  className="px-6 py-4 hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors group border-l-2 border-l-transparent hover:border-l-primary-500"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
@@ -112,26 +112,30 @@ export function DeviceJobsCard({
                         {JOB_STATUS_LABELS[job.status]}
                       </span>
                       <span
-                        className="font-mono text-sm text-white font-medium truncate max-w-[200px]"
+                        className="font-mono text-sm text-slate-900 dark:text-white font-medium truncate max-w-[200px]"
                         title={job.command}
                       >
                         {job.command}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-medium bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/50">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-500 font-medium bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700/50">
                       {new Date(job.createdAt).toLocaleString()}
                     </span>
                   </div>
 
                   {job.arguments && (
-                    <div className="text-xs font-mono text-slate-400 mb-3 pl-3 border-l-2 border-slate-700/50 mt-1">
-                      <span className="text-slate-600 mr-2 select-none">$</span>
-                      <span className="text-slate-300">{job.arguments}</span>
+                    <div className="text-xs font-mono text-slate-500 dark:text-slate-400 mb-3 pl-3 border-l-2 border-slate-200 dark:border-slate-700/50 mt-1">
+                      <span className="text-slate-400 dark:text-slate-600 mr-2 select-none">
+                        $
+                      </span>
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {job.arguments}
+                      </span>
                     </div>
                   )}
 
                   {job.output && (
-                    <div className="mt-3 bg-slate-950 rounded-lg border border-slate-800 p-3 font-mono text-[11px] text-slate-400 whitespace-pre-wrap max-h-32 overflow-y-auto scrollbar-dark shadow-inner group-hover:border-slate-700/50 transition-colors">
+                    <div className="mt-3 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 p-3 font-mono text-[11px] text-slate-600 dark:text-slate-400 whitespace-pre-wrap max-h-32 overflow-y-auto scrollbar-light dark:scrollbar-dark shadow-inner group-hover:border-slate-300 dark:group-hover:border-slate-700/50 transition-colors">
                       {job.output}
                     </div>
                   )}

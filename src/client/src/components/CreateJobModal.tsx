@@ -46,19 +46,19 @@ export function CreateJobModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-lg w-full shadow-xl"
+        className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 max-w-lg w-full shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">Create Job</h2>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Create Job</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"
             aria-label="Close create job dialog"
           >
             <svg
@@ -79,7 +79,7 @@ export function CreateJobModal({
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label
-              className="block text-slate-300 text-sm font-medium mb-1.5"
+              className="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5"
               htmlFor="command"
             >
               Command *
@@ -87,7 +87,7 @@ export function CreateJobModal({
             <input
               id="command"
               type="text"
-              className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
               value={command}
               onChange={(e) => setCommand(e.target.value)}
               placeholder="e.g. winget, apt-get, powershell"
@@ -96,7 +96,7 @@ export function CreateJobModal({
           </div>
           <div>
             <label
-              className="block text-slate-300 text-sm font-medium mb-1.5"
+              className="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5"
               htmlFor="arguments"
             >
               Arguments
@@ -104,7 +104,7 @@ export function CreateJobModal({
             <input
               id="arguments"
               type="text"
-              className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
               value={arguments_}
               onChange={(e) => setArguments(e.target.value)}
               placeholder="e.g. install Git -y"
@@ -112,7 +112,7 @@ export function CreateJobModal({
           </div>
           <div>
             <label
-              className="block text-slate-300 text-sm font-medium mb-1.5"
+              className="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5"
               htmlFor="script"
             >
               Script Payload (optional)
@@ -120,7 +120,7 @@ export function CreateJobModal({
             <textarea
               id="script"
               rows={4}
-              className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 font-mono text-xs"
+              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 font-mono text-xs"
               value={scriptPayload}
               onChange={(e) => setScriptPayload(e.target.value)}
               placeholder="Full script content (PowerShell/Bash)"
@@ -131,11 +131,11 @@ export function CreateJobModal({
               {error}
             </div>
           )}
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              className="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white px-4 py-2 rounded-lg font-medium transition-colors border border-slate-200 dark:border-slate-600"
             >
               Cancel
             </button>

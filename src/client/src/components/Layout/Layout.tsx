@@ -45,7 +45,7 @@ export function Layout() {
   return (
     <div className="flex h-screen overflow-hidden text-sm">
       <Sidebar />
-      <main className="flex-1 flex flex-col bg-slate-900 overflow-hidden">
+      <main className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900 overflow-hidden">
         <Outlet />
       </main>
     </div>

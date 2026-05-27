@@ -99,11 +99,11 @@ export function SettingsPage() {
 
   return (
     <>
-      <header className="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900 shrink-0">
-        <h1 className="text-xl font-bold text-white">Settings</h1>
+      <header className="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-slate-900 shrink-0">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Settings</h1>
         <div className="flex items-center gap-4">
           {saveStatus === "saved" && (
-            <span className="text-green-500 text-sm font-medium">
+            <span className="text-success text-sm font-medium">
               Settings saved!
             </span>
           )}
@@ -117,15 +117,15 @@ export function SettingsPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-64 bg-slate-950/50 border-r border-slate-800 p-6 space-y-1">
+      <div className="flex-1 flex overflow-hidden bg-slate-50 dark:bg-slate-900">
+        <div className="w-64 bg-white dark:bg-slate-950/50 border-r border-slate-200 dark:border-slate-800 p-6 space-y-1">
           <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
             Configuration
           </p>
 
           <button
             onClick={() => setActiveTab("remoteDesktop")}
-            className={`w-full flex items-center px-3 py-2 rounded-md transition-colors text-sm ${activeTab === "remoteDesktop" ? "bg-slate-800 text-white border border-slate-700 shadow-sm" : "text-slate-500 hover:text-white hover:bg-slate-800/50"}`}
+            className={`w-full flex items-center px-3 py-2 rounded-md transition-colors text-sm ${activeTab === "remoteDesktop" ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-sm" : "text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50"}`}
           >
             <span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
             Remote Desktop
@@ -133,20 +133,20 @@ export function SettingsPage() {
 
           <button
             onClick={() => setActiveTab("monitorWall")}
-            className={`w-full flex items-center px-3 py-2 rounded-md transition-colors text-sm ${activeTab === "monitorWall" ? "bg-slate-800 text-white border border-slate-700 shadow-sm" : "text-slate-500 hover:text-white hover:bg-slate-800/50"}`}
+            className={`w-full flex items-center px-3 py-2 rounded-md transition-colors text-sm ${activeTab === "monitorWall" ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-sm" : "text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50"}`}
           >
             <span className="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
             Monitor Wall
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 max-w-5xl">
+        <div className="flex-1 overflow-y-auto p-8 max-w-5xl scrollbar-light dark:scrollbar-dark">
           {activeTab === "remoteDesktop" && (
             <div className="space-y-10">
               <div className="mb-2">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-lg font-medium text-white">
+                    <h2 className="text-lg font-medium text-slate-900 dark:text-white">
                       Remote Desktop Defaults
                     </h2>
                     <p className="text-xs text-slate-500">
@@ -156,10 +156,10 @@ export function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="bg-slate-800 border border-slate-700 rounded-lg p-5 space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 space-y-6 shadow-sm">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
                     <div>
-                      <h3 className="text-sm font-semibold text-white">
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                         Auto-Resize
                       </h3>
                       <p className="text-xs text-slate-500">
@@ -179,7 +179,7 @@ export function SettingsPage() {
                       />
                       <label
                         htmlFor="toggle-autoresize"
-                        className={`block w-10 h-5 rounded-full cursor-pointer transition-colors duration-200 ${localRemote.autoResize ? "bg-primary-600" : "bg-slate-700"}`}
+                        className={`block w-10 h-5 rounded-full cursor-pointer transition-colors duration-200 ${localRemote.autoResize ? "bg-primary-600" : "bg-slate-300 dark:bg-slate-700"}`}
                       ></label>
                       <div
                         className={`absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-200 ${localRemote.autoResize ? "translate-x-5" : "translate-x-0"}`}
@@ -189,7 +189,7 @@ export function SettingsPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="block text-xs font-medium text-slate-400">
+                      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
                         Preferred Encoder
                       </label>
                       <select
@@ -199,7 +199,7 @@ export function SettingsPage() {
                             preferredEncoder: e.target.value,
                           })
                         }
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500"
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-primary-500"
                       >
                         <option value="Auto">Auto (Best Available)</option>
                         <option value="Software">Software (CPU)</option>
@@ -214,7 +214,7 @@ export function SettingsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-xs font-medium text-slate-400">
+                      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
                         Target FPS
                       </label>
                       <select
@@ -224,7 +224,7 @@ export function SettingsPage() {
                             initialFps: parseInt(e.target.value),
                           })
                         }
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500"
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-primary-500"
                       >
                         <option value="15">15 FPS</option>
                         <option value="30">30 FPS</option>
@@ -233,7 +233,7 @@ export function SettingsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-xs font-medium text-slate-400">
+                      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
                         Bitrate
                       </label>
                       <select
@@ -244,7 +244,7 @@ export function SettingsPage() {
                               parseInt(e.target.value) || 4000,
                           })
                         }
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500"
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-primary-500"
                       >
                         <option value="1000">1 Mbps (Low)</option>
                         <option value="2000">2 Mbps (Medium)</option>
@@ -255,7 +255,7 @@ export function SettingsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-xs font-medium text-slate-400">
+                      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
                         Default Resolution
                       </label>
                       <div className="grid grid-cols-2 gap-2">
@@ -268,7 +268,7 @@ export function SettingsPage() {
                               initialWidth: parseInt(e.target.value) || 1920,
                             })
                           }
-                          className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 disabled:opacity-50"
+                          className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-primary-500 disabled:opacity-50"
                           disabled={localRemote.autoResize}
                         />
                         <input
@@ -280,12 +280,12 @@ export function SettingsPage() {
                               initialHeight: parseInt(e.target.value) || 1080,
                             })
                           }
-                          className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 disabled:opacity-50"
+                          className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-primary-500 disabled:opacity-50"
                           disabled={localRemote.autoResize}
                         />
                       </div>
                       {localRemote.autoResize && (
-                        <p className="text-[10px] text-amber-500">
+                        <p className="text-[10px] text-amber-600 dark:text-amber-500">
                           Managed automatically when Auto-Resize is enabled.
                         </p>
                       )}
@@ -301,7 +301,7 @@ export function SettingsPage() {
               <div className="mb-2">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-lg font-medium text-white">
+                    <h2 className="text-lg font-medium text-slate-900 dark:text-white">
                       Monitor Wall Defaults
                     </h2>
                     <p className="text-xs text-slate-500">
@@ -311,10 +311,10 @@ export function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="bg-slate-800 border border-slate-700 rounded-lg p-5 space-y-6">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 space-y-6 shadow-sm">
                   <div className="grid grid-cols-1 gap-6">
                     <div className="space-y-2">
-                      <label className="block text-xs font-medium text-slate-400">
+                      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
                         Performance Preset
                       </label>
                       <select
@@ -324,7 +324,7 @@ export function SettingsPage() {
                             preset: e.target.value,
                           })
                         }
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500"
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-primary-500"
                       >
                         {Object.entries(MONITOR_PRESETS).map(
                           ([key, preset]) => (

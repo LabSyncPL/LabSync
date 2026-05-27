@@ -17,13 +17,13 @@ export function DeviceMonitorCard({
 
   return (
     <div
-      className="relative group bg-slate-900 rounded-lg overflow-hidden border border-slate-800 hover:border-primary-500/50 transition-all shadow-sm hover:shadow-xl aspect-video cursor-pointer"
+      className="relative group bg-white dark:bg-slate-900 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 hover:border-primary-500/50 transition-all shadow-sm hover:shadow-xl aspect-video cursor-pointer"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onDoubleClick={() => onDoubleClick(device)}
     >
       {/* Monitor Screen Content */}
-      <div className="absolute inset-0 flex items-center justify-center bg-black">
+      <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-black">
         {imageSrc ? (
           <img
             src={imageSrc}
@@ -31,8 +31,8 @@ export function DeviceMonitorCard({
             className="w-full h-full object-contain"
           />
         ) : (
-          <div className="text-slate-700 flex flex-col items-center gap-2">
-            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center">
+          <div className="text-slate-400 dark:text-slate-700 flex flex-col items-center gap-2">
+            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
               <span className="text-2xl">🖥️</span>
             </div>
             <span className="text-xs font-mono">NO SIGNAL</span>

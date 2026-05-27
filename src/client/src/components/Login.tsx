@@ -44,17 +44,17 @@ export function Login({ onSetupRequired, onCreateAccount }: LoginProps) {
 
   return (
     <div className="max-w-md w-full mx-auto">
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-8 shadow-xl">
-        <h2 className="text-2xl font-semibold text-white mb-2 text-center">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-700 p-8 shadow-xl">
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2 text-center">
           Admin login
         </h2>
-        <p className="text-slate-400 text-sm text-center mb-6">
+        <p className="text-slate-600 dark:text-slate-400 text-sm text-center mb-6">
           Sign in to access LabSync
         </p>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label
-              className="block text-slate-300 text-sm font-medium mb-1.5"
+              className="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5"
               htmlFor="username"
             >
               Username
@@ -62,7 +62,7 @@ export function Login({ onSetupRequired, onCreateAccount }: LoginProps) {
             <input
               id="username"
               type="text"
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
@@ -71,7 +71,7 @@ export function Login({ onSetupRequired, onCreateAccount }: LoginProps) {
           </div>
           <div>
             <label
-              className="block text-slate-300 text-sm font-medium mb-1.5"
+              className="block text-slate-700 dark:text-slate-300 text-sm font-medium mb-1.5"
               htmlFor="password"
             >
               Password
@@ -79,7 +79,7 @@ export function Login({ onSetupRequired, onCreateAccount }: LoginProps) {
             <input
               id="password"
               type="password"
-              className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -100,7 +100,7 @@ export function Login({ onSetupRequired, onCreateAccount }: LoginProps) {
           </button>
         </form>
         {onCreateAccount && (
-          <p className="text-center text-slate-400 text-sm mt-6">
+          <p className="text-center text-slate-600 dark:text-slate-400 text-sm mt-6">
             Need an account?{" "}
             <button
               type="button"

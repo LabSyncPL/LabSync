@@ -77,20 +77,20 @@ export function MonitorWall({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950 flex flex-col overflow-hidden">
       {/* Top Bar - Sleek Glassmorphism Design */}
-      <div className="bg-slate-950/60 backdrop-blur-xl border-b border-white/5 h-20 flex justify-between items-center px-6 z-20 shadow-2xl">
+      <div className="bg-white/80 dark:bg-slate-950/60 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 h-20 flex justify-between items-center px-6 z-20 shadow-xl dark:shadow-2xl">
         {/* Left: Navigation & Status */}
         <div className="flex items-center gap-6">
           <button
             onClick={onBack}
-            className="group flex items-center gap-3 px-4 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white transition-all duration-200 border border-white/5 hover:border-white/10"
+            className="group flex items-center gap-3 px-4 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all duration-200 border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 shadow-sm"
           >
-            <ArrowLeft className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+            <ArrowLeft className="w-5 h-5 text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
             <span className="font-medium text-sm tracking-wide">Exit Wall</span>
           </button>
 
-          <div className="h-8 w-px bg-white/10" />
+          <div className="h-8 w-px bg-slate-200 dark:bg-white/10" />
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2.5">
@@ -103,7 +103,7 @@ export function MonitorWall({
                 ></span>
               </span>
               <span
-                className={`text-sm font-semibold tracking-wide ${isPaused ? "text-slate-400" : "text-emerald-400"}`}
+                className={`text-sm font-semibold tracking-wide ${isPaused ? "text-slate-500 dark:text-slate-400" : "text-emerald-600 dark:text-emerald-400"}`}
               >
                 {isPaused ? "Monitoring Paused" : "Live Monitoring"}
               </span>
@@ -115,19 +115,19 @@ export function MonitorWall({
         </div>
 
         {/* Right: Controls Toolbar */}
-        <div className="flex items-center gap-4 bg-black/20 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm">
+        <div className="flex items-center gap-4 bg-slate-100 dark:bg-black/20 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-inner">
           {/* Grid Density Control */}
-          <div className="flex items-center bg-slate-800/50 rounded-xl p-1 border border-white/5">
+          <div className="flex items-center bg-white dark:bg-slate-800/50 rounded-xl p-1 border border-slate-200 dark:border-white/5 shadow-sm">
             <button
               onClick={() => setGridSize(Math.max(1, gridSize - 1))}
-              className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all disabled:opacity-50"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-50"
               disabled={gridSize <= 1}
               title="Fewer Columns"
             >
               <Grid2X2 className="w-4 h-4" />
             </button>
             <div className="px-3 min-w-[3rem] text-center">
-              <span className="block text-xs font-bold text-white">
+              <span className="block text-xs font-bold text-slate-900 dark:text-white">
                 {gridSize}
               </span>
               <span className="block text-[10px] text-slate-500 uppercase tracking-wider">
@@ -136,7 +136,7 @@ export function MonitorWall({
             </div>
             <button
               onClick={() => setGridSize(Math.min(6, gridSize + 1))}
-              className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all disabled:opacity-50"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-50"
               disabled={gridSize >= 6}
               title="More Columns"
             >
@@ -144,16 +144,16 @@ export function MonitorWall({
             </button>
           </div>
 
-          <div className="w-px h-8 bg-white/10 mx-1" />
+          <div className="w-px h-8 bg-slate-200 dark:bg-white/10 mx-1" />
 
           {/* Quality Selector */}
           <div className="flex items-center gap-3 px-2">
-            <label className="text-xs text-slate-400 font-medium uppercase tracking-wider hidden sm:block">
+            <label className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider hidden sm:block">
               Quality
             </label>
             <div className="relative group">
               <select
-                className="appearance-none bg-slate-800/80 hover:bg-slate-700 text-sm text-white font-medium pl-3 pr-8 py-2 rounded-lg border border-white/10 hover:border-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500/30 transition-all cursor-pointer min-w-[120px]"
+                className="appearance-none bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm text-slate-900 dark:text-white font-medium pl-3 pr-8 py-2 rounded-lg border border-slate-200 dark:border-white/10 hover:border-primary-500/50 focus:outline-none focus:ring-2 focus:ring-primary-500/30 transition-all cursor-pointer min-w-[120px] shadow-sm"
                 value={currentPresetKey}
                 onChange={(e) => handlePresetChange(e.target.value)}
               >
@@ -161,7 +161,7 @@ export function MonitorWall({
                   <option
                     key={key}
                     value={key}
-                    className="bg-slate-900 text-slate-300"
+                    className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
                   >
                     {preset.label}
                   </option>
@@ -169,14 +169,14 @@ export function MonitorWall({
                 {currentPresetKey === "custom" && (
                   <option
                     value="custom"
-                    className="bg-slate-900 text-slate-300"
+                    className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
                   >
                     Custom
                   </option>
                 )}
               </select>
               {/* Custom Chevron */}
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-white transition-colors">
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white transition-colors">
                 <svg
                   className="w-4 h-4"
                   fill="none"
@@ -194,7 +194,7 @@ export function MonitorWall({
             </div>
           </div>
 
-          <div className="w-px h-8 bg-white/10 mx-1" />
+          <div className="w-px h-8 bg-slate-200 dark:bg-white/10 mx-1" />
 
           {/* Play/Pause Toggle */}
           <button

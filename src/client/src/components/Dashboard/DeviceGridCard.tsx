@@ -43,14 +43,14 @@ export function DeviceGridCard({
           onDoubleClick(device);
         }
       }}
-      className={`group bg-slate-800 rounded-2xl border p-5 flex flex-col h-full shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-visible ${
+      className={`group bg-white dark:bg-slate-800 rounded-2xl border p-5 flex flex-col h-full shadow-sm hover:shadow-xl transition-all cursor-pointer relative overflow-visible ${
         !device.isApproved
-          ? "border-warning/30 hover:border-warning/50 bg-gradient-to-b from-slate-800 to-warning/5"
-          : "border-slate-700 hover:border-primary-500/50 hover:translate-y-[-2px]"
+          ? "border-warning/30 hover:border-warning/50 bg-gradient-to-b from-white dark:from-slate-800 to-warning/5"
+          : "border-slate-300 dark:border-slate-700 hover:border-primary-500/50 hover:translate-y-[-2px]"
       }`}
     >
       {monitorImageSrc && (
-        <div className="absolute inset-0 z-10 bg-slate-900">
+        <div className="absolute inset-0 z-10 bg-slate-100 dark:bg-slate-900">
           <img 
             src={monitorImageSrc} 
             alt={`Monitor ${device.hostname}`} 
@@ -64,20 +64,20 @@ export function DeviceGridCard({
 
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-700/50 flex items-center justify-center text-slate-400 border border-slate-600/30 group-hover:bg-slate-700 group-hover:text-white transition-colors">
+          <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700/50 flex items-center justify-center text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600/30 group-hover:bg-slate-300 dark:group-hover:bg-slate-700 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
             {getPlatformIcon(device.platform)}
           </div>
           <div className="overflow-hidden">
-            <h3 className="font-bold text-white text-sm truncate max-w-[140px] group-hover:text-primary-400 transition-colors">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm truncate max-w-[140px] group-hover:text-primary-500 dark:group-hover:text-primary-400 transition-colors">
               {device.hostname}
             </h3>
             <div className="flex items-center gap-2 mt-0.5">
               {device.groupName ? (
-                <span className="text-[10px] font-bold uppercase bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-600 truncate max-w-[80px]">
+                <span className="text-[10px] font-bold uppercase bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 truncate max-w-[80px]">
                   {device.groupName}
                 </span>
               ) : (
-                <span className="text-[10px] font-medium text-slate-600 uppercase border border-dashed border-slate-700 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-600 uppercase border border-dashed border-slate-400 dark:border-slate-700 px-1.5 py-0.5 rounded">
                   No Group
                 </span>
               )}
@@ -92,7 +92,7 @@ export function DeviceGridCard({
           />
         ) : (
           <div
-            className="w-2.5 h-2.5 bg-slate-600 rounded-full border border-slate-500"
+            className="w-2.5 h-2.5 bg-slate-400 dark:bg-slate-600 rounded-full border border-slate-300 dark:border-slate-500"
             title="Offline"
           />
         )}
@@ -100,28 +100,28 @@ export function DeviceGridCard({
 
       <div className="space-y-2 mb-4 flex-1">
         <div className="flex justify-between items-center text-xs">
-          <span className="text-slate-500">Platform</span>
-          <span className="text-slate-300 font-medium">
+          <span className="text-slate-500 dark:text-slate-500">Platform</span>
+          <span className="text-slate-700 dark:text-slate-300 font-medium">
             {DEVICE_PLATFORM_LABELS[device.platform]}
           </span>
         </div>
         <div className="flex justify-between items-center text-xs">
-          <span className="text-slate-500">IP Address</span>
-          <span className="text-slate-300 font-mono bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">
+          <span className="text-slate-500 dark:text-slate-500">IP Address</span>
+          <span className="text-slate-700 dark:text-slate-300 font-mono bg-slate-100 dark:bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-800">
             {device.ipAddress ?? "—"}
           </span>
         </div>
         <div className="flex justify-between items-center text-xs">
-          <span className="text-slate-500">Last Seen</span>
+          <span className="text-slate-500 dark:text-slate-500">Last Seen</span>
           <span
-            className={`${device.isOnline ? "text-success" : "text-slate-400"}`}
+            className={`${device.isOnline ? "text-success" : "text-slate-500 dark:text-slate-400"}`}
           >
             {formatLastSeen(device.lastSeenAt)}
           </span>
         </div>
       </div>
 
-      <div className="pt-4 border-t border-slate-700/50 flex items-center justify-between gap-2 mt-auto">
+      <div className="pt-4 border-t border-slate-300 dark:border-slate-700/50 flex items-center justify-between gap-2 mt-auto">
         {!device.isApproved ? (
           <div className="flex items-center justify-between w-full">
             <span className="text-xs font-bold text-warning uppercase tracking-wider flex items-center gap-1.5">
@@ -143,7 +143,7 @@ export function DeviceGridCard({
                 className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
                   device.isOnline
                     ? "bg-success/10 text-success border-success/20"
-                    : "bg-slate-700/50 text-slate-400 border-slate-600"
+                    : "bg-slate-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-600"
                 }`}
               >
                 {device.isOnline ? "Active" : "Offline"}
@@ -152,7 +152,7 @@ export function DeviceGridCard({
 
             <div className="flex items-center gap-2 relative">
               <button
-                className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                className="p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setMenuOpen((prev) => !prev);
@@ -175,10 +175,10 @@ export function DeviceGridCard({
               </button>
               {menuOpen && (
                 <div
-                  className="absolute right-0 top-8 z-20 w-44 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden"
+                  className="absolute right-0 top-8 z-20 w-44 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-b border-slate-300 dark:border-slate-800">
                     General
                   </div>
                   <button
@@ -187,7 +187,7 @@ export function DeviceGridCard({
                       setMenuOpen(false);
                       onViewDetails(device);
                     }}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-2"
                   >
                     View details
                   </button>
@@ -197,11 +197,11 @@ export function DeviceGridCard({
                       setMenuOpen(false);
                       onCopyDeviceId(device);
                     }}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-2"
                   >
                     Copy device ID
                   </button>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-300 dark:border-slate-800">
                     Group
                   </div>
                   <button
@@ -210,7 +210,7 @@ export function DeviceGridCard({
                       setMenuOpen(false);
                       onAssignToGroup(device);
                     }}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 px-3 py-2"
                   >
                     Assign to group
                   </button>
@@ -221,11 +221,11 @@ export function DeviceGridCard({
                       onRemoveFromGroup(device);
                     }}
                     disabled={!device.groupId}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
                   >
                     Remove from group
                   </button>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-300 dark:border-slate-800">
                     Execution
                   </div>
                   <button
@@ -235,11 +235,11 @@ export function DeviceGridCard({
                       onRunQuickDiagnostics(device);
                     }}
                     disabled={!device.isApproved || !device.isOnline}
-                    className="w-full text-left text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
+                    className="w-full text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2"
                   >
                     Run quick diagnostics
                   </button>
-                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-slate-500 border-y border-slate-300 dark:border-slate-800">
                   Management
                   </div>
                   <button
@@ -248,7 +248,7 @@ export function DeviceGridCard({
                       setMenuOpen(false);
                       onDeleteDevice(device);
                     }}
-                    className="w-full text-left text-xs text-rose-300 hover:bg-rose-600/20 px-3 py-2"
+                    className="w-full text-left text-xs text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-600/20 px-3 py-2"
                   >
                     Delete device
                   </button>
