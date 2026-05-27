@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { getToken } from "../auth/authStore";
 import { fetchDevices } from "../api/devices";
@@ -116,6 +116,12 @@ const interpreterToApi = (i: ScriptInterpreter): ScriptInterpreterTypeNumber =>
 
 const appendLogLine = (existing: string[], line?: string) => {
   if (!line) return existing;
+
+  // Simple deduplication for exact same line arriving twice (sanity check)
+  if (existing.length > 0 && existing[existing.length - 1] === line) {
+    return existing;
+  }
+
   const next = [...existing, line];
   if (next.length <= MAX_LOG_LINES_PER_ROW) return next;
   return next.slice(next.length - MAX_LOG_LINES_PER_ROW);
@@ -170,7 +176,219 @@ const globalStore = {
   terminalCompletionKeys: new Set<string>(),
   machineNamesById: {} as Record<string, string>,
   listeners: new Set<(rows: Record<string, DeviceExecutionRow>) => void>(),
+  connection: null as signalR.HubConnection | null,
+  connectionStateListeners: new Set<
+    (state: "connecting" | "connected" | "disconnected" | "error") => void
+  >(),
+  connectionErrorListeners: new Set<(error: string | null) => void>(),
+  currentState: "disconnected" as
+    | "connecting"
+    | "connected"
+    | "disconnected"
+    | "error",
+  currentError: null as string | null,
 };
+
+// Singleton connection management
+function getOrCreateConnection() {
+  if (globalStore.connection) return globalStore.connection;
+
+  const token = getToken();
+  if (!token) return null;
+
+  const connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${BASE_URL}${SCRIPT_RUNNER_HUB_PATH}`, {
+      accessTokenFactory: () => token || "",
+    })
+    .withAutomaticReconnect()
+    .build();
+
+  globalStore.connection = connection;
+
+  const setStatus = (
+    s: "connecting" | "connected" | "disconnected" | "error",
+    e: string | null = null,
+  ) => {
+    globalStore.currentState = s;
+    globalStore.currentError = e;
+    globalStore.connectionStateListeners.forEach((l) => l(s));
+    globalStore.connectionErrorListeners.forEach((l) => l(e));
+  };
+
+  connection.on(
+    ScriptRunnerHubEvents.ScriptOutputTelemetry,
+    (payload: ScriptOutputTelemetryPayload) => {
+      const patch = payloadToTelemetryPatch(payload);
+      // We'll need a way to call upsertTelemetry here.
+      // Since upsertTelemetry needs updateGlobalRows, we can define it here
+      // or make it a global utility.
+      globalUpsertTelemetry(patch);
+    },
+  );
+
+  connection.on(ScriptRunnerHubEvents.TaskCompleted, (raw: unknown) => {
+    const parsed = parseTaskCompletedPayload(raw);
+    if (parsed) globalApplyTaskCompleted(parsed);
+  });
+
+  connection.onreconnecting(() => setStatus("connecting"));
+  connection.onreconnected(() => setStatus("connected"));
+  connection.onclose((err) => setStatus("disconnected", err?.message || null));
+
+  setStatus("connecting");
+  connection
+    .start()
+    .then(() => setStatus("connected"))
+    .catch((err: unknown) =>
+      setStatus(
+        "error",
+        err instanceof Error ? err.message : "Failed to connect.",
+      ),
+    );
+
+  return connection;
+}
+
+function updateGlobalRows(
+  updater: (
+    prev: Record<string, DeviceExecutionRow>,
+  ) => Record<string, DeviceExecutionRow>,
+) {
+  globalStore.rowsByKey = updater(globalStore.rowsByKey);
+  globalStore.listeners.forEach((l) => l(globalStore.rowsByKey));
+}
+
+function globalApplyTaskCompleted(payload: ScriptTaskCompletedPayload) {
+  const key = makeRowKey(payload.taskId, payload.machineId);
+  globalStore.terminalCompletionKeys.add(key);
+
+  const success = payload.exitCode === 0;
+  const logLine = `[system] Process exited with code ${payload.exitCode}.`;
+
+  updateGlobalRows((prev) => {
+    const existing = prev[key];
+    const status: ScriptExecutionStatus = success
+      ? "success"
+      : existing?.status === "cancelled"
+        ? "cancelled"
+        : "error";
+    return {
+      ...prev,
+      [key]: {
+        taskId: payload.taskId,
+        machineId: payload.machineId,
+        machineName:
+          existing?.machineName ??
+          globalStore.machineNamesById[payload.machineId] ??
+          payload.machineId,
+        status,
+        progress: 100,
+        logLines: appendLogLine(existing?.logLines ?? [], logLine),
+        lastUpdatedAt: Date.now(),
+        interpreter: existing?.interpreter,
+      },
+    };
+  });
+}
+
+const activeTaskByMachineGlobal = new Map<string, string>();
+
+function globalUpsertTelemetry(incoming: {
+  taskId?: string;
+  machineId?: string;
+  machineName?: string;
+  interpreter?: string;
+  stream?: string;
+  line?: string;
+  message?: string;
+  status?: string;
+  progress?: number;
+}) {
+  const machineId = incoming.machineId;
+  if (!machineId) return;
+
+  const taskId =
+    incoming.taskId ||
+    activeTaskByMachineGlobal.get(machineId) ||
+    "unknown-task";
+
+  const key = makeRowKey(taskId, machineId);
+  const line = incoming.line || incoming.message || "";
+
+  updateGlobalRows((prev) => {
+    const existing = prev[key];
+
+    if (globalStore.terminalCompletionKeys.has(key)) {
+      if (!line) return prev;
+      const base =
+        existing ??
+        ({
+          taskId,
+          machineId,
+          machineName: globalStore.machineNamesById[machineId] ?? machineId,
+          status: "running" as const,
+          progress: 100,
+          logLines: [],
+          lastUpdatedAt: Date.now(),
+        } satisfies DeviceExecutionRow);
+      return {
+        ...prev,
+        [key]: {
+          ...base,
+          logLines: appendLogLine(
+            base.logLines,
+            `[${incoming.stream || "stdout"}] ${line}`,
+          ),
+          lastUpdatedAt: Date.now(),
+        },
+      };
+    }
+
+    const normalizedFromStatus = normalizeStatus(incoming.status);
+
+    let nextStatus: ScriptExecutionStatus =
+      normalizedFromStatus ||
+      inferStatusFromLine(line, incoming.stream) ||
+      existing?.status ||
+      "running";
+
+    if (nextStatus === "success") {
+      nextStatus = "running";
+    }
+
+    let nextProgress = inferProgress(
+      nextStatus,
+      existing?.progress ?? 0,
+      line,
+      incoming.progress,
+    );
+
+    if (nextStatus === "running" || nextStatus === "pending") {
+      nextProgress = Math.min(MAX_INFERRED_PROGRESS, nextProgress);
+    }
+
+    return {
+      ...prev,
+      [key]: {
+        taskId,
+        machineId,
+        machineName:
+          incoming.machineName ||
+          existing?.machineName ||
+          globalStore.machineNamesById[machineId] ||
+          machineId,
+        status: nextStatus,
+        progress: nextProgress,
+        logLines: appendLogLine(
+          existing?.logLines ?? [],
+          line ? `[${incoming.stream || "stdout"}] ${line}` : undefined,
+        ),
+        lastUpdatedAt: Date.now(),
+        interpreter: incoming.interpreter || existing?.interpreter,
+      },
+    };
+  });
+}
 
 // Populate machine names globally if possible
 fetchDevices()
@@ -184,246 +402,44 @@ fetchDevices()
 export function useMultiDeviceScriptRunner() {
   const [connectionState, setConnectionState] = useState<
     "connecting" | "connected" | "disconnected" | "error"
-  >("connecting");
-  const [connectionError, setConnectionError] = useState<string | null>(null);
+  >(globalStore.currentState);
+  const [connectionError, setConnectionError] = useState<string | null>(
+    globalStore.currentError,
+  );
   const [lastInvokeError, setLastInvokeError] = useState<string | null>(null);
   const [rowsByKey, setRowsByKey] = useState<
     Record<string, DeviceExecutionRow>
   >(globalStore.rowsByKey);
 
-  const connectionRef = useRef<signalR.HubConnection | null>(null);
-  const activeTaskByMachineRef = useRef<Map<string, string>>(new Map());
-
-  const updateGlobalRows = useCallback(
-    (
-      updater: (
-        prev: Record<string, DeviceExecutionRow>,
-      ) => Record<string, DeviceExecutionRow>,
-    ) => {
-      globalStore.rowsByKey = updater(globalStore.rowsByKey);
-      globalStore.listeners.forEach((l) => l(globalStore.rowsByKey));
-    },
-    [],
-  );
-
   // Synchronize local state with global store
   useEffect(() => {
-    const listener = (newRows: Record<string, DeviceExecutionRow>) => {
+    const rowListener = (newRows: Record<string, DeviceExecutionRow>) => {
       setRowsByKey({ ...newRows });
     };
-    globalStore.listeners.add(listener);
+    const stateListener = (
+      s: "connecting" | "connected" | "disconnected" | "error",
+    ) => setConnectionState(s);
+    const errorListener = (e: string | null) => setConnectionError(e);
+
+    globalStore.listeners.add(rowListener);
+    globalStore.connectionStateListeners.add(stateListener);
+    globalStore.connectionErrorListeners.add(errorListener);
+
     setRowsByKey({ ...globalStore.rowsByKey });
+    setConnectionState(globalStore.currentState);
+    setConnectionError(globalStore.currentError);
+
+    getOrCreateConnection();
+
     return () => {
-      globalStore.listeners.delete(listener);
+      globalStore.listeners.delete(rowListener);
+      globalStore.connectionStateListeners.delete(stateListener);
+      globalStore.connectionErrorListeners.delete(errorListener);
     };
   }, []);
 
-  const applyTaskCompleted = useCallback(
-    (payload: ScriptTaskCompletedPayload) => {
-      const key = makeRowKey(payload.taskId, payload.machineId);
-      globalStore.terminalCompletionKeys.add(key);
-
-      const success = payload.exitCode === 0;
-      const logLine = `[system] Process exited with code ${payload.exitCode}.`;
-
-      updateGlobalRows((prev) => {
-        const existing = prev[key];
-        const status: ScriptExecutionStatus = success
-          ? "success"
-          : existing?.status === "cancelled"
-            ? "cancelled"
-            : "error";
-        return {
-          ...prev,
-          [key]: {
-            taskId: payload.taskId,
-            machineId: payload.machineId,
-            machineName:
-              existing?.machineName ??
-              globalStore.machineNamesById[payload.machineId] ??
-              payload.machineId,
-            status,
-            progress: 100,
-            logLines: appendLogLine(existing?.logLines ?? [], logLine),
-            lastUpdatedAt: Date.now(),
-            interpreter: existing?.interpreter,
-          },
-        };
-      });
-    },
-    [updateGlobalRows],
-  );
-
-  const upsertTelemetry = useCallback(
-    (incoming: {
-      taskId?: string;
-      machineId?: string;
-      machineName?: string;
-      interpreter?: string;
-      stream?: string;
-      line?: string;
-      message?: string;
-      status?: string;
-      progress?: number;
-    }) => {
-      const machineId = incoming.machineId;
-      if (!machineId) return;
-
-      const taskId =
-        incoming.taskId ||
-        activeTaskByMachineRef.current.get(machineId) ||
-        "unknown-task";
-
-      const key = makeRowKey(taskId, machineId);
-      const line = incoming.line || incoming.message || "";
-
-      updateGlobalRows((prev) => {
-        const existing = prev[key];
-
-        if (globalStore.terminalCompletionKeys.has(key)) {
-          if (!line) return prev;
-          const base =
-            existing ??
-            ({
-              taskId,
-              machineId,
-              machineName: globalStore.machineNamesById[machineId] ?? machineId,
-              status: "running" as const,
-              progress: 100,
-              logLines: [],
-              lastUpdatedAt: Date.now(),
-            } satisfies DeviceExecutionRow);
-          return {
-            ...prev,
-            [key]: {
-              ...base,
-              logLines: appendLogLine(
-                base.logLines,
-                `[${incoming.stream || "stdout"}] ${line}`,
-              ),
-              lastUpdatedAt: Date.now(),
-            },
-          };
-        }
-
-        const normalizedFromStatus = normalizeStatus(incoming.status);
-
-        let nextStatus: ScriptExecutionStatus =
-          normalizedFromStatus ||
-          inferStatusFromLine(line, incoming.stream) ||
-          existing?.status ||
-          "running";
-
-        // Success + 100% is only applied via TaskCompleted, not stream heuristics.
-        if (nextStatus === "success") {
-          nextStatus = "running";
-        }
-
-        let nextProgress = inferProgress(
-          nextStatus,
-          existing?.progress ?? 0,
-          line,
-          incoming.progress,
-        );
-
-        if (nextStatus === "running" || nextStatus === "pending") {
-          nextProgress = Math.min(MAX_INFERRED_PROGRESS, nextProgress);
-        }
-
-        return {
-          ...prev,
-          [key]: {
-            taskId,
-            machineId,
-            machineName:
-              incoming.machineName ||
-              existing?.machineName ||
-              globalStore.machineNamesById[machineId] ||
-              machineId,
-            status: nextStatus,
-            progress: nextProgress,
-            logLines: appendLogLine(
-              existing?.logLines ?? [],
-              line ? `[${incoming.stream || "stdout"}] ${line}` : undefined,
-            ),
-            lastUpdatedAt: Date.now(),
-            interpreter: incoming.interpreter || existing?.interpreter,
-          },
-        };
-      });
-    },
-    [updateGlobalRows],
-  );
-
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setConnectionState("error");
-      setConnectionError("Missing auth token.");
-      return;
-    }
-
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${BASE_URL}${SCRIPT_RUNNER_HUB_PATH}`, {
-        accessTokenFactory: () => token || "",
-      })
-      .withAutomaticReconnect()
-      .build();
-
-    connectionRef.current = connection;
-
-    connection.on(
-      ScriptRunnerHubEvents.ScriptOutputTelemetry,
-      (payload: ScriptOutputTelemetryPayload) => {
-        const patch = payloadToTelemetryPatch(payload);
-        upsertTelemetry(patch);
-      },
-    );
-
-    connection.on(ScriptRunnerHubEvents.TaskCompleted, (raw: unknown) => {
-      const parsed = parseTaskCompletedPayload(raw);
-      if (parsed) applyTaskCompleted(parsed);
-    });
-
-    connection.on(ScriptRunnerHubEvents.MachineStatusChanged, () => {
-      /* reserved */
-    });
-
-    connection.onreconnecting(() => {
-      setConnectionState("connecting");
-    });
-
-    connection.onreconnected(() => {
-      setConnectionState("connected");
-      setConnectionError(null);
-    });
-
-    connection.onclose((err) => {
-      setConnectionState("disconnected");
-      setConnectionError(err?.message || null);
-    });
-
-    connection
-      .start()
-      .then(() => {
-        setConnectionState("connected");
-        setConnectionError(null);
-      })
-      .catch((err: unknown) => {
-        setConnectionState("error");
-        setConnectionError(
-          err instanceof Error ? err.message : "Failed to connect.",
-        );
-      });
-
-    return () => {
-      connection.stop();
-      connectionRef.current = null;
-    };
-  }, [upsertTelemetry, applyTaskCompleted]);
-
   const subscribeToTask = useCallback(async (taskId: string) => {
-    const connection = connectionRef.current;
+    const connection = globalStore.connection;
     if (
       !connection ||
       connection.state !== signalR.HubConnectionState.Connected
@@ -432,7 +448,7 @@ export function useMultiDeviceScriptRunner() {
     try {
       await connection.invoke("SubscribeToTask", taskId);
     } catch {
-      // Non-fatal; telemetry may still arrive after reconnect.
+      // Non-fatal
     }
   }, []);
 
@@ -463,7 +479,7 @@ export function useMultiDeviceScriptRunner() {
       const now = Date.now();
 
       for (const machineId of input.machineIds) {
-        activeTaskByMachineRef.current.set(machineId, taskId);
+        activeTaskByMachineGlobal.set(machineId, taskId);
       }
 
       updateGlobalRows((prev) => {
@@ -514,7 +530,7 @@ export function useMultiDeviceScriptRunner() {
 
       return taskId;
     },
-    [subscribeToTask, updateGlobalRows],
+    [subscribeToTask],
   );
 
   const cancelMachine = useCallback(
@@ -545,7 +561,7 @@ export function useMultiDeviceScriptRunner() {
         setLastInvokeError(extractApiErrorMessage(err));
       }
     },
-    [updateGlobalRows],
+    [],
   );
 
   const stopAll = useCallback(async () => {
@@ -584,7 +600,7 @@ export function useMultiDeviceScriptRunner() {
         setLastInvokeError(extractApiErrorMessage(err));
       }
     }
-  }, [updateGlobalRows]);
+  }, []);
 
   const clearFinished = useCallback(() => {
     updateGlobalRows((prev) => {
@@ -598,7 +614,7 @@ export function useMultiDeviceScriptRunner() {
       });
       return next;
     });
-  }, [updateGlobalRows]);
+  }, []);
 
   const rows = useMemo(() => {
     return Object.values(rowsByKey).sort(

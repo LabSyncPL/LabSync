@@ -145,9 +145,8 @@ public class AgentHub(
         if (telemetry.TaskId is not { } taskId || taskId == Guid.Empty)
             return;
 
-        await scriptHubContext.Clients.Group(ScriptHub.TaskGroupName(taskId))
-            .SendAsync("ScriptOutputTelemetry", telemetry);
-
+        // Since all admin clients currently join the GlobalGroupName automatically,
+        // we only need to send to the global group to ensure every admin receives the message exactly once.
         await scriptHubContext.Clients.Group(ScriptHub.GlobalGroupName)
             .SendAsync("ScriptOutputTelemetry", telemetry);
     }
@@ -175,9 +174,6 @@ public class AgentHub(
 
         if (dto.TaskId == Guid.Empty)
             return;
-
-        await scriptHubContext.Clients.Group(ScriptHub.TaskGroupName(dto.TaskId))
-            .SendAsync("TaskCompleted", dto);
 
         await scriptHubContext.Clients.Group(ScriptHub.GlobalGroupName)
             .SendAsync("TaskCompleted", dto);
