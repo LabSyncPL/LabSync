@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Sun, Moon } from "lucide-react";
 import { getAdminUsername, getToken } from "../../auth/authStore";
 import { AccountSettingsModal } from "../AccountSettingsModal";
 import {
@@ -141,10 +142,18 @@ export function Sidebar() {
               setThemeMode(nextMode);
               setThemeModeState(nextMode);
             }}
-            className="ml-2 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-700 px-2 py-1 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
-            title="Toggle theme"
+            className="ml-2 inline-flex items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700 w-8 h-8 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all active:scale-90"
+            title={
+              themeMode === "dark"
+                ? "Switch to Light Mode"
+                : "Switch to Dark Mode"
+            }
           >
-            {themeMode === "dark" ? "Light" : "Dark"}
+            {themeMode === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
           </button>
         </div>
 

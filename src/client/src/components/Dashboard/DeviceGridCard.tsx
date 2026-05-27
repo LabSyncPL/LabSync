@@ -65,7 +65,7 @@ export function DeviceGridCard({
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700/50 flex items-center justify-center text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-600/30 group-hover:bg-slate-300 dark:group-hover:bg-slate-700 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-            {getPlatformIcon(device.platform)}
+            {getPlatformIcon(device.platform, "w-6 h-6")}
           </div>
           <div className="overflow-hidden">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm truncate max-w-[140px] group-hover:text-primary-500 dark:group-hover:text-primary-400 transition-colors">

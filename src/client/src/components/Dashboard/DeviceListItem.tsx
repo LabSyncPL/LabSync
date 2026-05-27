@@ -45,7 +45,7 @@ export function DeviceListItem({
               : "bg-slate-700/50"
           }`}
         >
-          {getPlatformIcon(device.platform)}
+          {getPlatformIcon(device.platform, "w-6 h-6")}
         </div>
         <div>
             <h3 className="font-bold text-slate-900 dark:text-white text-sm truncate group-hover:text-primary-500 dark:group-hover:text-primary-400 transition-colors flex items-center gap-2">
