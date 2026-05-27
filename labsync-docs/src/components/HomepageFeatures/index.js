@@ -4,51 +4,49 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Unified Cross-Platform Management',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: 'Unified Device Management',
+    iconText: 'Desktop',
     description: (
       <>
-        Manage both Windows and Linux fleets from a single dashboard. LabSync
-        abstracts away OS-specific details, allowing you to define tasks once
-        and deploy everywhere.
+        Manage Windows and Linux devices from a single dashboard. Define tasks once
+        and deploy them everywhere.
       </>
     ),
   },
   {
-    title: 'Real-time Control & Monitoring',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Realtime Operations',
+    iconText: 'Realtime',
     description: (
       <>
-        Leverage a persistent SignalR connection for instant command execution
-        and live monitoring. High-bandwidth tasks seamlessly shift to a
-        dedicated WebRTC <b>Data Plane</b> for max performance.
+        Use a persistent SignalR control channel for responsive commands and live
+        monitoring. Media-heavy streams can run through a dedicated WebRTC Data Plane
+        for performance.
       </>
     ),
   },
   {
-    title: 'Secure, Extensible Architecture',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Modular Security-First Core',
+    iconText: 'Plugins',
     description: (
       <>
-        Built on a secure <b>Micro-Kernel</b> architecture where every feature
-        is a sandboxed plugin. This allows for safe, rapid development of new
-        capabilities without compromising core system stability.
+        A micro-kernel agent with plugin-based modules. Features are isolated, easy to
+        extend and safe to evolve without touching the stable core.
       </>
     ),
   },
 ];
 
-function Feature({Svg, title, description}) {
+function Feature({iconText, title, description}) {
   return (
-    <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
+    <article className={clsx('col col--4', styles.featureCol)}>
+      <div className={styles.featureCard}>
+        <div className={styles.featureIcon} aria-hidden="true">
+          {iconText}
+        </div>
         <Heading as="h3">{title}</Heading>
         <p>{description}</p>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -56,6 +54,10 @@ export default function HomepageFeatures() {
   return (
     <section className={styles.features}>
       <div className="container">
+        <div className={styles.header}>
+          <Heading as="h2">Why LabSync</Heading>
+          <p>Built for teams that need a reliable, cross-platform remote management foundation.</p>
+        </div>
         <div className="row">
           {FeatureList.map((props, idx) => (
             <Feature key={idx} {...props} />

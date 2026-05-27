@@ -1,38 +1,692 @@
-/**
- * CSS files with the .module.css suffix will be treated as CSS modules
- * and scoped locally.
- */
+/* ─── Shared ──────────────────────────────────────────────────────────────── */
+
+.section {
+  padding: 4.5rem 0;
+}
+
+.sectionAlt {
+  background: var(--ifm-color-emphasis-100);
+}
+
+[data-theme="dark"] .sectionAlt {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sectionHeader {
+  max-width: 680px;
+  margin-bottom: 2.5rem;
+}
+
+.sectionHeader h2 {
+  margin-bottom: 0.5rem;
+}
+
+.sectionHeader p {
+  margin: 0;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 1.05rem;
+}
+
+/* ─── Hero ───────────────────────────────────────────────────────────────── */
 
 .heroBanner {
-  padding: 4rem 0;
-  text-align: center;
   position: relative;
   overflow: hidden;
+  padding: 6rem 0 5rem;
+  background: #0a1428;
+  color: #f0f4ff;
+}
+
+/* decorative background */
+.heroBg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.heroBgBlob1 {
+  position: absolute;
+  top: -120px;
+  right: -80px;
+  width: 680px;
+  height: 680px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(25, 57, 254, 0.28) 0%, transparent 70%);
+  filter: blur(40px);
+}
+
+.heroBgBlob2 {
+  position: absolute;
+  bottom: -160px;
+  left: -100px;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(185, 165, 254, 0.16) 0%, transparent 70%);
+  filter: blur(60px);
+}
+
+.heroBgGrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
+}
+
+.heroGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+.heroContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 0.35rem 0.9rem;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(240, 244, 255, 0.9);
+}
+
+.heroTitle {
+  font-size: clamp(2.4rem, 5vw, 3.8rem) !important;
+  line-height: 1.05 !important;
+  font-weight: 800 !important;
+  margin-bottom: 1rem !important;
+  color: #fff !important;
+  letter-spacing: -0.02em;
+}
+
+.heroSubtitle {
+  font-size: 1.12rem;
+  line-height: 1.65;
+  color: rgba(240, 244, 255, 0.82);
+  margin-bottom: 1.6rem;
+  max-width: 560px;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.primaryButton {
+  background: #1939fe !important;
+  border-color: #1939fe !important;
+  box-shadow: 0 4px 18px rgba(25, 57, 254, 0.45) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.primaryButton:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 26px rgba(25, 57, 254, 0.55) !important;
+}
+
+.secondaryButton {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #f0f4ff !important;
+}
+
+.secondaryButton:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.heroHint {
+  font-size: 0.82rem;
+  color: rgba(240, 244, 255, 0.5);
+  margin: 0;
+}
+
+/* right side card */
+.heroVisual {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.heroLogo {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+  filter: drop-shadow(0 8px 24px rgba(25, 57, 254, 0.5));
+}
+
+.heroStatGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.heroStat {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+}
+
+.heroStatValue {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.heroStatLabel {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: rgba(240, 244, 255, 0.6);
+  line-height: 1.35;
+}
+
+/* ─── Features ───────────────────────────────────────────────────────────── */
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.1rem;
+}
+
+.featureCard {
+  display: flex;
+  flex-direction: column;
+  padding: 1.4rem;
+  border-radius: 16px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.featureCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--ifm-color-primary-light);
+  box-shadow: 0 12px 32px rgba(16, 41, 73, 0.12);
+  text-decoration: none !important;
+}
+
+[data-theme="dark"] .featureCard:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.featureIcon {
+  width: 2.6rem;
+  height: 2.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  border-radius: 12px;
+  background: var(--ifm-color-primary-lightest);
+  margin-bottom: 0.9rem;
+}
+
+.featureTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--ifm-color-emphasis-900);
+}
+
+.featureDesc {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 1rem;
+}
+
+.featureCta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ifm-color-primary);
+}
+
+/* ─── Architecture ───────────────────────────────────────────────────────── */
+
+.archLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3.5rem;
+  align-items: start;
+}
+
+.archText h2 {
+  margin-bottom: 0.75rem;
+}
+
+.archText p {
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 1.25rem;
+}
+
+.archList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.archList li {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--ifm-background-surface-color);
+  border-left: 3px solid var(--ifm-color-primary);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.archList li strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--ifm-color-emphasis-900);
+}
+
+/* diagram card */
+.archDiagram {
+  position: sticky;
+  top: 5rem;
+}
+
+.diagramBox {
+  border-radius: 18px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.diagramNode {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.2rem;
+}
+
+.diagramNodeSub {
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.diagramNodeBrowser {
+  background: rgba(25, 57, 254, 0.1);
+  border: 1px solid rgba(25, 57, 254, 0.25);
+  color: var(--ifm-color-primary);
+}
+
+.diagramNodeServer {
+  background: rgba(185, 165, 254, 0.12);
+  border: 1px solid rgba(185, 165, 254, 0.3);
+  color: var(--ifm-color-emphasis-900);
+}
+
+.diagramNodeAgent {
+  flex: 1;
+  background: var(--ifm-color-emphasis-100);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-800);
+}
+
+.diagramAgentRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.diagramArrow {
+  font-size: 0.72rem;
+  color: var(--ifm-color-emphasis-500);
+  padding: 0.35rem 0;
+  position: relative;
+  text-align: center;
+}
+
+.diagramArrow::before,
+.diagramArrow::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  background: var(--ifm-color-emphasis-300);
+}
+
+.diagramArrow::before {
+  top: 0;
+  height: 4px;
+}
+
+.diagramArrow::after {
+  bottom: 0;
+  height: 4px;
+}
+
+/* ─── Use Cases ──────────────────────────────────────────────────────────── */
+
+.useCaseGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.1rem;
+}
+
+.useCaseCard {
+  border-radius: 16px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+  padding: 1.4rem;
+}
+
+.useCaseIcon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.useCaseTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--ifm-color-emphasis-900);
+}
+
+.useCaseList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.useCaseList li {
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-700);
+  padding-left: 1.1rem;
+  position: relative;
+  line-height: 1.5;
+}
+
+.useCaseList li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--ifm-color-primary);
+  font-size: 0.75rem;
+  top: 0.15rem;
+}
+
+/* ─── Tech Stack ─────────────────────────────────────────────────────────── */
+
+.techGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.techCard {
+  border-radius: 14px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.techLayer {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ifm-color-primary);
+}
+
+.techName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-900);
+  line-height: 1.3;
+}
+
+.techNote {
+  font-size: 0.78rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* ─── Status ─────────────────────────────────────────────────────────────── */
+
+.statusLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3.5rem;
+  align-items: start;
+}
+
+.statusBadge {
+  display: inline-flex;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+  color: #16a34a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+[data-theme="dark"] .statusBadge {
+  background: rgba(22, 163, 74, 0.15);
+  color: #4ade80;
+}
+
+.statusHeading {
+  margin-top: 0 !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.statusActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.statusChecklist {
+  list-style: none;
+  padding: 1.25rem 1.4rem;
+  margin: 0;
+  border-radius: 16px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.statusCheck {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ─── CTA ────────────────────────────────────────────────────────────────── */
+
+.ctaSection {
+  position: relative;
+  overflow: hidden;
+  padding: 6rem 0;
+  background: #0a1428;
+  color: #f0f4ff;
+  text-align: center;
+}
+
+.ctaBg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ctaBgBlob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(25, 57, 254, 0.3) 0%, transparent 65%);
+  filter: blur(60px);
+}
+
+.ctaContent {
+  position: relative;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.ctaHeading {
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem) !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  margin-bottom: 1rem !important;
+  letter-spacing: -0.02em;
+}
+
+.ctaSubtitle {
+  font-size: 1.08rem;
+  color: rgba(240, 244, 255, 0.78);
+  margin-bottom: 2rem;
+}
+
+.ctaActions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
+.ctaPrimary {
+  background: #1939fe !important;
+  border-color: #1939fe !important;
+  box-shadow: 0 4px 20px rgba(25, 57, 254, 0.5) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.ctaPrimary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 28px rgba(25, 57, 254, 0.6) !important;
+}
+
+.ctaSecondary {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #f0f4ff !important;
+}
+
+.ctaSecondary:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+@media screen and (max-width: 1100px) {
+  .techGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media screen and (max-width: 996px) {
   .heroBanner {
-    padding: 2rem;
+    padding: 3.5rem 0;
+  }
+
+  .heroGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroVisual {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .featuresGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .archLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .archDiagram {
+    position: static;
+  }
+
+  .useCaseGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statusLayout {
+    grid-template-columns: 1fr;
   }
 }
 
-.buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+@media screen and (max-width: 600px) {
+  .featuresGrid {
+    grid-template-columns: 1fr;
+  }
 
-.heroLogo {
-  max-width: 240px;
-  width: 35%;
-  height: auto;
-  margin: 0 auto 1rem auto;
-  display: block;
-}
+  .techGrid {
+    grid-template-columns: 1fr;
+  }
 
-.logoWrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.5rem;
+  .heroStatGrid {
+    grid-template-columns: 1fr;
+  }
 }
