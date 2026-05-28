@@ -42,6 +42,7 @@ export interface DeviceDto {
   groupName: string | null;
   hasSshCredentials?: boolean;
   useKeyAuthentication?: boolean;
+  hardwareSpecs?: string | null;
 }
 
 /**

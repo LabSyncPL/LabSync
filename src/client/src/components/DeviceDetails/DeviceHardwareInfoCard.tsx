@@ -18,7 +18,16 @@ interface DeviceHardwareInfoCardProps {
 export function DeviceHardwareInfoCard({
   device,
 }: DeviceHardwareInfoCardProps) {
-  const [specs, setSpecs] = useState<HardwareInfo | null>(null);
+  const [specs, setSpecs] = useState<HardwareInfo | null>(() => {
+    if (device.hardwareSpecs) {
+      try {
+        return JSON.parse(device.hardwareSpecs);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,8 +64,16 @@ export function DeviceHardwareInfoCard({
   };
 
   useEffect(() => {
-    loadSpecs();
-  }, [device.id]);
+    if (device.hardwareSpecs) {
+      try {
+        setSpecs(JSON.parse(device.hardwareSpecs));
+      } catch (e) {
+        setSpecs(null);
+      }
+    } else {
+      setSpecs(null);
+    }
+  }, [device.id, device.hardwareSpecs]);
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 flex flex-col h-full shadow-sm hover:shadow-md transition-shadow">
@@ -81,14 +98,39 @@ export function DeviceHardwareInfoCard({
             Hardware Specs
           </h3>
         </div>
-        {!specs && !loading && (
-          <button
-            onClick={loadSpecs}
-            className="px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white text-xs font-medium rounded transition-colors shadow-lg shadow-primary-500/20"
-          >
-            Load Specs
-          </button>
-        )}
+        <button
+          onClick={loadSpecs}
+          disabled={loading}
+          className={`px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white text-xs font-medium rounded transition-colors shadow-lg shadow-primary-500/20 flex items-center gap-2 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+        >
+          {loading ? (
+            <>
+              <svg
+                className="animate-spin h-3 w-3 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Updating...
+            </>
+          ) : (
+            "Refresh"
+          )}
+        </button>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto max-h-[400px] scrollbar-light dark:scrollbar-dark">
