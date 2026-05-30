@@ -70,10 +70,18 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 18%, transparent 100%);
+}
+
+:root:not([data-theme="dark"]) .heroBgGrid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.14) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 75% 75% at 50% 50%, black 18%, transparent 100%);
 }
 
 .heroGrid {
@@ -632,6 +640,93 @@
 
 .ctaSecondary:hover {
   background: rgba(255, 255, 255, 0.08) !important;
+}
+
+:root:not([data-theme="dark"]) .heroBanner {
+  background: linear-gradient(180deg, #eef2ff 0%, #f8fbff 100%);
+  color: #10213e;
+}
+
+:root:not([data-theme="dark"]) .heroBanner .heroSubtitle {
+  color: rgba(16, 33, 62, 0.78);
+}
+
+:root:not([data-theme="dark"]) .heroBgBlob1 {
+  background: radial-gradient(circle, rgba(78, 105, 255, 0.25) 0%, transparent 70%);
+}
+
+:root:not([data-theme="dark"]) .heroBgBlob2 {
+  background: radial-gradient(circle, rgba(173, 152, 255, 0.18) 0%, transparent 70%);
+}
+
+:root:not([data-theme="dark"]) .heroBgGrid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+}
+
+:root:not([data-theme="dark"]) .heroVisual {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.06);
+}
+
+:root:not([data-theme="dark"]) .heroStat {
+  background: rgba(23, 48, 99, 0.05);
+  border-color: rgba(34, 72, 151, 0.08);
+}
+
+:root:not([data-theme="dark"]) .heroStatValue {
+  color: #06132f;
+}
+
+:root:not([data-theme="dark"]) .heroStatLabel {
+  color: rgba(15, 23, 42, 0.65);
+}
+
+:root:not([data-theme="dark"]) .heroTitle {
+  color: #0f172a !important;
+}
+
+:root:not([data-theme="dark"]) .ctaHeading {
+  color: #0f172a !important;
+}
+
+:root:not([data-theme="dark"]) .heroBanner .secondaryButton,
+:root:not([data-theme="dark"]) .ctaSecondary {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  color: #0d1f3a !important;
+}
+
+:root:not([data-theme="dark"]) .heroBanner .secondaryButton:hover,
+:root:not([data-theme="dark"]) .ctaSecondary:hover {
+  background: rgba(15, 23, 42, 0.05) !important;
+}
+
+:root:not([data-theme="dark"]) .ctaSection {
+  background: #f5f7ff;
+  color: #0f172a;
+}
+
+:root:not([data-theme="dark"]) .ctaSubtitle {
+  color: rgba(15, 23, 42, 0.7);
+}
+
+:root:not([data-theme="dark"]) .ctaBgBlob {
+  background: radial-gradient(circle, rgba(47, 88, 255, 0.18) 0%, transparent 65%);
+}
+
+:root:not([data-theme="dark"]) .ctaPrimary {
+  box-shadow: 0 4px 20px rgba(25, 57, 254, 0.2) !important;
+}
+
+:root:not([data-theme="dark"]) .ctaSecondary {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  color: #0d1f3a !important;
+}
+
+:root:not([data-theme="dark"]) .ctaSecondary:hover {
+  background: rgba(15, 23, 42, 0.05) !important;
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
