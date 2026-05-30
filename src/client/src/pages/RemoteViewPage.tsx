@@ -85,23 +85,27 @@ export function RemoteViewPage() {
   // 7. Render
   return (
     <div className="h-full flex flex-col relative">
-      {viewMode === "selection" ? (
-        <RemoteViewSelection
-          devices={allDevices}
-          onStartMonitoring={handleStartMonitoring}
-        />
-      ) : (
-        <MonitorWall
-          devices={selectedDevices}
-          onBack={handleBackToSelection}
-          onDeviceDoubleClick={handleDeviceDoubleClick}
-          isPaused={isPaused}
-          togglePause={() => setIsPaused((prev) => !prev)}
-          images={images}
-          currentSettings={monitorSettings}
-          onUpdateSettings={setMonitorSettings}
-        />
-      )}
+      {/* flex-1 i overflow-y-auto pozwala na scrollowanie zawartości
+      */}
+      <div className="flex-1 overflow-y-auto p-8">
+        {viewMode === "selection" ? (
+          <RemoteViewSelection
+            devices={allDevices}
+            onStartMonitoring={handleStartMonitoring}
+          />
+        ) : (
+          <MonitorWall
+            devices={selectedDevices}
+            onBack={handleBackToSelection}
+            onDeviceDoubleClick={handleDeviceDoubleClick}
+            isPaused={isPaused}
+            togglePause={() => setIsPaused((prev) => !prev)}
+            images={images}
+            currentSettings={monitorSettings}
+            onUpdateSettings={setMonitorSettings}
+          />
+        )}
+      </div>
 
       {/* Full Remote Control Modal Overlay */}
       {remoteControlDeviceId && (
