@@ -29,6 +29,42 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
         FfmpegPath = string.IsNullOrWhiteSpace(ffmpegPath) ? "ffmpeg" : ffmpegPath;
     }
 
+    protected static (int Width, int Height) NormalizeOutputResolution(int sourceWidth, int sourceHeight, int requestedWidth, int requestedHeight, int alignment = 2)
+    {
+        if (requestedWidth <= 0 || requestedHeight <= 0)
+        {
+            return (AlignToMultiple(sourceWidth, alignment), AlignToMultiple(sourceHeight, alignment));
+        }
+
+        int width = AlignToMultiple(requestedWidth, alignment);
+        int height = AlignToMultiple(requestedHeight, alignment);
+
+        double sourceAspect = sourceWidth / (double)sourceHeight;
+        double requestedAspect = width / (double)height;
+
+        if (Math.Abs(requestedAspect - sourceAspect) > 0.01)
+        {
+            int heightFromWidth = AlignToMultiple(Math.Max(1, (int)Math.Round(width / sourceAspect)), alignment);
+            int widthFromHeight = AlignToMultiple(Math.Max(1, (int)Math.Round(height * sourceAspect)), alignment);
+
+            if (Math.Abs(heightFromWidth - height) <= Math.Abs(widthFromHeight - width))
+            {
+                height = heightFromWidth;
+            }
+            else
+            {
+                width = widthFromHeight;
+            }
+        }
+
+        return (Math.Max(alignment, width), Math.Max(alignment, height));
+    }
+
+    private static int AlignToMultiple(int value, int multiple)
+    {
+        return Math.Max(multiple, ((value + multiple - 1) / multiple) * multiple);
+    }
+
     public virtual async Task InitializeAsync(EncoderOptions options, CancellationToken cancellationToken = default)
     {
         Options = options;

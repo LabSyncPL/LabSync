@@ -30,10 +30,17 @@ public sealed class LinuxFfmpegVideoEncoder : BaseFfmpegEncoder
         int fps = options.TargetFps > 0 ? options.TargetFps : _config.Encoding.DefaultFps;
         if (fps <= 0) fps = 30;
 
+        var (outputWidth, outputHeight) = NormalizeOutputResolution(
+            options.SourceWidth,
+            options.SourceHeight,
+            options.OutputWidth,
+            options.OutputHeight,
+            2);
+
         string scaleFilter = string.Empty;
-        if (options.OutputWidth != options.SourceWidth || options.OutputHeight != options.SourceHeight)
+        if (outputWidth != options.SourceWidth || outputHeight != options.SourceHeight)
         {
-            scaleFilter = $"-vf scale={options.OutputWidth}:{options.OutputHeight}";
+            scaleFilter = $"-vf scale={outputWidth}:{outputHeight}";
         }
         
         string preset = settings.Preset ?? "ultrafast";

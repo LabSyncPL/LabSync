@@ -29,8 +29,22 @@ public class WindowsFfmpegVideoEncoder : BaseFfmpegEncoder
         int bitrate = options.TargetBitrateKbps > 0 ? options.TargetBitrateKbps : _config.Encoding.DefaultBitrateKbps;
         if (bitrate <= 0) bitrate = 2000;
 
+        const int alignment = 8;
+        var (outputWidth, outputHeight) = NormalizeOutputResolution(
+            options.SourceWidth,
+            options.SourceHeight,
+            options.OutputWidth,
+            options.OutputHeight,
+            alignment);
+
+        string scaleFilter = string.Empty;
+        if (outputWidth != options.SourceWidth || outputHeight != options.SourceHeight)
+        {
+            scaleFilter = $"-vf scale={outputWidth}:{outputHeight} ";
+        }
+
         return $"-f rawvideo -pix_fmt bgra -s {options.SourceWidth}x{options.SourceHeight} -r {options.TargetFps} -i - " +
-               $"-c:v h264_nvenc -preset {preset} -rc {rc} -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k " +
+               $"{scaleFilter}-c:v h264_nvenc -preset {preset} -rc {rc} -b:v {bitrate}k -maxrate {bitrate}k -bufsize {bitrate * 2}k " +
                $"-zerolatency 1 -f h264 -";
     }
 }
