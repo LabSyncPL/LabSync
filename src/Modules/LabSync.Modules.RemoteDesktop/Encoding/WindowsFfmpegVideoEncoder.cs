@@ -141,7 +141,7 @@ public class WindowsFfmpegVideoEncoder : BaseFfmpegEncoder
         var settings = _config.Encoding.WindowsIntel;
         
         string preset = settings.Preset ?? "veryfast"; // veryslow, slower, slow, medium, fast, veryfast
-        int asyncDepth = settings.AsyncDepth > 0 ? settings.AsyncDepth : 1; // Keep low for latency
+        int asyncDepth = Math.Max(1, settings.AsyncDepth ?? 0); // Keep low for latency
 
         int bufsize = Math.Max(bitrate, bitrate * 2);
         int gop = fps;

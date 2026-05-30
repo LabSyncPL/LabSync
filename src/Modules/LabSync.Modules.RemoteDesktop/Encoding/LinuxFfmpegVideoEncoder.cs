@@ -151,7 +151,7 @@ public sealed class LinuxFfmpegVideoEncoder : BaseFfmpegEncoder
         var settings = _config.Encoding.WindowsIntel; // Reuse Windows Intel settings
         
         string preset = settings.Preset ?? "veryfast";
-        int asyncDepth = settings.AsyncDepth > 0 ? settings.AsyncDepth : 1;
+        int asyncDepth = Math.Max(1, settings.AsyncDepth ?? 0);
 
         int bufsize = Math.Max(bitrate, bitrate * 2);
         int gop = fps;
