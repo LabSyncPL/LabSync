@@ -31,33 +31,40 @@ public abstract class BaseFfmpegEncoder : IVideoEncoder
 
     protected static (int Width, int Height) NormalizeOutputResolution(int sourceWidth, int sourceHeight, int requestedWidth, int requestedHeight, int alignment = 2)
     {
+        if (sourceWidth <= 0 || sourceHeight <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceWidth), "Source dimensions must be positive.");
+        }
+
         if (requestedWidth <= 0 || requestedHeight <= 0)
         {
             return (AlignToMultiple(sourceWidth, alignment), AlignToMultiple(sourceHeight, alignment));
         }
 
-        int width = AlignToMultiple(requestedWidth, alignment);
-        int height = AlignToMultiple(requestedHeight, alignment);
+        int alignedRequestedWidth = AlignToMultiple(requestedWidth, alignment);
+        int alignedRequestedHeight = AlignToMultiple(requestedHeight, alignment);
 
         double sourceAspect = sourceWidth / (double)sourceHeight;
-        double requestedAspect = width / (double)height;
+        double requestedAspect = alignedRequestedWidth / (double)alignedRequestedHeight;
 
-        if (Math.Abs(requestedAspect - sourceAspect) > 0.01)
+        const double aspectTolerance = 0.01;
+        if (Math.Abs(requestedAspect - sourceAspect) <= aspectTolerance)
         {
-            int heightFromWidth = AlignToMultiple(Math.Max(1, (int)Math.Round(width / sourceAspect)), alignment);
-            int widthFromHeight = AlignToMultiple(Math.Max(1, (int)Math.Round(height * sourceAspect)), alignment);
-
-            if (Math.Abs(heightFromWidth - height) <= Math.Abs(widthFromHeight - width))
-            {
-                height = heightFromWidth;
-            }
-            else
-            {
-                width = widthFromHeight;
-            }
+            return (alignedRequestedWidth, alignedRequestedHeight);
         }
 
-        return (Math.Max(alignment, width), Math.Max(alignment, height));
+        int heightFromWidth = AlignToMultiple(Math.Max(alignment, (int)Math.Round(alignedRequestedWidth / sourceAspect)), alignment);
+        int widthFromHeight = AlignToMultiple(Math.Max(alignment, (int)Math.Round(alignedRequestedHeight * sourceAspect)), alignment);
+
+        int diffWhenWidthFixed = Math.Abs(alignedRequestedWidth - alignedRequestedWidth) + Math.Abs(alignedRequestedHeight - heightFromWidth);
+        int diffWhenHeightFixed = Math.Abs(alignedRequestedWidth - widthFromHeight) + Math.Abs(alignedRequestedHeight - alignedRequestedHeight);
+
+        if (diffWhenWidthFixed <= diffWhenHeightFixed)
+        {
+            return (alignedRequestedWidth, heightFromWidth);
+        }
+
+        return (widthFromHeight, alignedRequestedHeight);
     }
 
     private static int AlignToMultiple(int value, int multiple)
