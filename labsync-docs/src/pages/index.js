@@ -94,14 +94,46 @@ const useCases = [
 ];
 
 const techStack = [
-  { layer: "Backend", tech: ".NET 9 / ASP.NET Core", note: "REST API deployed via Docker" },
-  { layer: "Control Plane", tech: "SignalR Core + MessagePack", note: "Low-latency bidirectional signaling" },
-  { layer: "Data Plane", tech: "WebRTC (Sipsorcery)", note: "Direct P2P UDP streaming" },
-  { layer: "Frontend", tech: "React 19 + TypeScript", note: "Modern Vite & Tailwind SPA" },
-  { layer: "Agent Host", tech: ".NET 9 Micro-Kernel", note: "Windows Service & Linux systemd" },
-  { layer: "Encoding", tech: "FFmpeg H.264", note: "Hardware acceleration support" },
-  { layer: "Security", tech: "JWT & RSA Keys", note: "Strict device authorization" },
-  { layer: "Database", tech: "PostgreSQL + TimescaleDB", note: "Optimized for time-series telemetry" },
+  {
+    layer: "Backend",
+    tech: ".NET 9 / ASP.NET Core",
+    note: "REST API deployed via Docker",
+  },
+  {
+    layer: "Control Plane",
+    tech: "SignalR Core + MessagePack",
+    note: "Low-latency bidirectional signaling",
+  },
+  {
+    layer: "Data Plane",
+    tech: "WebRTC (Sipsorcery)",
+    note: "Direct P2P UDP streaming",
+  },
+  {
+    layer: "Frontend",
+    tech: "React 19 + TypeScript",
+    note: "Modern Vite & Tailwind SPA",
+  },
+  {
+    layer: "Agent Host",
+    tech: ".NET 9 Micro-Kernel",
+    note: "Windows Service & Linux systemd",
+  },
+  {
+    layer: "Encoding",
+    tech: "FFmpeg H.264",
+    note: "Hardware acceleration support",
+  },
+  {
+    layer: "Security",
+    tech: "JWT & RSA Keys",
+    note: "Strict device authorization",
+  },
+  {
+    layer: "Database",
+    tech: "PostgreSQL + TimescaleDB",
+    note: "Optimized for time-series telemetry",
+  },
 ];
 
 // ─── Sections ────────────────────────────────────────────────────────────────
@@ -121,17 +153,25 @@ function HeroBanner() {
             {siteConfig.title}
           </Heading>
           <p className={styles.heroSubtitle}>
-            Unified Remote Management for Heterogeneous Environments. One central dashboard to manage, automate, and support your entire Windows and Linux fleet.
+            Unified Remote Management for Heterogeneous Environments. One
+            central dashboard to manage, automate, and support your entire
+            Windows and Linux fleet.
           </p>
           <div className={styles.heroActions}>
             <Link
-              className={clsx("button button--primary button--lg", styles.primaryButton)}
+              className={clsx(
+                "button button--primary button--lg",
+                styles.primaryButton,
+              )}
               to="/docs/getting-started/quick-start"
             >
               Get started in 5 min
             </Link>
             <Link
-              className={clsx("button button--secondary button--lg", styles.secondaryButton)}
+              className={clsx(
+                "button button--secondary button--lg",
+                styles.secondaryButton,
+              )}
               to="/docs/intro"
             >
               Read the docs
@@ -165,7 +205,9 @@ function FeaturesSection() {
         <div className={styles.sectionHeader}>
           <Heading as="h2">One platform. All the right tools.</Heading>
           <p>
-          Replace fragmented utilities with a unified toolkit. From interactive SSH to live WebRTC streaming, everything you need to support Windows and Linux is just a click away.
+            Replace fragmented utilities with a unified toolkit. From
+            interactive SSH to live WebRTC streaming, everything you need to
+            support Windows and Linux is just a click away.
           </p>
         </div>
         <div className={styles.featuresGrid}>
@@ -188,50 +230,85 @@ function ArchitectureSection() {
       <div className="container">
         <div className={styles.archLayout}>
           <div className={styles.archText}>
-            <Heading as="h2">Engineered for Performance and Extensibility</Heading>
+            <Heading as="h2">
+              Engineered for Performance and Extensibility
+            </Heading>
             <p>
-              LabSync separates management traffic from media streams into two independent channels, ensuring critical commands are never delayed by video sessions.
+              LabSync separates management traffic from media streams into two
+              independent channels, ensuring critical commands are never delayed
+              by video sessions.
             </p>
             <ul className={styles.archList}>
               <li>
-                <strong>Control Plane (SignalR)</strong> — Low-latency communication for commands, heartbeats, and live telemetry using efficient MessagePack binaries.
+                <strong>Control Plane (SignalR)</strong> — Low-latency
+                communication for commands, heartbeats, and live telemetry using
+                efficient MessagePack binaries.
               </li>
               <li>
-                <strong>Data Plane (WebRTC)</strong> — Direct peer-to-peer UDP connections for fluid H.264 video and SSH data, bypassing the server for near-zero latency.
+                <strong>Data Plane (WebRTC)</strong> — Direct peer-to-peer UDP
+                connections for fluid H.264 video and SSH data, bypassing the
+                server for near-zero latency.
               </li>
               <li>
-                <strong>Micro-Kernel Agent</strong> — A lightweight host process that dynamically loads independent DLL plugins at runtime, ensuring unmatched stability.
+                <strong>Micro-Kernel Agent</strong> — A lightweight host process
+                that dynamically loads independent DLL plugins at runtime,
+                ensuring unmatched stability.
               </li>
               <li>
-                <strong>Security-First Architecture</strong> — Strict JWT authentication, explicit device approval workflows, and a secure 'No-eval' execution policy.
+                <strong>Security-First Architecture</strong> — Strict JWT
+                authentication, explicit device approval workflows, and a secure
+                'No-eval' execution policy.
               </li>
             </ul>
-            <Link className="button button--primary" to="/docs/architecture/overview">
+            <Link
+              className="button button--primary"
+              to="/docs/architecture/overview"
+            >
               Explore the architecture →
             </Link>
           </div>
           <div className={styles.archDiagram}>
             <div className={styles.diagramBox}>
-              <div className={clsx(styles.diagramNode, styles.diagramNodeBrowser)}>
+              <div
+                className={clsx(styles.diagramNode, styles.diagramNodeBrowser)}
+              >
                 Browser Dashboard
               </div>
-              <div className={styles.diagramArrow}>HTTPS / WebSocket (SignalR)</div>
-              <div className={clsx(styles.diagramNode, styles.diagramNodeServer)}>
+              <div className={styles.diagramArrow}>
+                HTTPS / WebSocket (SignalR)
+              </div>
+              <div
+                className={clsx(styles.diagramNode, styles.diagramNodeServer)}
+              >
                 LabSync Server
-                <span className={styles.diagramNodeSub}>.NET 9 · ASP.NET Core · PostgreSQL</span>
+                <span className={styles.diagramNodeSub}>
+                  .NET 9 · ASP.NET Core · PostgreSQL
+                </span>
               </div>
-              <div className={styles.diagramArrow}>SignalR · WebRTC signaling</div>
+              <div className={styles.diagramArrow}>
+                SignalR · WebRTC signaling
+              </div>
               <div className={styles.diagramAgentRow}>
-                <div className={clsx(styles.diagramNode, styles.diagramNodeAgent)}>
+                <div
+                  className={clsx(styles.diagramNode, styles.diagramNodeAgent)}
+                >
                   Windows Agent
-                  <span className={styles.diagramNodeSub}>Remote Desktop · Script · SSH · Metrics</span>
+                  <span className={styles.diagramNodeSub}>
+                    Remote Desktop · Script · SSH · Metrics
+                  </span>
                 </div>
-                <div className={clsx(styles.diagramNode, styles.diagramNodeAgent)}>
+                <div
+                  className={clsx(styles.diagramNode, styles.diagramNodeAgent)}
+                >
                   Linux Agent
-                  <span className={styles.diagramNodeSub}>Remote Desktop · Script · SSH · Metrics</span>
+                  <span className={styles.diagramNodeSub}>
+                    Remote Desktop · Script · SSH · Metrics
+                  </span>
                 </div>
               </div>
-              <div className={styles.diagramArrow}>WebRTC (UDP · P2P Streaming)</div>
+              <div className={styles.diagramArrow}>
+                WebRTC (UDP · P2P Streaming)
+              </div>
             </div>
           </div>
         </div>
@@ -246,7 +323,10 @@ function UseCasesSection() {
       <div className="container">
         <div className={styles.sectionHeader}>
           <Heading as="h2">Who is LabSync for?</Heading>
-          <p>Scalable enough for a thousand-endpoint enterprise, simple enough for a single university lab.</p>
+          <p>
+            Scalable enough for a thousand-endpoint enterprise, simple enough
+            for a single university lab.
+          </p>
         </div>
         <div className={styles.useCaseGrid}>
           {useCases.map((uc) => (
@@ -273,7 +353,8 @@ function TechStackSection() {
         <div className={styles.sectionHeader}>
           <Heading as="h2">Technology Stack</Heading>
           <p>
-            Built on modern, powerful frameworks chosen for speed, uncompromising security, and long-term maintainability.
+            Built on modern, powerful frameworks chosen for speed,
+            uncompromising security, and long-term maintainability.
           </p>
         </div>
         <div className={styles.techGrid}>
@@ -310,13 +391,21 @@ function StatusSection() {
               Ready to deploy
             </Heading>
             <p>
-              The core system architecture is complete. LabSync is actively handling real-time communication, script execution, and telemetry collection across cross-platform environments.
+              The core system architecture is complete. LabSync is actively
+              handling real-time communication, script execution, and telemetry
+              collection across cross-platform environments.
             </p>
             <div className={styles.statusActions}>
-              <Link className="button button--primary button--lg" to="/docs/getting-started/installation">
+              <Link
+                className="button button--primary button--lg"
+                to="/docs/getting-started/installation"
+              >
                 Installation Guide
               </Link>
-              <Link className="button button--secondary button--lg" to="/docs/labsync-status">
+              <Link
+                className="button button--secondary button--lg"
+                to="/docs/labsync-status"
+              >
                 View Roadmap
               </Link>
             </div>
@@ -324,7 +413,7 @@ function StatusSection() {
           <ul className={styles.statusChecklist}>
             {ready.map((item) => (
               <li key={item} className={styles.statusItem}>
-                <span className={styles.statusCheck}>✅</span> {item}
+                {item}
               </li>
             ))}
           </ul>
@@ -350,13 +439,19 @@ function CtaSection() {
           </p>
           <div className={styles.ctaActions}>
             <Link
-              className={clsx("button button--primary button--lg", styles.ctaPrimary)}
+              className={clsx(
+                "button button--primary button--lg",
+                styles.ctaPrimary,
+              )}
               to="/docs/getting-started/quick-start"
             >
               Quick Start Guide
             </Link>
             <Link
-              className={clsx("button button--secondary button--lg", styles.ctaSecondary)}
+              className={clsx(
+                "button button--secondary button--lg",
+                styles.ctaSecondary,
+              )}
               to="/docs/features/overview"
             >
               Explore Features
@@ -380,9 +475,9 @@ export default function Home() {
       <HeroBanner />
       <main>
         <FeaturesSection />
-        <ArchitectureSection />
         <UseCasesSection />
         <TechStackSection />
+        <ArchitectureSection />
         <StatusSection />
         <CtaSection />
       </main>

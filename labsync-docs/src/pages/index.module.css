@@ -553,16 +553,25 @@
 }
 
 .statusItem {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  position: relative;
+  padding-left: 1.1rem;
   font-size: 0.9rem;
   color: var(--ifm-color-emphasis-800);
 }
 
+.statusItem::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ifm-color-primary);
+}
+
 .statusCheck {
-  font-size: 0.85rem;
-  flex-shrink: 0;
+  display: none;
 }
 
 /* ─── CTA ────────────────────────────────────────────────────────────────── */
