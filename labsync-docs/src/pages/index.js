@@ -136,6 +136,24 @@ const techStack = [
   },
 ];
 
+const teamMembers = [
+  {
+    name: "Michał Kuchnicki",
+    title: "Backend",
+    image: "/img/piesek.jpg",
+  },
+  {
+    name: "Maria Mrozek",
+    title: "Frontend",
+    image: "/img/piesek.jpg",
+  },
+  {
+    name: "Michał Majka",
+    title: "Backend",
+    image: "/img/piesek.jpg",
+  },
+];
+
 // ─── Sections ────────────────────────────────────────────────────────────────
 
 function HeroBanner() {
@@ -371,6 +389,43 @@ function TechStackSection() {
   );
 }
 
+function TeamSection() {
+  return (
+    <section className={clsx(styles.section, styles.sectionAlt)}>
+      <div className="container">
+        <div className={styles.sectionHeader}>
+          <Heading as="h2">The team behind LabSync</Heading>
+        </div>
+        <div className={styles.teamGrid}>
+          {teamMembers.map((member) => (
+            <div key={member.name} className={styles.teamCard}>
+              <div className={styles.teamAvatar}>
+                {member.image ? (
+                  <img
+                    src={useBaseUrl(member.image)}
+                    alt={member.name}
+                    className={styles.teamAvatarImage}
+                  />
+                ) : (
+                  member.name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                )}
+              </div>
+              <div className={styles.teamInfo}>
+                <h3 className={styles.teamName}>{member.name}</h3>
+                <p className={styles.teamRole}>{member.title}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function StatusSection() {
   const ready = [
     "Backend Server (.NET 9 ASP.NET Core)",
@@ -477,8 +532,10 @@ export default function Home() {
         <FeaturesSection />
         <UseCasesSection />
         <TechStackSection />
+
         <ArchitectureSection />
         <StatusSection />
+        <TeamSection />
         <CtaSection />
       </main>
     </Layout>
