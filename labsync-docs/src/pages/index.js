@@ -140,17 +140,17 @@ const teamMembers = [
   {
     name: "Michał Kuchnicki",
     title: "Backend",
-    image: "/img/piesek.jpg",
+    image: "/img/michal.jpg",
   },
   {
     name: "Maria Mrozek",
     title: "Frontend",
-    image: "/img/piesek.jpg",
+    image: "/img/marysia.jpg",
   },
   {
     name: "Michał Majka",
     title: "Backend",
-    image: "/img/piesek.jpg",
+    image: "/img/majek.jpg",
   },
 ];
 
